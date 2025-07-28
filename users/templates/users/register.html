@@ -1,6 +1,26 @@
+{% extends 'base.html' %}
+{% block title %}Profil - Shuttrly{% endblock %}
+{% block content %}
+
 <h2>Register</h2>
 <form method="post" enctype="multipart/form-data">
     {% csrf_token %}
     {{ form.as_p }}
     <button type="submit">Create account</button>
 </form>
+
+{% if messages %}
+  <ul>
+  {% for message in messages %}
+    <li>{{ message }}</li>
+  {% endfor %}
+  </ul>
+{% endif %}
+
+{% if user.is_authenticated %}
+    <p>You are already logged in as {{ user.username }}.</p>
+{% else %}
+    <p>Already have an account? <a href="{% url 'login' %}">Login here</a>.</p>
+{% endif %}
+
+{% endblock %}

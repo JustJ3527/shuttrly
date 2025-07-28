@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% block title %}Profil - Shuttrly{% endblock %}
+{% block content %}
+
+{% if user.is_authenticated %}
+    <div class="user-info">
+        <h1>Welcome, {{ user.username }}!</H1>
+    </div>
+{% endif %}
+<h2>Here you can edit your profile information.</h2>
+
+<form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{ form.as_p }}
+
+    <button type="submit">Save</button>
+</form>
+
+<h2>My profile picture</h2>
+{% if user.profile_picture %}
+    <img src="{{ user.profile_picture.url }}" alt="Profile Picture" style="max-width: 200px; max-height: 200px;">
+{% else %}
+    <p>No profile picture uploaded.</p>
+{% endif %}
+
+{% if user.is_online %}
+    <span class="text-green-600">● Online</span>
+{% else %}
+    <span class="text-gray-400">● offline</span>
+{% endif %}
+<br>
+<form action="{% url 'logout' %}" method="post" style="display:inline;">
+  {% csrf_token %}
+  <button type="submit">Log out</button>
+</form>
+{% endblock %}

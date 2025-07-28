@@ -1,0 +1,62 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{% block title %}Shuttrly{% endblock %}</title>
+
+    <!--Local CSS files-->
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+
+    <!--External reset CSS files-->
+    {% comment %} <link rel="stylesheet" type="text/css" href="https://hg.mozilla.org/mozilla-central/file/tip/layout/style/res/html.css"> <!--Mozilla Firefox-->
+    <link rel="stylesheet" type="text/css" href="https://chromium.googlesource.com/chromium/blink/+/master/Source/core/css/html.css"> <!--Google Chrome-->
+    <link rel="stylesheet" type="text/css" href="https://web.archive.org/web/20161031003455/http://www.iecss.com/edgehtml-13.10586.css"> <!--Microsoft Edge--> {% endcomment %}
+
+
+</head>
+<body>
+    <!-- Navigation bar -->
+    {% block navbar %}
+    <nav id="main-navbar" class="navbar">
+        <a id="navbar-logo" class="navbar-logo" href="{% url 'home' %}">Shuttrly</a>
+
+        <div id="menu-toggle" class="menu-toggle" aria-label="Toggle menu" role="button" tabindex="0">
+            <span class="bar bar1"></span>
+            <span class="bar bar2"></span>
+            <span class="bar bar3"></span>
+        </div>
+
+        <ul id="navbar-menu" class="navbar-menu">
+            <li class="nav-item"><a href="{% url 'profile' %}" class="nav-link">Profile</a></li>
+            {% if user.is_authenticated %}
+                <li class="nav-item"><a href="{% url 'logout' %}" class="nav-link">Logout</a></li>
+            {% else %}
+                <li class="nav-item"><a href="{% url 'login' %}" class="nav-link">Login</a></li>
+                <li class="nav-item"><a href="{% url 'register' %}" class="nav-link">Register</a></li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endblock %}
+    <!-- Display messages if any -->
+    {% if messages %}
+        <div class="messages">
+            {% for message in messages %}
+                <strong><p style="color: #911F21" class="{{ message.tags }}">{{ message }}</p></strong>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <main id="main-content" class="content">
+        {% block content %}
+        {% endblock %}
+    </main>
+
+</body>
+<footer>
+    <p>&copy; 2025 Shuttrly. All rights reserved.</p>
+</footer>
+<script src="{% static 'js/navbar.js' %}"></script>
+</html>

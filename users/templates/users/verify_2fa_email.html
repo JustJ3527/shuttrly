@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Vérification de sécurité</h2>
+<p>Nous avons envoyé un code à votre adresse e-mail.</p>
+<form method="post">
+  {% csrf_token %}
+  <label for="code">Code reçu :</label>
+  <input type="text" name="code" id="code" required>
+  <button type="submit">Valider</button>
+</form>
+{% endblock %}

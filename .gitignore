@@ -12,7 +12,7 @@ __pycache__/
 
 # Django
 db.sqlite3
-/media/
+/media/profiles/
 
 # VS Code
 .vscode/
@@ -20,3 +20,7 @@ db.sqlite3
 # Migrations (optionnel)
 **/migrations/
 !*/migrations/__init__.py
+# secrets
+.env
+*.env
+.env.*

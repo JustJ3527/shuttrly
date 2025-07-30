@@ -24,3 +24,8 @@ db.sqlite3
 .env
 *.env
 .env.*
+
+# secrets
+.env
+*.env
+.env.*

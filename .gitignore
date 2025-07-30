@@ -2,25 +2,48 @@
 __pycache__/
 *.py[cod]
 *.sqlite3
-*.env
-*.venv
-.env
+
+# Environnements virtuels
 .venv/
+venv/
+env/
+
+# Secrets / Env
+.env
+*.env
+.env.*
 
 # macOS
 .DS_Store
 
 # Django
 db.sqlite3
-/media/profiles/
+media/                 # ignorer tous les fichiers uploadés locaux
+staticfiles/           # si tu collectes en local (STATIC_ROOT)
+# local settings éventuels
+*local_settings.py
 
-# VS Code
+# VS Code / IDEs
 .vscode/
+.idea/
+.vs/
 
-# Migrations (optionnel)
-**/migrations/
-!*/migrations/__init__.py
-# secrets
-.env
-*.env
-.env.*
+# Tools & caches
+.cache_ggshield/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+coverage.xml
+.coverage
+htmlcov/
+
+# Logs
+*.log
+
+# (Optionnel) Front-end si présent
+node_modules/
+dist/
+build/
+
+# (Optionnel) miroir BFG local si jamais créé dans le projet
+repo.git/

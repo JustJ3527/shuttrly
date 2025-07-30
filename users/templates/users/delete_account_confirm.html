@@ -1,0 +1,52 @@
+{# templates/users/delete_account_confirm.html #}
+{% extends 'base.html' %}
+{% block title %}Delete my account{% endblock %}
+
+{% block content %}
+<h1>Delete my account</h1>
+
+<p>
+  This action is <strong>permanent</strong> if you choose deletion. 
+  You can also choose<strong>anonymization</strong> (deactivation + purging of personal data)
+ to preserve the integrity of related content.
+</p>
+
+{% if related_warnings and related_warnings|length > 0 %}
+  <div style="border:1px solid #ddd;padding:1rem;margin:1rem 0;">
+    <strong>Related objects detected (preview) :</strong>
+    <ul>
+      {% for item in related_warnings %}
+        <li>{{ item.model }} : {{ item.count }}</li>
+      {% endfor %}
+    </ul>
+    <small>These elements may be deleted (CASCADE) or impacted by account deletion.</small>
+  </div>
+{% endif %}
+
+<form method="post" action="{% url 'delete_account' %}" style="margin-top:1rem;">
+  {% csrf_token %}
+
+  <!-- Password confirmation is required for both delete and anonymize -->
+  <div style="margin-bottom:0.75rem;">
+    <label for="password"><strong>Confirm your password:</strong></label><br>
+    <input id="password" name="password" type="password" required autocomplete="current-password">
+  </div>
+
+  <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+    <!-- Anonymize (GDPR-friendly): scrubs PII and deactivates the account -->
+    <button type="submit" name="action" value="anonymize" 
+            style="padding:0.5rem 1rem;">
+      Anonymize my account
+    </button>
+
+    <!-- Hard delete: physically removes the user row and files -->
+    <button type="submit" name="action" value="delete" 
+            style="background:#b91c1c;color:white;padding:0.5rem 1rem;"
+            onclick="return confirm('Confirmer la suppression définitive de votre compte ? Cette action est irréversible.');">
+      Delete permanently
+    </button>
+
+    <a href="{% url 'profile' %}" style="padding:0.5rem 1rem;display:inline-block;">Annuler</a>
+  </div>
+</form>
+{% endblock %}

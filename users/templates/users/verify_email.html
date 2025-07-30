@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vérification de l'email</title>
+    {% comment %} <style>
+        /* Styles modernes pour la page de vérification */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .verification-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .email-icon {
+            font-size: 4rem;
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2rem;
+            font-weight: 600;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1rem;
+            line-height: 1.5;
+        }
+
+        .email-display {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            font-weight: 600;
+            color: #667eea;
+            border: 2px solid #e9ecef;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+            text-align: left;
+        }
+
+        .verification-input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            font-size: 1.2rem;
+            text-align: center;
+            letter-spacing: 0.3em;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            font-family: monospace;
+        }
+
+        .verification-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .verify-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 20px;
+        }
+
+        .verify-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .verify-btn:active {
+            transform: translateY(0);
+        }
+
+        .resend-section {
+            padding-top: 20px;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .resend-btn {
+            background: transparent;
+            color: #667eea;
+            border: 2px solid #667eea;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .resend-btn:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        .resend-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .countdown {
+            color: #666;
+            font-size: 0.9rem;
+            margin-top: 10px;
+        }
+
+        .messages {
+            margin-bottom: 20px;
+        }
+
+        .alert {
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+
+        .alert-success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .alert-warning {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+
+        .back-to-login {
+            margin-top: 20px;
+        }
+
+        .back-to-login a {
+            color: #666;
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+
+        .back-to-login a:hover {
+            color: #667eea;
+            text-decoration: underline;
+        }
+
+        /* Animation pour l'input du code */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        .verification-input.error {
+            border-color: #dc3545;
+            animation: shake 0.5s ease-in-out;
+        }
+
+        /* Responsive design */
+        @media (max-width: 600px) {
+            .verification-container {
+                padding: 30px 20px;
+                margin: 10px;
+            }
+
+            h1 {
+                font-size: 1.5rem;
+            }
+
+            .subtitle {
+                font-size: 1rem;
+            }
+        }
+    </style> {% endcomment %}
+</head>
+<body>
+    <div class="verification-container">
+        <!-- Icône d'email -->
+        <div class="email-icon">📧</div>
+        
+        <h1>Vérifiez votre email</h1>
+        <p class="subtitle">
+            Nous avons envoyé un code de vérification à 6 chiffres à votre adresse email.
+            Entrez le code ci-dessous pour activer votre compte.
+        </p>
+
+        <!-- Affichage de l'email -->
+        <div class="email-display">
+            {{ email }}
+        </div>
+
+        <!-- Messages de Django -->
+        {% if messages %}
+        <div class="messages">
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Formulaire de vérification -->
+        <form method="post" id="verificationForm">
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="verification_code">Code de vérification</label>
+                <input 
+                    type="text" 
+                    id="verification_code" 
+                    name="verification_code" 
+                    class="verification-input"
+                    placeholder="000000"
+                    maxlength="6"
+                    pattern="[0-9]{6}"
+                    title="Veuillez entrer un code à 6 chiffres"
+                    autocomplete="off"
+                    required
+                >
+            </div>
+            
+            <button type="submit" class="verify-btn">
+                Vérifier mon email
+            </button>
+        </form>
+
+        <!-- Section de renvoi de code -->
+        <div class="resend-section">
+            <p style="margin-bottom: 15px; color: #666;">
+                Vous n'avez pas reçu le code ?
+            </p>
+            
+            {% if can_resend %}
+                <form method="post" action="{% url 'resend_verification_code' %}" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="resend-btn">
+                        Renvoyer le code
+                    </button>
+                </form>
+            {% else %}
+                <button class="resend-btn" disabled>
+                    Renvoyer le code
+                </button>
+                <div class="countdown" id="countdown">
+                    Vous pourrez redemander un code dans <span id="timer">{{ time_until_resend }}</span> secondes
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Lien retour à la connexion -->
+        <div class="back-to-login">
+            <a href="{% url 'login' %}">← Retour à la connexion</a>
+        </div>
+    </div>
+
+    <script>
+        // Script pour gérer l'input du code de vérification
+        document.addEventListener('DOMContentLoaded', function() {
+            const codeInput = document.getElementById('verification_code');
+            const form = document.getElementById('verificationForm');
+            
+            // Auto-format l'input pour n'accepter que les chiffres
+            codeInput.addEventListener('input', function(e) {
+                // Supprimer tout ce qui n'est pas un chiffre
+                this.value = this.value.replace(/[^0-9]/g, '');
+                
+                // Limiter à 6 chiffres
+                if (this.value.length > 6) {
+                    this.value = this.value.slice(0, 6);
+                }
+                
+                // Supprimer la classe d'erreur si elle existe
+                this.classList.remove('error');
+            });
+
+            // Auto-submit si 6 chiffres sont entrés
+            codeInput.addEventListener('input', function(e) {
+                if (this.value.length === 6) {
+                    // Petit délai pour l'UX
+                    setTimeout(() => {
+                        form.submit();
+                    }, 300);
+                }
+            });
+
+            // Gérer la soumission du formulaire
+            form.addEventListener('submit', function(e) {
+                const code = codeInput.value.trim();
+                if (code.length !== 6 || !/^\d{6}$/.test(code)) {
+                    e.preventDefault();
+                    codeInput.classList.add('error');
+                    codeInput.focus();
+                }
+            });
+
+            // Countdown timer pour le renvoi de code
+            {% if not can_resend and time_until_resend > 0 %}
+            let timeLeft = {{ time_until_resend }};
+            const timerElement = document.getElementById('timer');
+            const countdownElement = document.getElementById('countdown');
+            
+            const updateTimer = () => {
+                if (timeLeft <= 0) {
+                    // Recharger la page pour permettre le renvoi
+                    location.reload();
+                    return;
+                }
+                
+                const minutes = Math.floor(timeLeft / 60);
+                const seconds = timeLeft % 60;
+                
+                if (minutes > 0) {
+                    timerElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                } else {
+                    timerElement.textContent = seconds;
+                }
+                
+                timeLeft--;
+            };
+            
+            // Mettre à jour immédiatement puis chaque seconde
+            updateTimer();
+            const timerInterval = setInterval(updateTimer, 1000);
+            {% endif %}
+
+            // Focus automatique sur l'input
+            codeInput.focus();
+        });
+    </script>
+</body>
+</html>

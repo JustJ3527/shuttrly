@@ -30,8 +30,11 @@
         </div>
 
         <ul id="navbar-menu" class="navbar-menu">
-            <li class="nav-item"><a href="{% url 'profile' %}" class="nav-link">Profile</a></li>
             {% if user.is_authenticated %}
+                <li class="nav-item"><a href="{% url 'profile' %}" class="nav-link">Profile</a></li>
+                {% if user.is_superuser %}
+                    <li class="nav-item"><a href="{% url 'admin:index' %}" class="nav-link">Admin</a></li>
+                {% endif %}
                 <li class="nav-item"><a href="{% url 'logout' %}" class="nav-link">Logout</a></li>
             {% else %}
                 <li class="nav-item"><a href="{% url 'login' %}" class="nav-link">Login</a></li>

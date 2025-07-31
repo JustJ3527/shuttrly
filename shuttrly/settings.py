@@ -51,6 +51,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django.contrib.sites',
     'users.apps.UsersConfig',
+    'adminpanel',
+    'logs',
 ]
 
 MIDDLEWARE = [
@@ -62,6 +64,11 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'users.middleware.OnlineStatusMiddleware',  # Custom middleware for online status
+]
+
+AUTHENTICATION_BACKENDS = [
+    'users.backend.SuperuserUsernameBackend',  # ← ton backend
+    'django.contrib.auth.backends.ModelBackend',
 ]
 
 MIDDLEWARE += ['users.middleware.OnlineStatusMiddleware']

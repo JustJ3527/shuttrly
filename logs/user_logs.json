@@ -1,0 +1,247 @@
+[
+  {
+    "user": "Jul_atn",
+    "user_id": 7,
+    "action": "update_profile",
+    "timestamp": "2025-07-31T17:51:38.493033+00:00",
+    "extra_info": {
+      "ip_address": "127.0.0.1",
+      "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36",
+      "info": {
+        "ip_address": "127.0.0.1",
+        "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36",
+        "changes": {
+          "username": [
+            "Jul",
+            "Jul_atn"
+          ],
+          "first_name": [
+            "Jul",
+            "Jules"
+          ],
+          "last_name": [
+            "Antn",
+            "Antoine"
+          ]
+        }
+      }
+    }
+  },
+  {
+    "user": "Jul_atn",
+    "user_id": 7,
+    "action": "update_profile",
+    "timestamp": "2025-07-31T18:24:32.618053+00:00",
+    "extra_info": {
+      "ip_address": "127.0.0.1",
+      "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36",
+      "info": {
+        "ip_address": "127.0.0.1",
+        "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36",
+        "changes": {
+          "username": [
+            "Jul",
+            "Jul_atn"
+          ],
+          "first_name": [
+            "Jul",
+            "Jules"
+          ],
+          "last_name": [
+            "Antn",
+            "Antoine"
+          ]
+        }
+      }
+    }
+  },
+  {
+    "user": "admin",
+    "user_id": 4,
+    "action": "restore_action",
+    "timestamp": "2025-07-31T18:24:45.713069+00:00",
+    "extra_info": {
+      "restored_log_index": 0,
+      "restored_log_user": "Jul_atn",
+      "restored_action": "update_profile",
+      "note": "Restored profile for user Jul"
+    }
+  },
+  {
+    "user": "Jul_atn",
+    "user_id": 7,
+    "action": "update_profile",
+    "timestamp": "2025-07-31T18:27:15.540814+00:00",
+    "extra_info": {
+      "ip_address": "127.0.0.1",
+      "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36",
+      "info": {
+        "ip_address": "127.0.0.1",
+        "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36",
+        "changes": {
+          "username": [
+            "Jul",
+            "Jul_atn"
+          ],
+          "first_name": [
+            "Jul",
+            "Jules"
+          ],
+          "last_name": [
+            "Antn",
+            "Antoine"
+          ]
+        }
+      }
+    }
+  },
+  {
+    "user": "admin",
+    "user_id": 4,
+    "action": "restore_action",
+    "timestamp": "2025-07-31T18:27:23.314217+00:00",
+    "extra_info": {
+      "ip_address": "127.0.0.1",
+      "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36",
+      "restored_log_index": 0,
+      "restored_log_user": "Jul_atn",
+      "restored_log_user_id": 7,
+      "restored_action": "update_profile",
+      "restored_changes": {
+        "username": [
+          "Jul",
+          "Jul_atn"
+        ],
+        "first_name": [
+          "Jul",
+          "Jules"
+        ],
+        "last_name": [
+          "Antn",
+          "Antoine"
+        ]
+      },
+      "note": "Restored profile for user 'Jul' to previous state."
+    }
+  },
+  {
+    "log_id": "21bf371e-bc10-4b79-bfd2-349550cb4f36",
+    "user": "Jul-atn",
+    "user_id": 7,
+    "action": "update_profile",
+    "timestamp": "2025-07-31T19:14:15.040867+00:00",
+    "extra_info": {
+      "ip_address": "127.0.0.1",
+      "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36",
+      "info": {
+        "ip_address": "127.0.0.1",
+        "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36",
+        "changes": {
+          "username": [
+            "Jul",
+            "Jul-atn"
+          ],
+          "first_name": [
+            "Jul",
+            "Jules"
+          ],
+          "last_name": [
+            "Antn",
+            "Antoine"
+          ]
+        }
+      }
+    }
+  },
+  {
+    "log_id": "49b0c953-eece-4d22-84a0-7d95d47c97cf",
+    "user": "admin",
+    "user_id": 4,
+    "action": "restore_action",
+    "timestamp": "2025-07-31T19:14:34.756413+00:00",
+    "extra_info": {
+      "ip_address": "127.0.0.1",
+      "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36",
+      "restored_log_index": 0,
+      "restored_from_log_id": null,
+      "restored_log_user": "Jul_atn",
+      "restored_log_user_id": 7,
+      "restored_action": "update_profile",
+      "restored_changes": {
+        "username": [
+          "Jul",
+          "Jul_atn"
+        ],
+        "first_name": [
+          "Jul",
+          "Jules"
+        ],
+        "last_name": [
+          "Antn",
+          "Antoine"
+        ]
+      },
+      "note": "Restored profile for user 'Jul' to previous state."
+    }
+  },
+  {
+    "log_id": "22096795-c82f-4125-8adb-849aba2c082f",
+    "user": "Jul",
+    "user_id": 7,
+    "action": "logout",
+    "timestamp": "2025-07-31T19:16:49.380018+00:00",
+    "extra_info": {
+      "ip_address": "127.0.0.1",
+      "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36",
+      "info": "IP: 127.0.0.1 | User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36"
+    }
+  },
+  {
+    "log_id": "b9805e58-961d-4c40-bb60-1bb5a09297a5",
+    "user": "Jul",
+    "user_id": 7,
+    "action": "login",
+    "timestamp": "2025-07-31T19:17:52.347330+00:00",
+    "extra_info": {
+      "ip_address": "127.0.0.1",
+      "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36",
+      "info": "IP: 127.0.0.1 | User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36"
+    }
+  },
+  {
+    "log_id": "24322ad4-713c-4470-be03-acd3b5db62aa",
+    "user": "Jul",
+    "user_id": 7,
+    "action": "logout",
+    "timestamp": "2025-07-31T19:18:35.350159+00:00",
+    "extra_info": {
+      "ip_address": "127.0.0.1",
+      "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36",
+      "info": "IP: 127.0.0.1 | User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36"
+    }
+  },
+  {
+    "log_id": "d1e7ac24-a762-4cf1-8873-50635d158f50",
+    "user": "maman",
+    "user_id": 8,
+    "action": "register",
+    "timestamp": "2025-07-31T19:19:13.266383+00:00",
+    "extra_info": {
+      "ip_address": "127.0.0.1",
+      "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36",
+      "info": "IP: 127.0.0.1 | User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36"
+    }
+  },
+  {
+    "log_id": "fe59fd5f-ad6f-4b22-bf8c-2fb57e7859ba",
+    "user": "maman",
+    "user_id": 8,
+    "action": "verify_email",
+    "timestamp": "2025-07-31T19:19:37.032907+00:00",
+    "extra_info": {
+      "ip_address": "127.0.0.1",
+      "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36",
+      "info": "Verification code used: 545112 | IP: 127.0.0.1 | User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36"
+    }
+  }
+]

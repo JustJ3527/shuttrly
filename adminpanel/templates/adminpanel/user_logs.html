@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% load static %}
+{# Retiré un double load static #}
+{# Supprimé load datetime_filters car il posait erreur #}
+
+{% block title %}User Logs{% endblock %}
+
+{% block head %}
+<link href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" rel="stylesheet" />
+<style>
+  /* Optionnel : ajustements de style */
+  table.dataTable thead th {
+    background-color: #0d6efd; /* Bootstrap primary color */
+    color: white;
+  }
+  .nowrap {
+    white-space: nowrap;
+  }
+  /* Bouton restaurer */
+  .btn-restore {
+    font-size: 0.8rem;
+    padding: 0.25rem 0.5rem;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <h1>User Logs</h1>
+  <table id="logsTable" class="table table-striped table-bordered" style="width:100%">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>User</th>
+        <th>User ID</th>
+        <th>Action</th>
+        <th>Timestamp</th>
+        <th>IP Address</th>
+        <th>User Agent</th>
+        <th>Changes</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for log in logs %}
+      <tr id="log-{{ log.log_id }}">
+        <td>
+          <code style="font-size: 0.75rem;">{{ log.log_id }}</code><br/>
+          <a href="#log-{{ log.log_id }}" class="btn btn-sm btn-outline-secondary mt-1">Lien</a>
+        </td>
+        <td>{{ log.user }}</td>
+        <td>{{ log.user_id }}</td>
+        <td>{{ log.action }}</td>
+        <td class="nowrap">{{ log.timestamp }}</td>
+        <td>{{ log.extra_info.ip_address }}</td>
+        <td style="max-width: 250px; white-space: normal; word-break: break-word;">{{ log.extra_info.user_agent }}</td>
+        <td>
+          {% if log.extra_info.info.changes %}
+            <ul class="mb-0">
+              {% for field, vals in log.extra_info.info.changes.items %}
+                <li><strong>{{ field }}:</strong> "{{ vals.0 }}" → "{{ vals.1 }}"</li>
+              {% endfor %}
+            </ul>
+          {% elif log.extra_info.restored_changes %}
+            <ul class="mb-0 text-success">
+              {% for field, vals in log.extra_info.restored_changes.items %}
+                <li><strong>{{ field }}:</strong> restored from "{{ vals.0 }}" to "{{ vals.1 }}"</li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            -
+          {% endif %}
+        </td>
+        <td>
+          <form method="POST" action="{% url 'adminpanel:restore_log_action' %}">
+            {% csrf_token %}
+            <input type="hidden" name="log_index" value="{{ forloop.counter0 }}">
+            <button type="submit" class="btn btn-sm btn-primary btn-restore">Restaurer</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script>
+  $(document).ready(function() {
+    $('#logsTable').DataTable({
+      "order": [[ 3, "desc" ]],  // Trier par timestamp décroissant par défaut
+      "pageLength": 25,
+      "lengthMenu": [ [25, 50, 100, -1], [25, 50, 100, "All"] ]
+    });
+  });
+</script>
+{% endblock %}

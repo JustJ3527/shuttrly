@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+  <div class="card border-primary shadow-sm">
+    <div class="card-header bg-primary text-white">
+      <h5>Edit User — {{ target_user.username }}</h5>
+    </div>
+
+    <div class="card-body">
+      <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        {{ form.non_field_errors }}
+
+        {% for field in form.visible_fields %}
+        <div class="mb-3">
+          <label class="form-label">{{ field.label }}</label>
+          {{ field }}
+          {% if field.help_text %}
+            <div class="form-text">{{ field.help_text }}</div>
+          {% endif %}
+          {% if field.errors %}
+            <div class="text-danger small">
+              {{ field.errors|join:", " }}
+            </div>
+          {% endif %}
+        </div>
+        {% endfor %}
+
+        <button type="submit" class="btn btn-outline-primary">Save Changes</button>
+        <a href="{% url 'adminpanel:admin_dashboard' %}" class="btn btn-secondary ms-2">Back to Dashboard</a>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

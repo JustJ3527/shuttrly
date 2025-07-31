@@ -7,7 +7,6 @@ from django.conf import settings
 from uuid import uuid4
 from PIL import Image
 import random
-import string
 from django.core.mail import send_mail
 
 
@@ -22,41 +21,39 @@ def user_directory_path(instance, filename):
 # Custom manager to handle user creation (standard  user + superuser)
 class CustomUserManager(BaseUserManager):
     def create_user(self, email, username, password=None, **extra_fields):
-        if not email:
+        is_superuser = extra_fields.get('is_superuser', False)
+        
+        if not is_superuser and not email:
             raise ValueError("Email is required")
         if not username:
             raise ValueError("Username is required")
+        
+        # Enforce name fields only for non-superuser
+        if not is_superuser:
+            if not extra_fields.get('first_name'):
+                raise ValueError("First name is required")
+            if not extra_fields.get('last_name'):
+                raise ValueError("Last name is required")
+            
+        email = self.normalize_email(email)
 
         # Ensure explicit flags exist
         extra_fields.setdefault('is_staff', False)
         extra_fields.setdefault('is_superuser', False)
         extra_fields.setdefault('is_email_verified', False)
-
-        # Enforce names only for non-superusers
-        if not extra_fields.get('is_superuser'):
-            if not extra_fields.get('first_name'):
-                raise ValueError("First name is required")
-            if not extra_fields.get('last_name'):
-                raise ValueError("Last name is required")
         
-        email = self.normalize_email(email)
-
-        # Ensure a sane default for regular users if the caller forgot to pass it
-        extra_fields.setdefault('is_email_verified', False)
-
         user = self.model(email=email, username=username, **extra_fields)
         user.set_password(password) # Hash the password
         user.save()
         return user
     
     def create_superuser(self, email, username, password=None, **extra_fields):
-            # For superuser, fill defaults if missing
         # Fill defaults for superuser
         extra_fields['is_staff'] = True
         extra_fields['is_superuser'] = True
         extra_fields['is_email_verified'] = True
 
-        # If not provided, allow empty strings for names
+        # Allow blank names for superusers
         extra_fields.setdefault('first_name', '')
         extra_fields.setdefault('last_name', '')
 
@@ -109,7 +106,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
             img.save(self.profile_picture.path, format=img_format, optimize=True, quality=70)
             
     # Basic identidy fields
-    email = models.EmailField(unique=True)
+    email = models.EmailField(unique=True, blank=True, null=True)
     username = models.CharField(max_length=30, unique=True)
     first_name = models.CharField(max_length=30, blank=True)
     last_name = models.CharField(max_length=40, blank=True)
@@ -261,3 +258,6 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
             return True, "Code sent successfully!"
         except Exception as e:
             return False, f"Error : {str(e)}"
+        
+
+# ---------====== LOGS ======--------- #

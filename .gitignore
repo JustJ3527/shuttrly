@@ -49,3 +49,4 @@ build/
 repo.git/
 # ggshield cache
 .cache_ggshield/
+.cache_ggshield

@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+{% block title %}Admin Panel{% endblock %}
+
+{% block content %}
+<h1>Admin - Manage Users</h1>
+<a href="{% url 'adminpanel:user_logs' %}" class="btn btn-primary btn-sm float-end">User Logs</a>
+
+<table class="table table-striped table-hover table-bordered border-primary">
+  <thead class="table-primary">
+    <tr>
+      <th>Username</th>
+      <th>Email</th>
+      <th>Groups</th>
+      <th>Verified</th>
+      <th>Date Joined</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for user in users %}
+    <tr>
+      <td>{{ user.username }}</td>
+      <td>{{ user.email }}</td>
+      <td>
+        {% for group in user.groups.all %}
+          <span class="badge bg-primary">{{ group.name }}</span>
+        {% empty %}
+          <span class="text-muted">-</span>
+        {% endfor %}
+      </td>
+      <td>
+        {% if user.is_email_verified %}
+          ✅
+        {% else %}
+          ❌
+        {% endif %}
+      </td>
+      <td>{{ user.date_joined|date:"Y-m-d H:i" }}</td>
+      <td>
+        <a href="{% url 'adminpanel:edit_user' user.id %}" class="btn btn-sm btn-outline-primary">Edit</a>
+        <form method="post" action="{% url 'adminpanel:delete_user' user.id %}" style="display:inline;">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

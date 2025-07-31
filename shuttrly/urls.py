@@ -25,8 +25,8 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('home/', home_view, name='home'),  # Home view
     path('', include('users.urls')),  # Include users app URLs
-
-
+       path('admin-panel/', include(('adminpanel.urls', 'adminpanel'), namespace='adminpanel')), # Include adminpanel app URLs
+    path('logs/', include('logs.urls')),
 ]
 
 if settings.DEBUG:

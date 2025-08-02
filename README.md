@@ -55,6 +55,8 @@ EMAIL_HOST=smtp.example.com
 EMAIL_PORT=587
 EMAIL_HOST_USER=your_email@example.com
 EMAIL_HOST_PASSWORD=your_email_password
+
+# Used for email verification
 ```
 
 .5 **Apply database migrations**
@@ -101,11 +103,10 @@ All contributions are welcome!
 
 ## 📄 License
 
-To be defined according to your preference (e.g., MIT, GPL, etc.)
+Not yet...
 
 ---
 
 ## 🙏 Thank You
 
 Thank you for using **Shuttrly**!  
-Made with ❤️ by Jules Antoine.

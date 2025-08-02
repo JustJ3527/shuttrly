@@ -1,100 +1,193 @@
 {% extends "base.html" %}
+
 {% load static %}
-{# Retiré un double load static #}
-{# Supprimé load datetime_filters car il posait erreur #}
+{% load datetime_filters %}
+{% load string_filters %}
 
 {% block title %}User Logs{% endblock %}
 
 {% block head %}
-<link href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" rel="stylesheet" />
-<style>
-  /* Optionnel : ajustements de style */
-  table.dataTable thead th {
-    background-color: #0d6efd; /* Bootstrap primary color */
-    color: white;
-  }
-  .nowrap {
-    white-space: nowrap;
-  }
-  /* Bouton restaurer */
-  .btn-restore {
-    font-size: 0.8rem;
-    padding: 0.25rem 0.5rem;
-  }
-</style>
+  {{ block.super }}
+  <!-- DataTables CSS -->
+  <link href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" rel="stylesheet" />
+  <!-- Custom CSS -->
+  <link href="{% static 'css/admin.css' %}" rel="stylesheet" />
 {% endblock %}
 
 {% block content %}
-<div class="container mt-4">
+<div class="container mt-4" style="max-width: max-content !important;">
   <h1>User Logs</h1>
-  <table id="logsTable" class="table table-striped table-bordered" style="width:100%">
+
+  <table id="logsTable" class="table table-striped table-bordered" style="width:100%; max-width: 100%;">
     <thead>
       <tr>
+        <th>#</th>
         <th>ID</th>
         <th>User</th>
         <th>User ID</th>
+        <th>Impacted ID</th>
         <th>Action</th>
         <th>Timestamp</th>
         <th>IP Address</th>
-        <th>User Agent</th>
         <th>Changes</th>
         <th>Actions</th>
       </tr>
     </thead>
+
     <tbody>
       {% for log in logs %}
       <tr id="log-{{ log.log_id }}">
+        <td>{{ forloop.counter }}</td>
         <td>
           <code style="font-size: 0.75rem;">{{ log.log_id }}</code><br/>
-          <a href="#log-{{ log.log_id }}" class="btn btn-sm btn-outline-secondary mt-1">Lien</a>
+          <a href="#log-{{ log.log_id }}" class="btn btn-sm btn-outline-secondary mt-1">Link</a>
         </td>
         <td>{{ log.user }}</td>
         <td>{{ log.user_id }}</td>
-        <td>{{ log.action }}</td>
-        <td class="nowrap">{{ log.timestamp }}</td>
-        <td>{{ log.extra_info.ip_address }}</td>
-        <td style="max-width: 250px; white-space: normal; word-break: break-word;">{{ log.extra_info.user_agent }}</td>
         <td>
-          {% if log.extra_info.info.changes %}
-            <ul class="mb-0">
-              {% for field, vals in log.extra_info.info.changes.items %}
-                <li><strong>{{ field }}:</strong> "{{ vals.0 }}" → "{{ vals.1 }}"</li>
-              {% endfor %}
-            </ul>
-          {% elif log.extra_info.restored_changes %}
-            <ul class="mb-0 text-success">
-              {% for field, vals in log.extra_info.restored_changes.items %}
-                <li><strong>{{ field }}:</strong> restored from "{{ vals.0 }}" to "{{ vals.1 }}"</li>
-              {% endfor %}
-            </ul>
+          {% if log.extra_info.impacted_user_id %}
+            <code>{{ log.extra_info.impacted_user_id }}</code>
+          {% elif log.extra_info.info.impacted_user_id %}
+            <code>{{ log.extra_info.info.impacted_user_id }}</code>
           {% else %}
-            -
+            <em>-</em>
           {% endif %}
         </td>
         <td>
-          <form method="POST" action="{% url 'adminpanel:restore_log_action' %}">
-            {% csrf_token %}
-            <input type="hidden" name="log_index" value="{{ forloop.counter0 }}">
-            <button type="submit" class="btn btn-sm btn-primary btn-restore">Restaurer</button>
-          </form>
+          <span class="badge
+            {% if log.action == 'login' %}bg-success
+            {% elif log.action == 'logout' %}bg-secondary
+            {% elif log.action == 'register' %}bg-primary
+            {% elif log.action == 'update_profile' %}bg-info
+            {% elif log.action == 'delete_account' %}bg-danger
+            {% elif log.action == 'restore_profile_from_log' %}bg-warning
+            {% else %}bg-light text-dark
+            {% endif %}">
+            {{ log.action }}
+            {% if log.restored %}
+            <span class="badge bg-success">Restored</span>
+            {% endif %}
+          </span>
+        </td>
+        <td data-order="{{ log.timestamp }}">
+          {{ log.timestamp|slice:":10" }} {{ log.timestamp|slice:"11:19" }}
+        </td>
+        <td>{{ log.extra_info.ip_address }}</td>
+
+        <td>
+          {% comment "Show changes or restoration details depending on action" %}{% endcomment %}
+          {% if log.action == 'restore_profile_from_log' %}
+            {% if log.extra_info.restoration_details %}
+              <div class="restoration-changes">
+                <small class="text-warning fw-bold">
+                  <i class="fas fa-undo"></i>
+                  <a href="#log-{{ log.extra_info.restored_log_id }}" style="text-decoration: underline; color: inherit;" onclick="setTimeout(highlightRowFromHash, 100)">
+                    RESTORATION
+                  </a>
+                </small>
+                <ul class="mb-0 small mt-1">
+                  {% for field, detail in log.extra_info.restoration_details.items %}
+                    <li>
+                      <strong>{{ field }}:</strong><br>
+                      <span class="text-muted ms-2">
+                        Before: "{{ detail.before_restoration|stringformat:"s"|truncatechars:25 }}"
+                      </span><br>
+                      <span class="text-success ms-2">
+                        After: "{{ detail.after_restoration|stringformat:"s"|truncatechars:25 }}"
+                      </span>
+                    </li>
+                  {% endfor %}
+                </ul>
+              </div>
+            {% elif log.extra_info.changes %}
+              <div class="restoration-changes">
+                <small class="text-warning fw-bold">
+                  <i class="fas fa-undo"></i>
+                  <a href="#log-{{ log.extra_info.restored_log_id }}" style="text-decoration: underline; color: inherit;">
+                    RESTORATION
+                  </a>
+                </small>
+                <ul class="mb-0 small mt-1">
+                  {% for field, vals in log.extra_info.changes.items %}
+                    <li>
+                      <strong>{{ field }}:</strong>
+                      {% if vals|length >= 2 %}
+                        <span class="text-muted">"{{ vals.0|stringformat:"s"|truncatechars:25 }}"</span>
+                        <span class="mx-1">→</span>
+                        <span class="text-success">"{{ vals.1|stringformat:"s"|truncatechars:25 }}"</span>
+                      {% endif %}
+                    </li>
+                  {% endfor %}
+                </ul>
+              </div>
+            {% else %}
+              <span class="text-warning"><i class="fas fa-undo"></i> Restoration completed</span>
+            {% endif %}
+
+          {% elif log.extra_info.info.changes %}
+            <ul class="mb-0 small">
+              {% for field, vals in log.extra_info.info.changes.items %}
+                <li>
+                  <strong>{{ field }}:</strong>
+                  {% if vals|length >= 2 %}
+                    <span class="text-muted">"{{ vals.0|stringformat:"s"|truncatechars:30 }}"</span>
+                    <span class="mx-1">→</span>
+                    <span class="text-success">"{{ vals.1|stringformat:"s"|truncatechars:30 }}"</span>
+                  {% elif vals|length == 1 %}
+                    <span class="text-success">"{{ vals.0|stringformat:"s"|truncatechars:30 }}"</span>
+                  {% endif %}
+                </li>
+              {% endfor %}
+            </ul>
+
+          {% elif log.extra_info.changes %}
+            <ul class="mb-0 small">
+              {% for field, vals in log.extra_info.changes.items %}
+                <li>
+                  <strong>{{ field }}:</strong>
+                  {% if vals|length >= 2 %}
+                    <span class="text-muted">"{{ vals.0|stringformat:"s"|truncatechars:30 }}"</span>
+                    <span class="mx-1">→</span>
+                    <span class="text-success">"{{ vals.1|stringformat:"s"|truncatechars:30 }}"</span>
+                  {% elif vals|length == 1 %}
+                    <span class="text-success">"{{ vals.0|stringformat:"s"|truncatechars:30 }}"</span>
+                  {% endif %}
+                </li>
+              {% endfor %}
+            </ul>
+
+          {% else %}
+            <em class="text-muted">No changes</em>
+          {% endif %}
+        </td>
+
+        <td>
+          {% if log.action == 'update_profile' %}
+            <button type="button" class="btn btn-sm btn-warning btn-restore" data-log-index="{{ forloop.counter0 }}" data-log-id="{{ log.log_id }}">
+              <i class="fas fa-undo me-1"></i>Restore
+            </button>
+          {% else %}
+            <span class="text-muted small">N/A</span>
+          {% endif %}
         </td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
 </div>
+
+<!-- Hidden form for restoration action -->
+<form id="restoreForm" method="POST" action="{% url 'adminpanel:restore_log_action' %}" style="display:none;">
+  {% csrf_token %}
+  <input type="hidden" name="log_index" id="restoreLogIndex">
+</form>
+
 {% endblock %}
 
 {% block scripts %}
-<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-<script>
-  $(document).ready(function() {
-    $('#logsTable').DataTable({
-      "order": [[ 3, "desc" ]],  // Trier par timestamp décroissant par défaut
-      "pageLength": 25,
-      "lengthMenu": [ [25, 50, 100, -1], [25, 50, 100, "All"] ]
-    });
-  });
-</script>
+  {{ block.super }}
+
+  <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+  <script src="{% static 'js/admin_script.js' %}"></script>
 {% endblock %}

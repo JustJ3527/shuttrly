@@ -1,21 +1,35 @@
+# === Django imports ===
 from django.contrib.admin.views.decorators import staff_member_required
-from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
+from django.shortcuts import render, get_object_or_404, redirect
 from django.views.decorators.http import require_http_methods
-
-from adminpanel.forms import CustomUserAdminForm
-from users.models import CustomUser
-from django.contrib.auth.models import Group
-import json
-from pathlib import Path
+from django.utils import timezone
+from django.utils.safestring import mark_safe
 from django.conf import settings
 
+# === Python stdlib ===
+import json
 import uuid
+from pathlib import Path
+from datetime import datetime
+
+# === Models and forms ===
+from users.models import CustomUser, PendingFileDeletion
+from django.contrib.auth.models import Group
+from adminpanel.forms import CustomUserAdminForm
+
+# === Utils ===
+from logs.utils import log_user_action_json
+from users.utils import get_changes_dict
+
+
+# === Views ===
 
 @staff_member_required
 def admin_dashboard_view(request):
     users = CustomUser.objects.all().order_by('-date_joined')
     return render(request, 'adminpanel/dashboard.html', {'users': users})
+
 
 @staff_member_required
 @require_http_methods(["GET", "POST"])
@@ -25,9 +39,33 @@ def edit_user_view(request, user_id):
     if request.method == 'POST':
         form = CustomUserAdminForm(request.POST, request.FILES, instance=user)
         if form.is_valid():
-            form.save()
+            old_data = CustomUser.objects.get(pk=user.pk)  # récupérer avant sauvegarde
+
+            updated_user = form.save()
+
+            ip = request.META.get('REMOTE_ADDR', 'unknown')
+            user_agent = request.META.get('HTTP_USER_AGENT', 'unknown')
+
+            # Utiliser la fonction utilitaire pour détecter les changements
+            changes_dict = get_changes_dict(old_data, updated_user, form.changed_data)
+
+            extra_info = {
+                "ip_address": ip,
+                "user_agent": user_agent,
+                "changes": changes_dict,
+                "impacted_user_id": user.id,
+                "impacted_username": user.username,
+            }
+
+            log_user_action_json(
+                user=request.user,
+                action='admin_edit_user',
+                request=request,
+                extra_info=extra_info
+            )
+
             messages.success(request, f"{user.username} has been updated.")
-            return redirect('admin_dashboard')
+            return redirect('adminpanel:admin_dashboard')
     else:
         form = CustomUserAdminForm(instance=user)
 
@@ -36,13 +74,28 @@ def edit_user_view(request, user_id):
 @staff_member_required
 @require_http_methods(["POST"])
 def delete_user_view(request, user_id):
-    user = get_object_or_404(CustomUser, id=user_id)
-    if user.is_superuser:
+    user_to_delete = get_object_or_404(CustomUser, id=user_id)
+
+    if user_to_delete.is_superuser:
         messages.error(request, "You cannot delete a superuser from here.")
     else:
-        user.delete()
+        if request.user.is_superuser:
+            log_user_action_json(
+                user=request.user,
+                action='delete_user_account',
+                request=request,
+                extra_info={
+                    "ip_address": request.META.get('REMOTE_ADDR', 'unknown'),
+                    "user_agent": request.META.get('HTTP_USER_AGENT', 'unknown'),
+                    "impacted_user_id": user_to_delete.id,
+                    "impacted_username": user_to_delete.username,
+                }
+            )
+        user_to_delete.delete()
         messages.success(request, "User deleted.")
-    return redirect('admin_dashboard')
+
+    return redirect('adminpanel:admin_dashboard')
+
 
 @staff_member_required
 def group_dashboard_view(request, group_id):
@@ -50,36 +103,35 @@ def group_dashboard_view(request, group_id):
     users = group.user_set.all()
     return render(request, 'adminpanel/group_users.html', {'group': group, 'users': users})
 
-from logs.models import UserLog
 
 @staff_member_required
 def user_logs_view(request):
     logs_path = Path(settings.BASE_DIR) / 'logs' / 'user_logs.json'
-    if not logs_path.exists():
-        logs = []
-    else:
-        with open(logs_path, 'r', encoding='utf-8') as f:
-            try:
+    logs = []
+
+    if logs_path.exists():
+        try:
+            with open(logs_path, 'r', encoding='utf-8') as f:
                 logs = json.load(f)
-            except json.JSONDecodeError:
-                logs = []
-    # Optionnel : trier logs par timestamp décroissant si nécessaire
-    logs = sorted(logs, key=lambda x: x.get('timestamp', ''), reverse=True)
-    
+        except json.JSONDecodeError:
+            pass
+
+    logs = sorted(logs, key=lambda x: x.get('timestamp', ''))
     return render(request, 'adminpanel/user_logs.html', {'logs': logs})
 
-import json
-from django.conf import settings
-from django.shortcuts import redirect, render
-from django.contrib.admin.views.decorators import staff_member_required
-from django.views.decorators.http import require_http_methods
-from django.contrib import messages
-from pathlib import Path
-from django.utils import timezone
 
 @staff_member_required
 @require_http_methods(["POST"])
 def restore_log_action_view(request):
+    def stringify_changes(changes):
+        result = {}
+        for key, values in changes.items():
+            if isinstance(values, (list, tuple)) and len(values) >= 2:
+                result[key] = [str(values[0]), str(values[1])]
+            else:
+                result[key] = [str(v) for v in (values if isinstance(values, (list, tuple)) else [values])]
+        return result
+
     log_index = request.POST.get('log_index')
     if log_index is None:
         messages.error(request, "Log index not provided.")
@@ -96,67 +148,121 @@ def restore_log_action_view(request):
         messages.error(request, "Logs file not found.")
         return redirect('adminpanel:user_logs')
 
-    with open(logs_path, 'r', encoding='utf-8') as f:
-        logs = json.load(f)
+    try:
+        with open(logs_path, 'r', encoding='utf-8') as f:
+            logs = json.load(f)
+    except json.JSONDecodeError:
+        messages.error(request, "Could not read log file.")
+        return redirect('adminpanel:user_logs')
 
-    if log_index < 0 or log_index >= len(logs):
+    if not (0 <= log_index < len(logs)):
         messages.error(request, "Log index out of range.")
         return redirect('adminpanel:user_logs')
 
     log_entry = logs[log_index]
+    if log_entry.get('action') != 'update_profile':
+        messages.warning(request, "Only 'update_profile' logs can be restored.")
+        return redirect('adminpanel:user_logs')
 
-    if log_entry['action'] == 'update_profile':
-        from users.models import CustomUser
-        user_id = log_entry['user_id']
-        try:
-            user = CustomUser.objects.get(pk=user_id)
-        except CustomUser.DoesNotExist:
-            messages.error(request, "User not found for this log entry.")
-            return redirect('adminpanel:user_logs')
+    extra_info = log_entry.get('extra_info', {})
+    user_id = (
+        log_entry.get('user_id') or
+        extra_info.get('impacted_user_id') or
+        extra_info.get('info', {}).get('impacted_user_id')
+    )
 
-        changes = log_entry.get('extra_info', {}).get('info', {}).get('changes', {})
-        if not changes:
-            messages.error(request, "No changes found to restore.")
-            return redirect('adminpanel:user_logs')
+    if not user_id:
+        messages.error(request, "No user ID found in log entry.")
+        return redirect('adminpanel:user_logs')
 
-        # Appliquer la restauration : remettre les anciennes valeurs
-        for field, values in changes.items():
-            old_value = values[0]  # ancienne valeur
+    try:
+        user = CustomUser.objects.get(pk=user_id)
+    except CustomUser.DoesNotExist:
+        messages.error(request, f"No user found with ID {user_id}.")
+        return redirect('adminpanel:user_logs')
+
+    changes = (
+        extra_info.get('info', {}).get('changes') or
+        extra_info.get('changes')
+    )
+
+    if not changes:
+        messages.warning(request, "No changes found in log.")
+        return redirect('adminpanel:user_logs')
+
+    changes = stringify_changes(changes)
+    updated_fields = []
+    restoration_details = {}
+
+    for field, values in changes.items():
+        if len(values) < 1:
+            continue
+        old_value = values[0]
+        current_value = getattr(user, field, None)
+        if str(current_value) != str(old_value):
+            if field == 'date_of_birth' and isinstance(old_value, str):
+                try:
+                    old_value = datetime.strptime(old_value, '%Y-%m-%d').date()
+                except ValueError:
+                    continue
             setattr(user, field, old_value)
-        user.save()
-
-        messages.success(request, f"User '{user.username}' profile restored to previous state from log.")
-
-        # Récupérer IP et User-Agent du restaurateur (celui qui fait la requête)
-        ip = request.META.get('REMOTE_ADDR', 'unknown')
-        user_agent = request.META.get('HTTP_USER_AGENT', 'unknown')
-
-        # Construire un nouveau log détaillé de la restauration
-        new_log = {
-            "log_id": str(uuid.uuid4()),
-            "user": request.user.username,
-            "user_id": request.user.id,
-            "action": "restore_action",
-            "timestamp": timezone.now().isoformat(),
-            "extra_info": {
-                "ip_address": ip,
-                "user_agent": user_agent,
-                "restored_log_index": log_index,
-                "restored_from_log_id":log_entry.get('log_id'),
-                "restored_log_user": log_entry.get('user', ''),
-                "restored_log_user_id": user_id,
-                "restored_action": log_entry.get('action', ''),
-                "restored_changes": changes,
-                "note": f"Restored profile for user '{user.username}' to previous state."
+            updated_fields.append(field)
+            restoration_details[field] = {
+                'before_restoration': current_value,
+                'after_restoration': old_value,
+                'original_change': f"{old_value} → {current_value}"
             }
+
+    if 'profile_picture' in changes:
+        old_path = changes['profile_picture'][0]
+        if old_path:
+            rel_path = old_path[len(settings.MEDIA_URL):] if old_path.startswith(settings.MEDIA_URL) else old_path
+            from django.core.files.storage import default_storage
+            if default_storage.exists(rel_path):
+                user.profile_picture.name = rel_path
+                updated_fields.append('profile_picture')
+                restoration_details['profile_picture'] = {
+                    'before_restoration': changes['profile_picture'][1],
+                    'after_restoration': changes['profile_picture'][0],
+                    'original_change': f"{changes['profile_picture'][0]} → {changes['profile_picture'][1]}"
+                }
+                PendingFileDeletion.objects.filter(file_path=rel_path).delete()
+            else:
+                messages.warning(request, "Previous profile picture not found. Skipped restoring it.")
+
+    user.save(update_fields=updated_fields)
+
+    new_log = {
+        "log_id": str(uuid.uuid4()),
+        "timestamp": timezone.now().isoformat(),
+        "user_id": request.user.id,
+        "user": request.user.username,
+        "action": "restore_profile_from_log",
+        "extra_info": {
+            "ip_address": request.META.get('REMOTE_ADDR', 'unknown'),
+            "user_agent": request.META.get('HTTP_USER_AGENT', 'unknown'),
+            "restored_log_id": log_entry.get('log_id'),
+            "restored_fields": updated_fields,
+            "restoration_details": restoration_details,
+            "impacted_user_id": user.id,
+            "impacted_username": user.username
         }
-        logs.append(new_log)
+    }
+    logs.append(new_log)
+    logs[log_index]['restored'] = True
 
-        # Sauvegarder dans le fichier JSON sans supprimer les logs précédents
-        with open(logs_path, 'w', encoding='utf-8') as f:
-            json.dump(logs, f, ensure_ascii=False, indent=2)
+    with open(logs_path, 'w', encoding='utf-8') as f:
+        json.dump(logs, f, indent=2, ensure_ascii=False)
 
-    else:
-        messages.warning(request, "Restoration not supported for this action type.")
+    detail_list = ''.join(
+        f"<li><strong>{k}</strong>: '{v['before_restoration']}' → '<span class='text-success'>{v['after_restoration']}</span>'</li>"
+        for k, v in restoration_details.items()
+    )
+    messages.success(request, mark_safe(f"""
+        <div class='alert alert-success'>
+            <h5><a href='#log-{log_entry.get('log_id')}'>Restoration complete</a></h5>
+            <ul>{detail_list}</ul>
+        </div>
+    """))
 
     return redirect('adminpanel:user_logs')

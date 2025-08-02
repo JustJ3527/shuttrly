@@ -11,6 +11,8 @@ from django.views.decorators.http import require_http_methods
 from django.urls import reverse
 from django.utils.safestring import mark_safe
 from logs.utils import log_user_action_json  # JSON logging utility
+from .utils import schedule_profile_picture_deletion
+from django.conf import settings
 
 
 # Decorators
@@ -217,6 +219,11 @@ def resend_verification_code(request):
     return redirect('verify_email')
 
 
+from .utils import get_changes_dict
+from .models import CustomUser
+from .utils import get_client_ip, get_user_agent
+# autres imports ...
+
 @redirect_not_authenticated_user
 def profile_view(request):
     user = request.user
@@ -224,31 +231,40 @@ def profile_view(request):
         form = CustomUserUpdateForm(request.POST, request.FILES, instance=user)
         if form.is_valid():
             old_data = CustomUser.objects.get(pk=user.pk)
+            
+            # Sauvegarder l'ancienne photo pour suppression différée
+            old_profile_picture = None
+            if 'profile_picture' in form.changed_data and old_data.profile_picture:
+                old_profile_picture = old_data.profile_picture.name
+            
             updated_user = form.save()
+
+            # Supprimer l'ancienne photo plus tard
+            if old_profile_picture:
+                delay = getattr(settings, 'PROFILE_PICTURE_DELETION_DELAY_SECONDS', 86400)
+                schedule_profile_picture_deletion(old_profile_picture, seconds=delay)
 
             ip = get_client_ip(request)
             user_agent = get_user_agent(request)
 
-            changes = {}
-            for field in form.changed_data:
-                old_val = getattr(old_data, field, None)
-                new_val = getattr(updated_user, field, None)
-                changes[field] = [old_val, new_val]
+            # Utilise la fonction utilitaire ici
+            changes_dict = get_changes_dict(old_data, updated_user, form.changed_data)
 
             extra_info = {
                 "ip_address": ip,
                 "user_agent": user_agent,
-                "changes": changes,
+                "changes": changes_dict,
+                "impacted_user_id": user.id,
             }
 
             log_user_action_json(user=user, action='update_profile', request=request, extra_info=extra_info)
             return redirect('profile')
         else:
             return render(request, 'users/profile.html', {'form': form})
+
     else:
         form = CustomUserUpdateForm(instance=user)
         return render(request, 'users/profile.html', {'form': form})
-
 
 def logout_view(request):
     if request.user.is_authenticated:

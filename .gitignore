@@ -18,7 +18,7 @@ env/
 
 # Django
 db.sqlite3
-media/                 # ignorer tous les fichiers uploadés locaux
+media/
 staticfiles/           # si tu collectes en local (STATIC_ROOT)
 # local settings éventuels
 *local_settings.py
@@ -47,6 +47,10 @@ build/
 
 # (Optionnel) miroir BFG local si jamais créé dans le projet
 repo.git/
+repo.git.bfg-report/
 # ggshield cache
 .cache_ggshield/
 .cache_ggshield
+
+# Logs
+logs/user_logs.json

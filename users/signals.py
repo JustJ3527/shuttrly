@@ -22,3 +22,28 @@ def user_logged_in_handler(sender, request, user, **kwargs):
 def user_logged_out_handler(sender, request, user, **kwargs):
     user.is_online = False
     user.save()
+
+# from django.db.models.signals import pre_save
+# from django.dispatch import receiver
+# from django.contrib.auth import get_user_model
+# from .utils import schedule_profile_picture_deletion
+
+# User = get_user_model()
+
+# @receiver(pre_save, sender=User)
+# def handle_profile_picture_change(sender, instance, **kwargs):
+#     """
+#     Signal déclenché avant la sauvegarde d'un utilisateur
+#     """
+#     if instance.pk:  # Si l'utilisateur existe déjà
+#         try:
+#             old_user = User.objects.get(pk=instance.pk)
+#             # Vérifier si la photo de profil a changé
+#             if (old_user.profile_picture and 
+#                 old_user.profile_picture != instance.profile_picture):
+#                 schedule_profile_picture_deletion(
+#                     old_user.profile_picture.name, 
+#                     days=30
+#                 )
+#         except User.DoesNotExist:
+#             pass

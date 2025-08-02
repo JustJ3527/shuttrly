@@ -4,7 +4,7 @@ Shuttrly is a photo-sharing web application built with Django. Still in developm
 
 ---
 
-## Main Features (for the moment...)
+## 💡 Main Features (for the moment...)
 
 - Custom user registration and authentication
 - Photo upload and management
@@ -13,7 +13,7 @@ Shuttrly is a photo-sharing web application built with Django. Still in developm
 
 ---
 
-## Prerequisites
+## ⚠️ Prerequisites
 
 - Python 3.10+ (or a version compatible with Django 5.2)
 - Pip (Python package manager)
@@ -21,7 +21,7 @@ Shuttrly is a photo-sharing web application built with Django. Still in developm
 
 ---
 
-## Installation
+## 📋 Installation
 
 1. **Clone the repository**
 
@@ -75,3 +75,37 @@ python manage.py createsuperuser
 ```bash
 python manage.py runserver
 ```
+---
+
+## 📸 Viewing the Application
+
+- Open your browser and go to: [http://127.0.0.1:8000](http://127.0.0.1:8000)  
+- To access the Django admin panel (if a superuser has been created): [http://127.0.0.1:8000/admin](http://127.0.0.1:8000/admin)
+
+---
+
+## ⚠️ Important Notes
+
+- The application uses a **JSON logging system** that stores logs locally in a file.
+- **Static and media files** are served by Django during development. For production, you should configure proper handling (e.g., using Nginx or a cloud storage service).
+- Make sure to configure **SMTP settings** correctly to enable email sending (used for registration, confirmation, 2FA, etc.).
+
+---
+
+## 🤝 Contributing
+
+Feel free to **fork** the repository, **open issues**, or **submit pull requests**.  
+All contributions are welcome!
+
+---
+
+## 📄 License
+
+To be defined according to your preference (e.g., MIT, GPL, etc.)
+
+---
+
+## 🙏 Thank You
+
+Thank you for using **Shuttrly**!  
+Made with ❤️ by Jules Antoine.

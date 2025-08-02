@@ -4,13 +4,12 @@ Shuttrly is a photo-sharing web application built with Django. Still in developm
 
 ---
 
-## Main Features
+## Main Features (for the moment...)
 
 - Custom user registration and authentication
 - Photo upload and management
 - User profile with profile picture
 - JSON-based logging system to track user actions
-- Modern, responsive UI using DataTables and jQuery
 
 ---
 

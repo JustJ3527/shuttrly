@@ -116,22 +116,67 @@
 <h2>Appareils de confiance</h2>
 
 {% if trusted_devices %}
-  <ul>
+  <div>
     {% for device in trusted_devices %}
-      <li>
-        {{ device.device_name|default:device.user_agent }} — Dernière utilisation : {{ device.last_used_at|date:"SHORT_DATETIME_FORMAT" }}
-        <form method="POST" style="display:inline">
-          {% csrf_token %}
-          <input type="hidden" name="revoke_device_id" value="{{ device.id }}">
-          <button type="submit" onclick="return confirm('Révoquer cet appareil ?');">Révoquer</button>
-        </form>
-      </li>
+      <div class="device">
+        <div class="device-summary" onclick="toggleDetails(this)">
+          {{ device.device_type }}
+          {% if device.is_current_device %}
+            <span class="device-current">(appareil actuel)</span>
+          {% endif %}
+          <br>
+          <small>{{ device.location|default:"Localisation inconnue" }} • le {{ device.last_used_at|date:"SHORT_DATETIME_FORMAT" }}</small>
+        </div>
+        <div class="device-details">
+          <div><strong>Modèle :</strong> {{ device.device_family }}</div>
+          <div><strong>Navigateur :</strong> {{ device.browser_family }} {{ device.browser_version }}</div>
+          <div><strong>Système d’exploitation :</strong> {{ device.os_family }} {{ device.os_version }}</div>
+          <div><strong>Adresse IP :</strong> {{ device.ip_address|default:"Inconnue" }}</div>
+          <form method="POST" style="margin-top: 0.5em;">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="revoke_device">
+            <input type="hidden" name="revoke_device_id" value="{{ device.id }}">
+            <button type="submit" onclick="return confirm('Révoquer cet appareil ?');">Révoquer</button>
+          </form>
+        </div>
+      </div>
     {% endfor %}
-  </ul>
+  </div>
 {% else %}
   <p>Aucun appareil de confiance enregistré.</p>
 {% endif %}
-{% endblock %}
+
+
+<style>
+.device-summary {
+    cursor: pointer;
+    font-weight: bold;
+    padding: 0.5em;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    margin-bottom: 1em;
+    transition: background-color 0.2s;
+}
+.device-summary:hover {
+    background-color: #f0f0f0;
+}
+.device-details {
+    display: none;
+    padding: 0.5em 1em;
+    background-color: #fafafa;
+    border-left: 4px solid #999;
+    margin-top: 0.5em;
+    font-size: 0.95em;
+}
+.device-current {
+    color: green;
+    font-weight: bold;
+    margin-left: 0.5em;
+}
+</style>
+
+
+{% endblock %}x
 
 {% block scripts %}
 {{ block.super }}
@@ -169,6 +214,14 @@
 </script>
 {% endif %}
 <script>
+  function toggleDetails(summary) {
+    const details = summary.nextElementSibling;
+    if (details.style.display === "none" || !details.style.display) {
+        details.style.display = "block";
+    } else {
+        details.style.display = "none";
+    }
+}
     document.getElementById('copyTotpUriBtn').addEventListener('click', function() {
     const input = document.getElementById('totpUriInput');
     input.select();

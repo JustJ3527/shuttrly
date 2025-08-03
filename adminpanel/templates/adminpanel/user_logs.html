@@ -162,10 +162,16 @@
         </td>
 
         <td>
-          {% if log.action == 'update_profile' %}
-            <button type="button" class="btn btn-sm btn-warning btn-restore" data-log-index="{{ forloop.counter0 }}" data-log-id="{{ log.log_id }}">
-              <i class="fas fa-undo me-1"></i>Restore
-            </button>
+          {% if log.action == 'update_profile' or log.action == 'admin_edit_user' and not log.restored %}
+            <form method="post" action="{% url 'adminpanel:restore_log_action' %}" style="display:inline;">
+              {% csrf_token %}
+              <input type="hidden" name="log_index" value="{{ forloop.counter0 }}">
+              <button type="submit" class="btn btn-sm btn-warning" onclick="return confirm('Are you sure you want to restore this log?');">
+                <i class="fas fa-undo me-1"></i>Restore
+              </button>
+            </form>
+          {% elif log.restored %}
+            <span class="text-success small">Restored</span>
           {% else %}
             <span class="text-muted small">N/A</span>
           {% endif %}
@@ -175,13 +181,6 @@
     </tbody>
   </table>
 </div>
-
-<!-- Hidden form for restoration action -->
-<form id="restoreForm" method="POST" action="{% url 'adminpanel:restore_log_action' %}" style="display:none;">
-  {% csrf_token %}
-  <input type="hidden" name="log_index" id="restoreLogIndex">
-</form>
-
 {% endblock %}
 
 {% block scripts %}
@@ -189,5 +188,21 @@
 
   <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
   <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-  <script src="{% static 'js/admin_script.js' %}"></script>
+  <script>
+    $(document).ready(function () {
+      $('#logsTable').DataTable({
+        order: [[6, 'desc']],
+        pageLength: 25,
+        lengthMenu: [[25, 50, 100, -1], [25, 50, 100, "All"]],
+        language: {
+          lengthMenu: "Show _MENU_ logs per page",
+          zeroRecords: "No results found",
+          info: "Page _PAGE_ of _PAGES_",
+          infoEmpty: "No data available",
+          infoFiltered: "(filtered from _MAX_ total logs)",
+          paginate: { previous: "Previous", next: "Next" }
+        }
+      });
+    });
+  </script>
 {% endblock %}

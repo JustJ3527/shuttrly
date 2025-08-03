@@ -4,14 +4,6 @@
 {% block content %}
 <h2>Connexion</h2>
 
-{% if messages %}
-  <ul class="messages">
-    {% for message in messages %}
-      <li {% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
-    {% endfor %}
-  </ul>
-{% endif %}
-
 <form method="POST">
   {% csrf_token %}
   
@@ -51,10 +43,10 @@
     <label>Entrez le code reçu par e-mail :</label><br>
     <input type="text" name="twofa_code" required autofocus><br><br>
 
-    <label>
+    {% comment %} <label>
       <input type="checkbox" name="remember_device" value="yes">
       Se souvenir de cet appareil (30 jours)
-    </label>
+    </label> {% endcomment %}
 
     <button type="submit">Valider</button>
     <button type="submit" name="step" value="login" formnovalidate>Annuler</button>

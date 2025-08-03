@@ -281,7 +281,7 @@
             </p>
             
             {% if can_resend %}
-                <form method="post" action="{% url 'resend_verification_code' %}" style="display: inline;">
+                <form method="post" action="{% url 'resend_verification_code_view' %}" style="display: inline;">
                     {% csrf_token %}
                     <button type="submit" class="resend-btn">
                         Renvoyer le code

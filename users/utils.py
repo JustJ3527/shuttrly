@@ -1,5 +1,5 @@
 from django.core.mail import send_mail
-# from .models import UserLog  # Supprimé : on n’utilise plus ce modèle
+from .models import TrustedDevice
 import os
 from django.conf import settings
 from datetime import datetime, timedelta
@@ -22,6 +22,8 @@ from django.contrib.auth import get_user_model
 import logging
 import os
 from django.conf import settings
+import uuid
+from django.utils.http import http_date
 
 # Configuration du logger
 logger = logging.getLogger(__name__)
@@ -273,3 +275,74 @@ def get_changes_dict(old_obj, new_obj, changed_fields):
 
 def get_user_agent(request):
     return request.META.get('HTTP_USER_AGENT', 'unknown')
+
+import pyotp
+import qrcode
+import io
+import base64
+import random
+import string
+from datetime import timedelta
+from django.core.mail import send_mail
+from django.utils import timezone
+from django.conf import settings
+
+def generate_email_code(length=6):
+    return ''.join(random.choices(string.digits, k=length))
+
+def send_email_code(user, code):
+    subject = "Votre code de vérification 2FA"
+    message = f"Votre code de vérification est : {code}"
+    send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [user.email])
+
+def is_email_code_valid(user, input_code):
+    if not user.email_2fa_code or not user.email_2fa_sent_at:
+        return False
+    expiration = user.email_2fa_sent_at + timedelta(minutes=10)
+    return timezone.now() <= expiration and input_code == user.email_2fa_code
+
+def generate_totp_secret():
+    return pyotp.random_base32()
+
+def get_totp_uri(user, secret):
+    return pyotp.TOTP(secret).provisioning_uri(name=user.email, issuer_name="Shuttrly")
+
+def generate_qr_code_base64(uri):
+    img = qrcode.make(uri)
+    buffer = io.BytesIO()
+    img.save(buffer, format="PNG")
+    qr_base64 = base64.b64encode(buffer.getvalue()).decode("utf-8")
+    return qr_base64
+
+def verify_totp(secret, code):
+    totp = pyotp.TOTP(secret)
+    return totp.verify(code, valid_window=1)
+
+
+def create_trusted_device(response, user, request):
+    token = uuid.uuid4().hex
+    user_agent = request.META.get('HTTP_USER_AGENT', '')[:255]
+    TrustedDevice.objects.create(
+        user=user, 
+        device_token=token, 
+        user_agent=user_agent
+    )
+
+    # Cookie sécurisé, httpOnly, expiration longue (ex: 30 jours)
+    max_age = 30 * 24 * 60 * 60 # 30 jours en secondes
+    expires = http_date(timezone.now().timestamp() + max_age)
+    response.set_cookie(
+        'trusted_device',
+        token,
+        max_age=max_age,
+        expires=expires,
+        secure=True,
+        httponly=True, # Non accessible JS
+        samesite='Lax' # TODO ou 'strict' si besoinS
+    )
+
+def is_trusted_device(request, user):
+    token = request.COOKIES.get('trusted_device')
+    if not token:
+        return False
+    return TrustedDevice.objects.filter(user=user, device_token=token).exists()

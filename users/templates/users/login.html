@@ -1,17 +1,72 @@
 {% extends 'base.html' %}
 {% block title %}Login - Shuttrly{% endblock %}
-{% block content %}
 
+{% block content %}
 <h2>Connexion</h2>
+
+{% if messages %}
+  <ul class="messages">
+    {% for message in messages %}
+      <li {% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+    {% endfor %}
+  </ul>
+{% endif %}
 
 <form method="POST">
   {% csrf_token %}
-  <label>Email:</label><br>
-  <input type="text" name="email" required><br>
   
-  <label>Mot de passe:</label><br>
-  <input type="password" name="password" required><br><br>
+  {% if step == "login" or not step %}
+    <input type="hidden" name="step" value="login">
+    <label>Email</label><br>
+    <input type="text" name="email" required><br>
+    
+    <label>Mot de passe :</label><br>
+    <input type="password" name="password" required><br><br>
+    
+    <button type="submit">Se connecter</button>
 
-  <button type="submit">Login</button>
+  {% elif step == "choose_2fa" %}
+    <input type="hidden" name="step" value="choose_2fa">
+    <p>Choisissez la méthode d'authentification à deux facteurs :</p>
+
+    <label>
+      <input type="radio" name="twofa_method" value="totp" {% if default_method == "totp" %}checked{% endif %}>
+      Application d'authentification (TOTP)
+    </label><br>
+
+    <label>
+      <input type="radio" name="twofa_method" value="email" {% if default_method == "email" %}checked{% endif %}>
+      Code par e-mail
+    </label><br><br>
+
+    <label>
+      <input type="checkbox" name="remember_device" value="yes">
+      Se souvenir de cet appareil (30 jours)
+    </label>
+
+    <button type="submit">Valider</button>
+
+  {% elif step == "email_2fa" %}
+    <input type="hidden" name="step" value="email_2fa">
+    <label>Entrez le code reçu par e-mail :</label><br>
+    <input type="text" name="twofa_code" required autofocus><br><br>
+
+    <label>
+      <input type="checkbox" name="remember_device" value="yes">
+      Se souvenir de cet appareil (30 jours)
+    </label>
+
+    <button type="submit">Valider</button>
+    <button type="submit" name="step" value="login" formnovalidate>Annuler</button>
+
+  {% elif step == "totp_2fa" %}
+    <input type="hidden" name="step" value="totp_2fa">
+    <label>Entrez le code généré par votre application d'authentification :</label><br>
+    <input type="text" name="twofa_code" required autofocus><br><br>
+
+    <button type="submit">Valider</button>
+    <button type="submit" name="step" value="login" formnovalidate>Annuler</button>
+  {% endif %}
+
 </form>
 {% endblock %}

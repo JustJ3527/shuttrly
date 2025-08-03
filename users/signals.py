@@ -18,10 +18,10 @@ def user_logged_in_handler(sender, request, user, **kwargs):
   user.save()
 
 
-@receiver(user_logged_out)
-def user_logged_out_handler(sender, request, user, **kwargs):
-    user.is_online = False
-    user.save()
+# @receiver(user_logged_out)
+# def user_logged_out_handler(sender, request, user, **kwargs):
+#     user.is_online = False
+#     user.save()
 
 # from django.db.models.signals import pre_save
 # from django.dispatch import receiver

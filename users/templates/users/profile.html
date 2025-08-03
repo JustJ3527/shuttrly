@@ -29,6 +29,15 @@
     <span class="text-gray-400">● offline</span>
 {% endif %}
 <br>
+<p>Authentification 2FA :
+  {% if user.email_2fa_enabled or user.totp_enabled %}
+    ✅ Active
+  {% else %}
+    ❌ Inactive
+  {% endif %}
+  — <a href="{% url 'twofa_settings' %}">Gérer</a>
+</p>
+<br>
 <form action="{% url 'logout' %}" method="post" style="display:inline;">
   {% csrf_token %}
   <button type="submit">Log out</button>

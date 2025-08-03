@@ -140,6 +140,15 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     email_verification_code = models.CharField(max_length=6, blank=True, null=True)
     verification_code_sent_at = models.DateTimeField(blank=True, null=True)
 
+    # --- 2FA Email ---
+    email_2fa_enabled = models.BooleanField(default=False)
+    email_2fa_code = models.CharField(max_length=6, blank=True, null=True)
+    email_2fa_sent_at = models.DateTimeField(blank=True, null=True)
+
+    # --- 2FA TOTP ---
+    totp_enabled = models.BooleanField(default=False)
+    twofa_totp_secret = models.CharField(max_length=64, blank=True, null=True)
+
     # GDPR (=RGPD) / alternative to hard delete
     is_anonymized = models.BooleanField(default=False)
 
@@ -297,3 +306,11 @@ class PendingFileDeletion(models.Model):
             self.save()
             return True
         return False
+    
+
+class TrustedDevice(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='trusted_devices')
+    device_token = models.CharField(max_length=64, unique=True)
+    user_agent = models.CharField(max_length=256, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_used_at = models.DateTimeField(auto_now=True)

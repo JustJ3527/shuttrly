@@ -4,16 +4,23 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from .forms import CustomUserCreationForm, CustomUserUpdateForm
 from django.contrib.auth import logout, authenticate, login
-from .models import CustomUser
+from .models import CustomUser, TrustedDevice
 from django.utils import timezone
 from django.db import transaction
 from django.views.decorators.http import require_http_methods
 from django.urls import reverse
 from django.utils.safestring import mark_safe
 from logs.utils import log_user_action_json  # JSON logging utility
-from .utils import schedule_profile_picture_deletion
 from django.conf import settings
-
+from datetime import timedelta
+from urllib.parse import urlencode
+from django.contrib.auth import get_backends
+from django.contrib.auth.decorators import login_required
+from .utils import (
+    generate_email_code, send_email_code, is_email_code_valid,
+    generate_totp_secret, get_totp_uri, generate_qr_code_base64, verify_totp, 
+    schedule_profile_picture_deletion, is_trusted_device, create_trusted_device
+)
 
 # Decorators
 
@@ -86,47 +93,213 @@ def register_view(request):
 
 @redirect_authenticated_user
 def login_view(request):
-    if request.method == 'POST':
-        identifier = request.POST.get('email')
-        password = request.POST.get('password')
+    step = 'login'
+    user = None
+    context = {}
 
-        # Check user existence by email or username
-        if not (CustomUser.objects.filter(email=identifier).exists() or CustomUser.objects.filter(username=identifier).exists()):
-            messages.error(request, mark_safe(
-                f"No account found with this email. <a href='{reverse('register')}'>Create an account</a>."
-            ))
-            return render(request, 'users/login.html')
+    if request.method == "POST":
+        step = request.POST.get("step", "login")  # étape par défaut
 
-        user = authenticate(request, username=identifier, password=password)
+        if step == "login":
+            identifier = request.POST.get("email")
+            password = request.POST.get("password")
 
-        if user is not None:
+            user_qs = CustomUser.objects.filter(email=identifier) | CustomUser.objects.filter(username=identifier)
+            if not user_qs.exists():
+                messages.error(request, mark_safe(
+                    f"No account found with this email. <a href='{reverse('register')}'>Create an account</a>."
+                ))
+                return render(request, "users/login.html")
+
+            user = authenticate(request, username=identifier, password=password)
+            if user is None:
+                messages.error(request, "Email or password is incorrect")
+                return render(request, "users/login.html")
+
             if not user.is_email_verified:
-                messages.warning(request, 'You must verify your email before login.')
-                request.session['verification_email'] = user.email
-                return redirect('verify_email')
+                messages.warning(request, "You must verify your email before login.")
+                request.session["verification_email"] = user.email
+                return redirect("verify_email")
 
-            login(request, user)
-            user.is_online = True
-            user.last_login_date = timezone.now()
-            user.save()
+            # Si 2FA activée
+            if user.email_2fa_enabled or user.totp_enabled:
+                # On stocke temporairement l'user pour la 2FA
+                request.session["pre_2fa_user_id"] = user.id
 
-            ip = get_client_ip(request)
-            user_agent = get_user_agent(request)
-            log_user_action_json(
-                user=user,
-                action='login',
-                request=request,
-                extra_info=f"IP: {ip} | User-Agent: {user_agent}"
-            )
+                if is_trusted_device(request, user):
+                    user.backend = f"{get_backends()[0].__module__}.{get_backends()[0].__class__.__name__}"
+                    login(request, user)
 
-            messages.success(request, f"Welcome {user.first_name or user.username}")
-            return redirect('profile')
-        else:
-            messages.error(request, 'Email or password is incorrect')
-            return render(request, 'users/login.html', {'error': 'Invalid email or password'})
+                    # Met à jour statut, log, etc.
+                    user.is_online = True
+                    user.last_login_date = timezone.now()
+                    user.save()
+                    ip = get_client_ip(request)
+                    user_agent = get_user_agent(request)
+                    log_user_action_json(
+                        user=user,
+                        action="login_trusted_device",
+                        request=request,
+                        extra_info=f"IP: {ip} | User-Agent: {user_agent}"
+                    )
+                    # Créer response de redirection et créer cookie trusted_device
+                    response = redirect('profile')
+                    create_trusted_device(response, user, request)
+                    return response
 
-    return render(request, 'users/login.html')
+                else:
+                    # Choix méthode si les 2 activées
+                    if user.email_2fa_enabled and user.totp_enabled:
+                        context.update({
+                            "step": "choose_2fa",
+                            "user": user,
+                            "default_method": "totp",
+                        })
+                        return render(request, "users/login.html", context)
 
+                    # Que email 2FA
+                    elif user.email_2fa_enabled:
+                        # Générer et envoyer code email 2FA
+                        code = generate_email_code()
+                        user.email_2fa_code = code
+                        user.email_2fa_sent_at = timezone.now()
+                        user.save()
+                        send_email_code(user, code)
+
+                        context.update({
+                            "step": "email_2fa",
+                            "user": user,
+                        })
+                        return render(request, "users/login.html", context)
+
+                    # Que totp 2FA
+                    elif user.totp_enabled:
+                        context.update({
+                            "step": "totp_2fa",
+                            "user": user,
+                        })
+                        return render(request, "users/login.html", context)
+
+            else:
+                # Pas de 2FA => login direct
+                user.backend = f"{get_backends()[0].__module__}.{get_backends()[0].__class__.__name__}"
+                login(request, user)
+                user.is_online = True
+                user.last_login_date = timezone.now()
+                user.save()
+
+                ip = get_client_ip(request)
+                user_agent = get_user_agent(request)
+                log_user_action_json(
+                    user=user,
+                    action="login",
+                    request=request,
+                    extra_info=f"IP: {ip} | User-Agent: {user_agent}"
+                )
+
+                # Créer response de redirection et cookie trusted_device
+                response = redirect("profile")
+                create_trusted_device(response, user, request)
+                messages.success(request, f"Welcome {user.first_name or user.username}")
+                return response
+
+        elif step == "choose_2fa":
+            method = request.POST.get("twofa_method")
+            user_id = request.session.get("pre_2fa_user_id")
+            if not user_id:
+                messages.error(request, "Session expired. Please login again.")
+                return redirect("login")
+            user = CustomUser.objects.get(pk=user_id)
+
+            if method == "email" and user.email_2fa_enabled:
+                code = generate_email_code()
+                user.email_2fa_code = code
+                user.email_2fa_sent_at = timezone.now()
+                user.save()
+                send_email_code(user, code)
+
+                context.update({
+                    "step": "email_2fa",
+                    "user": user,
+                })
+                return render(request, "users/login.html", context)
+
+            elif method == "totp" and user.totp_enabled:
+                context.update({
+                    "step": "totp_2fa",
+                    "user": user,
+                })
+                return render(request, "users/login.html", context)
+
+            else:
+                messages.error(request, "Invalid 2FA method selected.")
+                return redirect("login")
+
+        elif step == "email_2fa":
+            twofa_code = request.POST.get("twofa_code")
+            user_id = request.session.get("pre_2fa_user_id")
+            if not user_id:
+                messages.error(request, "Session expired. Please login again.")
+                return redirect("login")
+            user = CustomUser.objects.get(pk=user_id)
+
+            if is_email_code_valid(user, twofa_code):
+                user.backend = f"{get_backends()[0].__module__}.{get_backends()[0].__class__.__name__}"
+                login(request, user)
+                user.is_online = True
+                user.last_login_date = timezone.now()
+                user.save()
+                log_user_action_json(user, "login_2fa_email", request)
+                del request.session["pre_2fa_user_id"]
+
+                # Création cookie trusted_device
+                response = redirect("profile")
+                create_trusted_device(response, user, request)
+                messages.success(request, f"Welcome {user.first_name or user.username}")
+                return response
+            else:
+                messages.error(request, "Invalid or expired email 2FA code.")
+                context.update({
+                    "step": "email_2fa",
+                    "user": user,
+                })
+                return render(request, "users/login.html", context)
+
+        elif step == "totp_2fa":
+            twofa_code = request.POST.get("twofa_code")
+            user_id = request.session.get("pre_2fa_user_id")
+            if not user_id:
+                messages.error(request, "Session expired. Please login again.")
+                return redirect("login")
+            user = CustomUser.objects.get(pk=user_id)
+
+            if verify_totp(user.twofa_totp_secret, twofa_code):
+                user.backend = f"{get_backends()[0].__module__}.{get_backends()[0].__class__.__name__}"
+                login(request, user)
+                user.is_online = True
+                user.last_login_date = timezone.now()
+                user.save()
+                log_user_action_json(user, "login_2fa_totp", request)
+                del request.session["pre_2fa_user_id"]
+
+                # Création cookie trusted_device
+                response = redirect("profile")
+                create_trusted_device(response, user, request)
+                messages.success(request, f"Welcome {user.first_name or user.username}")
+                return response
+            else:
+                messages.error(request, "Invalid TOTP code.")
+                context.update({
+                    "step": "totp_2fa",
+                    "user": user,
+                })
+                return render(request, "users/login.html", context)
+
+    # GET => simple formulaire login classique
+    return render(request, "users/login.html")
+
+    # GET ou pas POST
+    return render(request, "users/login.html", {"step": "login"})
 
 def verify_email_view(request):
     email = request.session.get('verification_email')
@@ -155,6 +328,7 @@ def verify_email_view(request):
                 del request.session['verification_email']
 
             user.backend = 'users.backend.SuperuserUsernameBackend'
+            user.backend = f"{get_backends()[0].__module__}.{get_backends()[0].__class__.__name__}"
             login(request, user)
 
             user.is_online = True
@@ -190,7 +364,7 @@ def verify_email_view(request):
     return render(request, 'users/verify_email.html', context)
 
 
-def resend_verification_code(request):
+def resend_verification_code_view(request):
     if request.method != 'POST':
         return redirect('verify_email')
 
@@ -279,7 +453,6 @@ def logout_view(request):
     logout(request)
     return redirect('login')
 
-
 @redirect_not_authenticated_user
 @require_http_methods(["GET", "POST"])
 def delete_account_view(request):
@@ -340,3 +513,182 @@ def delete_account_view(request):
                 pass
 
     return render(request, 'users/delete_account_confirm.html', {"related_warnings": related_warnings})
+
+
+@redirect_not_authenticated_user
+@redirect_not_authenticated_user
+def twofa_settings_view(request):
+    user = request.user
+    trusted_devices = TrustedDevice.objects.filter(user=user)
+
+    EMAIL_CODE_RESEND_DELAY_SEONDS = 120
+
+    context = {
+        "trusted_devices": trusted_devices,
+        "email_2fa_enabled": user.email_2fa_enabled,
+        "totp_enabled": user.totp_enabled,
+    }
+
+    step = request.GET.get("step")
+    if step:
+        context["step"] = step
+    else:
+        context["step"] = "initial"  # ou ce que tu utilises par défaut
+
+    if user.email_2fa_sent_at:
+        delta = timezone.now() - user.email_2fa_sent_at
+        time_until_resend = max(0, EMAIL_CODE_RESEND_DELAY_SEONDS - int(delta.total_seconds()))
+        can_resend = time_until_resend <= 0
+    else:
+        time_until_resend = 0
+        can_resend = True
+
+    context.update({
+        "time_until_resend": time_until_resend,
+        "can_resend": can_resend,
+    })
+
+    if request.method == "POST":
+        action = request.POST.get("action")
+        if action == 'cancel':
+            setp = request.GET.get("step") or "initial"
+            if step == "verify_email_code":
+                user.email_2fa_code = ""
+                user.email_2fa_sent_at = None
+            if setp == "verify_totp":
+                user.twofa_totp_secret = ""
+                user.save()
+
+            return redirect(reverse("twofa_settings") + "?step=initial")
+            
+
+        if action == "enable_email":
+            password = request.POST.get('password')
+            if not user.check_password(password):
+                messages.error(request, "Mot de passe incorrect.")
+            else:
+                code = generate_email_code()
+                user.email_2fa_code = code
+                user.email_2fa_sent_at = timezone.now()
+                user.save()
+                send_email_code(user, code)
+                url = reverse("twofa_settings") + "?" + urlencode({"step": "verify_email_code"})
+                return redirect(url)
+
+        elif action == "verify_email_code":
+            input_code = request.POST.get("email_code")
+            if is_email_code_valid(user, input_code):
+                user.email_2fa_enabled = True
+                user.email_2fa_code = ""
+                user.save()
+                log_user_action_json(user, "enable_email_2fa", request)
+                messages.success(request, "2FA par e-mail activée.")
+                return redirect("twofa_settings")
+            else:
+                messages.error(request, "Code invalide ou expiré.")
+                url = reverse("twofa_settings") + "?" + urlencode({"step": "verify_email_code"})
+                return redirect(url)
+
+        elif action == "disable_email":
+            password = request.POST.get('password')
+            if not user.check_password(password):
+                messages.error(request, "Mot de passe incorrect.")
+                return redirect("twofa_settings")
+            else:
+                user.email_2fa_enabled = False
+                user.email_2fa_code = ""
+                user.save()
+                log_user_action_json(user, "disable_email_2fa", request)
+                messages.success(request, "Authentification par e-mail désactivée.")
+                return redirect("twofa_settings")
+
+        elif action == "resend_email_code":
+            delta = timezone.now() - user.email_2fa_sent_at if user.email_2fa_sent_at else timedelta(minutes=999)
+            if delta.total_seconds() >= EMAIL_CODE_RESEND_DELAY_SEONDS:
+                user.email_2fa_code = generate_email_code()
+                user.email_2fa_sent_at = timezone.now()
+                user.save()
+                send_email_code(user, user.email_2fa_code)
+                messages.success(request, "Nouveau code envoyé.")
+            else:
+                messages.error(request, "Veuillez attendre avant de demander un nouveau code.")
+
+            url = reverse("twofa_settings") + "?" + urlencode({"step": "verify_email_code"})
+            return redirect(url)
+
+        elif action == "enable_totp":
+            password = request.POST.get("password")
+            if not user.check_password(password):
+                messages.error(request, "Mot de passe incorrect.")
+            else:
+                secret = generate_totp_secret()
+                user.twofa_totp_secret = secret
+                user.save()
+
+                uri = get_totp_uri(user, secret)
+                qr_base64 = generate_qr_code_base64(uri)
+
+                context["qr_code_url"] = qr_base64
+                context["totp_secret"] = secret
+                context["totp_uri"] = uri
+                context["step"] = "verify_totp"
+                return render(request, "users/2fa_settings.html", context)
+
+        elif action == "verify_totp":
+            code = request.POST.get("totp_code")
+            if verify_totp(user.twofa_totp_secret, code):
+                user.totp_enabled = True
+                user.save()
+                log_user_action_json(user, "enable_totp", request)
+                messages.success(request, "2FA TOTP activée.")
+                return redirect("twofa_settings")
+            else:
+                messages.error(request, "Code TOTP invalide.")
+
+                uri = get_totp_uri(user, user.twofa_totp_secret)
+                qr_base64 = generate_qr_code_base64(uri)
+
+                context["qr_code_url"] = qr_base64
+                context["totp_secret"] = user.twofa_totp_secret
+                context["totp_uri"] = uri
+                context["step"] = "verify_totp"
+                return render(request, "users/2fa_settings.html", context)
+
+        elif action == "disable_totp":
+            password = request.POST.get("password")
+            code = request.POST.get("totp_code")
+            if not user.check_password(password):
+                messages.error(request, "Mot de passe incorrect.")
+            elif not verify_totp(user.twofa_totp_secret, code):
+                messages.error(request, "Code TOTP invalide.")
+            else:
+                user.totp_enabled = False
+                user.twofa_totp_secret = ""
+                user.save()
+                log_user_action_json(user, "disable_totp", request)
+                messages.success(request, "2FA TOTP désactivée.")
+                return redirect("twofa_settings")
+            return redirect("twofa_settings")
+
+    return render(request, "users/2fa_settings.html", context)
+
+
+@redirect_not_authenticated_user
+def twofa_settings_view(request):
+    user = request.user
+
+    # Liste des appareils de confiance de l'utilisateur
+    trusted_devices = user.trusted_devices.all().order_by('-last_used_at')
+
+    if request.method == "POST" and "revoke_device_id" in request.POST:
+        device_id = request.POST.get("revoke_device_id")
+        device = get_object_or_404(TrustedDevice, id=device_id, user=user)
+        device.delete()
+        messages.success(request, "Appareil révoqué avec succès.")
+        return redirect("twofa_settings")
+
+    context = {
+        "trusted_devices": trusted_devices,
+        # autres context vars 2FA
+    }
+    return render(request, "users/2fa_settings.html", context)

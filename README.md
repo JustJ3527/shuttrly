@@ -1,6 +1,6 @@
 # Shuttrly
 
-Shuttrly is a photo-sharing web application built with Django. Still in development...
+Shuttrly is a photo-sharing web application for photographers built with Django. Still in development...
 
 ---
 
@@ -89,7 +89,6 @@ python manage.py runserver
 ## ⚠️ Important Notes
 
 - The application uses a **JSON logging system** that stores logs locally in a file.
-- **Static and media files** are served by Django during development. For production, you should configure proper handling (e.g., using Nginx or a cloud storage service).
 - Make sure to configure **SMTP settings** correctly to enable email sending (used for registration, confirmation, 2FA, etc.).
 
 ---

@@ -27,14 +27,16 @@ Shuttrly is a photo-sharing web application for photographers built with Django.
 
 ```bash
 git clone https://github.com/JustJ3527/shuttrly.git
-cd shuttrly
 ```
 
 2. **Create a virtual environment**
 
 ```bash
 python3 -m venv env
-source env/bin/activate  # On Windows: env\Scripts\activate
+# On mac:
+source env/bin/activate
+# On Windows:
+env\Scripts\activate
 ```
 
 3. **Install dependencies**
@@ -77,12 +79,14 @@ python manage.py createsuperuser
 ```bash
 python manage.py runserver
 ```
+
 ---
 
 ## 📸 Viewing the Application
 
-- Open your browser and go to: [http://127.0.0.1:8000](http://127.0.0.1:8000)  
+- Open your browser and go to: [http://127.0.0.1:8000](http://127.0.0.1:8000)
 - To access the Django admin panel (if a superuser has been created): [http://127.0.0.1:8000/admin](http://127.0.0.1:8000/admin)
+- But you can also access to http://127.0.0.1:8000/admin-panel/ (personalized admin panel)
 
 ---
 
@@ -108,4 +112,4 @@ Not yet...
 
 ## 🙏 Thank You
 
-Thank you for using **Shuttrly**!  
+Thank you for using **Shuttrly**!

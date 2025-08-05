@@ -20,7 +20,7 @@ from adminpanel.forms import CustomUserAdminForm
 
 # === Utils ===
 from logs.utils import log_user_action_json
-from users.utils import get_changes_dict
+from users.utils import get_changes_dict, get_location_from_ip
 
 
 # === Views ===
@@ -50,19 +50,14 @@ def edit_user_view(request, user_id):
             # Utiliser la fonction utilitaire pour détecter les changements
             changes_dict = get_changes_dict(old_data, updated_user, form.changed_data)
 
-            extra_info = {
-                "ip_address": ip,
-                "user_agent": user_agent,
-                "changes": changes_dict,
-                "impacted_user_id": user.id,
-                "impacted_username": user.username,
-            }
-
             log_user_action_json(
                 user=request.user,
                 action="admin_edit_user",
                 request=request,
-                extra_info=extra_info,
+                extra_info={
+                    "impacted_user_id": user.id,
+                    "changes": changes_dict,
+                },
             )
 
             messages.success(request, f"{user.username} has been updated.")
@@ -89,10 +84,7 @@ def delete_user_view(request, user_id):
                 action="delete_user_account",
                 request=request,
                 extra_info={
-                    "ip_address": request.META.get("REMOTE_ADDR", "unknown"),
-                    "user_agent": request.META.get("HTTP_USER_AGENT", "unknown"),
                     "impacted_user_id": user_to_delete.id,
-                    "impacted_username": user_to_delete.username,
                 },
             )
         user_to_delete.delete()
@@ -261,21 +253,29 @@ def restore_log_action_view(request):
     # Sauvegarder l'utilisateur avec les champs modifiés
     user.save(update_fields=updated_fields)
 
+    ip_address = request.META.get("REMOTE_ADDR", "unknown")
+    user_agent = request.META.get("HTTP_USER_AGENT", "unknown")
+    location = get_location_from_ip(ip_address)
+
     # Ajouter un nouveau log de restauration dans le fichier JSON
     new_log = {
         "log_id": str(uuid.uuid4()),
-        "timestamp": timezone.now().isoformat(),
-        "user_id": request.user.id,
         "user": request.user.username,
+        "user_id": request.user.id,
         "action": "restore_profile_from_log",
+        "timestamp": timezone.now().isoformat(),
+        "ip_address": ip_address,
+        "user_agent": user_agent,
+        "location": {
+            "city": location.get("city") if location else None,
+            "region": location.get("region") if location else None,
+            "country": location.get("country") if location else None,
+        },
         "extra_info": {
-            "ip_address": request.META.get("REMOTE_ADDR", "unknown"),
-            "user_agent": request.META.get("HTTP_USER_AGENT", "unknown"),
             "restored_log_id": log_entry.get("log_id"),
             "restored_fields": updated_fields,
             "restoration_details": restoration_details,
             "impacted_user_id": user.id,
-            "impacted_username": user.username,
         },
     }
     logs.append(new_log)

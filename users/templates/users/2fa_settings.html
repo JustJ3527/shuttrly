@@ -1,14 +1,19 @@
 {% extends "base.html" %}
-{% load static %}
 
-{% block title %}Paramètres 2FA{% endblock %}
+{% load static %}
+{% load users_filters %}
+
+{% block title %}Two-Factor Authentication (2FA) Settings{% endblock %}
 
 {% block content %}
-<h2>Authentification à deux facteurs (2FA)</h2>
+<h2>Two-Factor Authentication (2FA)</h2>
 
+{# Display any error messages #}
 {% if error %}
   <div style="color: red; margin-bottom: 1em;">{{ error }}</div>
 {% endif %}
+
+{# Display Django messages (success, info, warning, etc.) #}
 {% if messages %}
   <ul class="messages">
     {% for message in messages %}
@@ -17,103 +22,107 @@
   </ul>
 {% endif %}
 
-<!-- ================== EMAIL 2FA ================== -->
+<!-- ================== EMAIL 2FA SECTION ================== -->
 <div style="margin-bottom: 2em;">
-  <h3>🔐 Par e-mail :</h3>
+  <h3>🔐 By Email:</h3>
 
   {% if email_2fa_enabled %}
-    <p>La 2FA par e-mail est activée.</p>
+    <p>Email-based 2FA is enabled.</p>
     <form method="post">
       {% csrf_token %}
       <input type="hidden" name="action" value="disable_email">
       <input type="password" name="password" placeholder="Password" required>
-      <button type="submit">Désactiver</button>
+      <button type="submit">Disable</button>
     </form>
-  {% elif step == "verify_email_code" %}
-    <p>Un code a été envoyé à votre adresse e-mail. Veuillez le saisir ci-dessous.</p>
-        <form method="post">
-        {% csrf_token %}
-        <input type="hidden" name="action" value="verify_email_code" />
-        <input type="text" name="email_code" placeholder="Entrez le code reçu" required />
 
-        <button type="submit">Vérifier</button>
+  {% elif step == "verify_email_code" %}
+    <p>A code has been sent to your email address. Please enter it below.</p>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="verify_email_code" />
+      <input type="text" name="email_code" placeholder="Enter the received code" required />
+      <button type="submit">Verify</button>
     </form>
+
     <form method="post" style="display: inline;">
-        {% csrf_token %}
-      <button type="submit" name="action" value="cancel">Annuler</button>
+      {% csrf_token %}
+      <button type="submit" name="action" value="cancel">Cancel</button>
     </form>
 
     <div class="countdown" id="countdown">
-        {% if not can_resend %}
-            Vous pourrez redemander un code dans <span id="timer">{{ time_until_resend }}</span> secondes.
-        {% endif %}
+      {% if not can_resend %}
+        You can request a new code in <span id="timer">{{ time_until_resend }}</span> seconds.
+      {% endif %}
     </div>
 
     <form method="post" id="resend-form" {% if not can_resend %}style="display:none;"{% endif %}>
-        {% csrf_token %}
-        <input type="hidden" name="action" value="resend_email_code" />
-        <button type="submit">Renvoyer un code</button>
+      {% csrf_token %}
+      <input type="hidden" name="action" value="resend_email_code" />
+      <button type="submit">Resend Code</button>
     </form>
+
   {% else %}
-    <p>La 2FA par e-mail est désactivée.</p>
+    <p>Email-based 2FA is disabled.</p>
     <form method="post">
       {% csrf_token %}
       <input type="password" name="password" placeholder="Password" required>
       <input type="hidden" name="action" value="enable_email">
-      <button type="submit">Activer</button>
+      <button type="submit">Enable</button>
     </form>
   {% endif %}
 </div>
 
-<!-- ================== TOTP 2FA ================== -->
+<!-- ================== TOTP 2FA SECTION ================== -->
 <div>
-  <h3>📱 Application d’authentification (TOTP) :</h3>
+  <h3>📱 Authentication App (TOTP):</h3>
 
   {% if totp_enabled %}
-    <p>La 2FA via application (TOTP) est activée.</p>
+    <p>TOTP-based 2FA is enabled.</p>
     <form method="post">
       {% csrf_token %}
       <input type="hidden" name="action" value="disable_totp">
-      <input type="password" name="password" placeholder="Mot de passe" required>
-      <input type="text" name="totp_code" placeholder="Code TOTP" required>
-      <button type="submit">Désactiver</button>
+      <input type="password" name="password" placeholder="Password" required>
+      <input type="text" name="totp_code" placeholder="TOTP Code" required>
+      <button type="submit">Disable</button>
     </form>
+
   {% elif step == "verify_totp" %}
-        <h2>Configurer votre application d’authentification</h2>
-        <p>Scannez ce QR code avec une application comme Google Authenticator, Authy ou 2FAS :</p>
+    <h2>Set Up Your Authentication App</h2>
+    <p>Scan this QR code with an app like Google Authenticator, Authy, or 2FAS:</p>
 
-        <img src="data:image/png;base64,{{ qr_code_url }}" alt="QR Code TOTP" style="max-width: 200px;">
+    <img src="data:image/png;base64,{{ qr_code_url }}" alt="TOTP QR Code" style="max-width: 200px;">
 
-        {% if totp_uri %}
-            <div>
-                <button id="copyTotpUriBtn" type="button">Copier le lien TOTP</button>
-                <input type="text" id="totpUriInput" value="{{ totp_uri }}" readonly style="position: absolute; left: -9999px;"/>
-                <span id="copyMessage" style="color: green; display: none;">Lien copié !</span>
-            </div>
-        {% endif %}
+    {% if totp_uri %}
+      <div>
+        <button id="copyTotpUriBtn" type="button">Copy TOTP URI</button>
+        <input type="text" id="totpUriInput" value="{{ totp_uri }}" readonly style="position: absolute; left: -9999px;"/>
+        <span id="copyMessage" style="color: green; display: none;">Link copied!</span>
+      </div>
+    {% endif %}
 
-        <form method="post">
-            {% csrf_token %}
-            <input type="text" name="totp_code" placeholder="Code à 6 chiffres" required>
-            <button type="submit" name="action" value="verify_totp">Vérifier</button>
-        </form>
+    <form method="post">
+      {% csrf_token %}
+      <input type="text" name="totp_code" placeholder="6-digit code" required>
+      <button type="submit" name="action" value="verify_totp">Verify</button>
+    </form>
 
-        <form method="post" style="margin-top: 1em;">
-            {% csrf_token %}
-            <button type="submit" name="action" value="cancel">Annuler</button>
-        </form>
+    <form method="post" style="margin-top: 1em;">
+      {% csrf_token %}
+      <button type="submit" name="action" value="cancel">Cancel</button>
+    </form>
+
   {% else %}
-    <p>La 2FA via application est désactivée.</p>
+    <p>TOTP-based 2FA is disabled.</p>
     <form method="post">
       {% csrf_token %}
       <input type="hidden" name="action" value="enable_totp">
-      <input type="password" name="password" placeholder="Mot de passe" required>
-      <button type="submit">Activer</button>
+      <input type="password" name="password" placeholder="Password" required>
+      <button type="submit">Enable</button>
     </form>
   {% endif %}
 </div>
 
-<h2>Appareils de confiance</h2>
+<h2>Trusted Devices</h2>
 
 {% if trusted_devices %}
   <div>
@@ -122,33 +131,33 @@
         <div class="device-summary" onclick="toggleDetails(this)">
           {{ device.device_type }}
           {% if device.is_current_device %}
-            <span class="device-current">(appareil actuel)</span>
+            <span class="device-current">(current device)</span>
           {% endif %}
           <br>
-          <small>{{ device.location|default:"Localisation inconnue" }} • le {{ device.last_used_at|date:"SHORT_DATETIME_FORMAT" }}</small>
+          <small>{{ device.location|format_location }} • on {{ device.last_used_at|date:"SHORT_DATETIME_FORMAT" }}</small>
         </div>
         <div class="device-details">
-          <div><strong>Modèle :</strong> {{ device.device_family }}</div>
-          <div><strong>Navigateur :</strong> {{ device.browser_family }} {{ device.browser_version }}</div>
-          <div><strong>Système d’exploitation :</strong> {{ device.os_family }} {{ device.os_version }}</div>
-          <div><strong>Adresse IP :</strong> {{ device.ip_address|default:"Inconnue" }}</div>
+          <div><strong>Model:</strong> {{ device.device_family }}</div>
+          <div><strong>Browser:</strong> {{ device.browser_family }} {{ device.browser_version }}</div>
+          <div><strong>Operating System:</strong> {{ device.os_family }} {{ device.os_version }}</div>
+          <div><strong>IP Address:</strong> {{ device.ip_address|default:"Unknown" }}</div>
           <form method="POST" style="margin-top: 0.5em;">
             {% csrf_token %}
             <input type="hidden" name="action" value="revoke_device">
             <input type="hidden" name="revoke_device_id" value="{{ device.id }}">
-            <button type="submit" onclick="return confirm('Révoquer cet appareil ?');">Révoquer</button>
+            <button type="submit" onclick="return confirm('Revoke this device?');">Revoke</button>
           </form>
         </div>
       </div>
     {% endfor %}
   </div>
 {% else %}
-  <p>Aucun appareil de confiance enregistré.</p>
+  <p>No trusted devices registered.</p>
 {% endif %}
 
-
 <style>
-.device-summary {
+  /* Styles for device summary and details toggling */
+  .device-summary {
     cursor: pointer;
     font-weight: bold;
     padding: 0.5em;
@@ -156,83 +165,87 @@
     border-radius: 8px;
     margin-bottom: 1em;
     transition: background-color 0.2s;
-}
-.device-summary:hover {
+  }
+  .device-summary:hover {
     background-color: #f0f0f0;
-}
-.device-details {
+  }
+  .device-details {
     display: none;
     padding: 0.5em 1em;
     background-color: #fafafa;
     border-left: 4px solid #999;
     margin-top: 0.5em;
     font-size: 0.95em;
-}
-.device-current {
+  }
+  .device-current {
     color: green;
     font-weight: bold;
     margin-left: 0.5em;
-}
+  }
 </style>
-
-
-{% endblock %}x
+{% endblock %}
 
 {% block scripts %}
-{{ block.super }}
-{% if not can_resend and time_until_resend > 0 %}
-<script>
-    document.addEventListener('DOMContentLoaded', () => {
+  {{ block.super }}
+
+  {# Countdown timer for resend email code #}
+  {% if not can_resend and time_until_resend > 0 %}
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
         let timeLeft = {{ time_until_resend }};
         const timerElement = document.getElementById('timer');
         const countdownElement = document.getElementById('countdown');
         const resendForm = document.getElementById('resend-form');
 
         const updateTimer = () => {
-            if (timeLeft <= 0) {
-                // Afficher le formulaire de renvoi
-                countdownElement.style.display = "none";
-                resendForm.style.display = "block";
-                return;
-            }
+          if (timeLeft <= 0) {
+            // Show resend form when timer reaches zero
+            countdownElement.style.display = "none";
+            resendForm.style.display = "block";
+            return;
+          }
 
-            const minutes = Math.floor(timeLeft / 60);
-            const seconds = timeLeft % 60;
+          const minutes = Math.floor(timeLeft / 60);
+          const seconds = timeLeft % 60;
 
-            if (minutes > 0) {
-                timerElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-            } else {
-                timerElement.textContent = seconds;
-            }
+          if (minutes > 0) {
+            timerElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+          } else {
+            timerElement.textContent = seconds;
+          }
 
-            timeLeft--;
+          timeLeft--;
         };
 
         updateTimer();
         setInterval(updateTimer, 1000);
-    });
-</script>
-{% endif %}
-<script>
-  function toggleDetails(summary) {
-    const details = summary.nextElementSibling;
-    if (details.style.display === "none" || !details.style.display) {
+      });
+    </script>
+  {% endif %}
+
+  <script>
+    // Toggle the visibility of device details on click
+    function toggleDetails(summary) {
+      const details = summary.nextElementSibling;
+      if (details.style.display === "none" || !details.style.display) {
         details.style.display = "block";
-    } else {
+      } else {
         details.style.display = "none";
+      }
     }
-}
-    document.getElementById('copyTotpUriBtn').addEventListener('click', function() {
-    const input = document.getElementById('totpUriInput');
-    input.select();
-    input.setSelectionRange(0, 99999); // Pour mobiles
-    navigator.clipboard.writeText(input.value).then(() => {
-      const msg = document.getElementById('copyMessage');
-      msg.style.display = 'inline';
-      setTimeout(() => { msg.style.display = 'none'; }, 2000);
-    }).catch(err => {
-      alert('Erreur lors de la copie du lien : ' + err);
+
+    // Copy TOTP URI to clipboard with feedback
+    document.getElementById('copyTotpUriBtn')?.addEventListener('click', function() {
+      const input = document.getElementById('totpUriInput');
+      input.select();
+      input.setSelectionRange(0, 99999); // For mobile devices
+      navigator.clipboard.writeText(input.value).then(() => {
+        const msg = document.getElementById('copyMessage');
+        msg.style.display = 'inline';
+        setTimeout(() => { msg.style.display = 'none'; }, 2000);
+      }).catch(err => {
+        alert('Error copying link: ' + err);
+      });
     });
-  });
-</script>
+  </script>
 {% endblock %}

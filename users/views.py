@@ -90,11 +90,9 @@ def register_view(request):
                 user=user,
                 action="register",
                 request=request,
+                ip_address=ip,
                 extra_info={
-                    "ip_address": ip,
-                    "user_agent": user_agent,
                     "impacted_user_id": user.id,
-                    "location": location,
                 },
             )
 
@@ -166,14 +164,11 @@ def login_view(request):
                 user.save()
 
                 log_user_action_json(
-                    user,
-                    "login",
-                    request,
+                    user=user,
+                    action="login",
+                    request=request,
                     extra_info={
                         "2fa": "trusted_device",
-                        "ip_address": ip,
-                        "user_agent": user_agent,
-                        "location": location,
                     },
                 )
 
@@ -214,14 +209,9 @@ def login_view(request):
             user.save()
 
             log_user_action_json(
-                user,
-                "login",
-                request,
-                extra_info={
-                    "ip_address": ip,
-                    "user_agent": user_agent,
-                    "location": location,
-                },
+                user=request.user,
+                action="login",
+                request=request,
             )
 
             response = redirect("profile")
@@ -284,14 +274,11 @@ def login_view(request):
                     )
 
                 log_user_action_json(
-                    user,
-                    "login",
-                    request,
+                    user=request.user,
+                    action="login",
+                    request=request,
                     extra_info={
                         "2fa": "email" if step == "email_2fa" else "totp",
-                        "ip_address": ip,
-                        "user_agent": user_agent,
-                        "location": location,
                     },
                 )
 
@@ -359,8 +346,6 @@ def verify_email_view(request):
                 request=request,
                 extra_info={
                     "verification_code_used": submitted_code,
-                    "user_Agent": user_agent,
-                    "location": location,
                 },
             )
 
@@ -463,11 +448,8 @@ def profile_view(request):
                 action="update_profile",
                 request=request,
                 extra_info={
-                    "ip_address": ip,
-                    "user_agent": user_agent,
-                    "changes": changes_dict,
                     "impacted_user_id": user.id,
-                    "location": location,
+                    "changes": changes_dict,
                 },
             )
             return redirect("profile")
@@ -493,10 +475,7 @@ def logout_view(request):
             action="logout",
             request=request,
             extra_info={
-                "ip_address": ip,
-                "user_agent": user_agent,
                 "impacted_user_id": user.id,
-                "location": location,
             },
         )
 
@@ -527,9 +506,8 @@ def delete_account_view(request):
             user.anonymize()
             log_user_action_json(
                 user=user,
-                action="delete_account",
+                action="anonymize",
                 request=request,
-                extra_info=f"anonymized | IP: {ip} | User-Agent: {user_agent}",
             )
             logout(request)
             messages.success(
@@ -545,7 +523,6 @@ def delete_account_view(request):
                     user=user,
                     action="delete_account",
                     request=request,
-                    extra_info=f"deleted | IP: {ip} | User-Agent: {user_agent}",
                 )
                 user_to_delete.delete()
             messages.success(request, "Votre compte a été supprimé définitivement.")
@@ -678,7 +655,11 @@ def twofa_settings_view(request):
                 user.email_2fa_enabled = True
                 user.email_2fa_code = ""
                 user.save()
-                log_user_action_json(user, "enable_email_2fa", request)
+                log_user_action_json(
+                    user=user,
+                    action="enable_email_2fa",
+                    request=request,
+                )
                 messages.success(request, "2FA par e-mail activée.")
                 return redirect("twofa_settings")
             else:
@@ -700,7 +681,11 @@ def twofa_settings_view(request):
                 user.email_2fa_enabled = False
                 user.email_2fa_code = ""
                 user.save()
-                log_user_action_json(user, "disable_email_2fa", request)
+                log_user_action_json(
+                    user=user,
+                    action="disable_email_2fa",
+                    request=request,
+                )
                 messages.success(request, "Authentification par e-mail désactivée.")
                 return redirect("twofa_settings")
 
@@ -758,7 +743,11 @@ def twofa_settings_view(request):
             if verify_totp(user.twofa_totp_secret, code):
                 user.totp_enabled = True
                 user.save()
-                log_user_action_json(user, "enable_totp", request)
+                log_user_action_json(
+                    user=user,
+                    action="enable_totp",
+                    request=request,
+                )
                 messages.success(request, "2FA TOTP activée.")
                 return redirect("twofa_settings")
             else:
@@ -789,7 +778,11 @@ def twofa_settings_view(request):
                 user.totp_enabled = False
                 user.twofa_totp_secret = ""
                 user.save()
-                log_user_action_json(user, "disable_totp", request)
+                log_user_action_json(
+                    user=user,
+                    action="disable_totp",
+                    request=request,
+                )
                 messages.success(request, "2FA TOTP désactivée.")
                 return redirect("twofa_settings")
             return redirect("twofa_settings")

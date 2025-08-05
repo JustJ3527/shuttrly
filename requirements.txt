@@ -1,4 +1,5 @@
 asgiref==3.9.1
+attrs==25.3.0
 certifi==2025.7.14
 cffi==1.17.1
 charset-normalizer==3.1.0
@@ -14,6 +15,8 @@ django-phonenumber-field==8.1.0
 django-two-factor-auth==1.17.0
 ggshield==1.42.0
 idna==3.10
+jsonschema==4.25.0
+jsonschema-specifications==2025.4.1
 marshmallow==3.18.0
 marshmallow-dataclass==8.5.14
 mypy_extensions==1.1.0
@@ -32,12 +35,17 @@ python-dateutil==2.9.0.post0
 python-dotenv==0.21.1
 PyYAML==6.0.2
 qrcode==7.4.2
+referencing==0.36.2
 requests==2.32.4
 rich==12.5.1
+rpds-py==0.26.0
 setuptools==80.9.0
 six==1.17.0
 sqlparse==0.5.3
 truststore==0.10.3
 typing-inspect==0.9.0
 typing_extensions==4.12.2
+ua-parser==1.0.1
+ua-parser-builtins==0.18.0.post1
 urllib3==2.2.3
+user-agents==2.2.0

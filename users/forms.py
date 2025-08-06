@@ -1,8 +1,11 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from users.models import CustomUser
+import re
+from django.core.exceptions import ValidationError
 
 
+# ========= REGISTER FORMS =========
 class RegisterStep1Form(forms.Form):
     email = forms.EmailField(
         label="Email address",
@@ -72,11 +75,24 @@ class RegisterStep3Form(forms.Form):
         required=False,
     )
     password1 = forms.CharField(
-        label="Password", widget=forms.PasswordInput(attrs={"class": "form-control"})
+        label="Password",
+        widget=forms.PasswordInput(
+            attrs={
+                "class": "form-control",
+                "placeholder": "Enter a password",
+                "autocomplete": "new-password",
+            }
+        ),
     )
     password2 = forms.CharField(
         label="Confirm password",
-        widget=forms.PasswordInput(attrs={"class": "form-control"}),
+        widget=forms.PasswordInput(
+            attrs={
+                "class": "form-control",
+                "placeholder": "Confirm your password",
+                "autocomplete": "new-password-confirm",
+            }
+        ),
     )
 
 

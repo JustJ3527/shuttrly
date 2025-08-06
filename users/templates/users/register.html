@@ -13,7 +13,7 @@
        aria-valuenow="{{ step }}"
        aria-valuemin="1"
        aria-valuemax="3">
-    Étape {{ step }} sur 3
+    Step {{ step }} on 3
   </div>
 </div>
 
@@ -80,18 +80,18 @@
   {% endif %}
 
   <div class="d-flex justify-content-between mt-3">
-<button 
-  type="submit" 
-  name="previous" 
-  value="1" 
-  class="btn btn-secondary" 
-  {% if step == "1" %}disabled{% endif %}
-  formnovalidate
->
-  Précédent
-</button>
+    <button 
+      type="submit" 
+      name="previous" 
+      value="1" 
+      class="btn btn-secondary" 
+      {% if step == "1" %}disabled{% endif %}
+      formnovalidate
+    >
+      Previous
+    </button>
 
-    <button type="submit" class="btn {% if step == "3" %}btn-success{% else %}btn-primary{% endif %}">
+    <button type="submit" class="btn {% if step == "3" %}btn-success{% else %}btn-primary{% endif %}" style="border: none; background-color: #507186;">
       {% if step == "3" %}Create Account{% else %}Next{% endif %}
     </button>
   </div>
@@ -106,7 +106,7 @@
 
   .progress-bar {
     height: 25px;
-    background-color: #0d6efd; /* bleu bootstrap */
+    background-color: #507186;
     color: white;
     line-height: 25px;
     text-align: center;

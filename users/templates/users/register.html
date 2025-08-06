@@ -1,26 +1,118 @@
-{% extends 'base.html' %}
-{% block title %}Profil - Shuttrly{% endblock %}
+{% extends "base.html" %}
+{% block title %}Register{% endblock %}
+{% load math_filters %}
+
 {% block content %}
 
-<h2>Register</h2>
-<form method="post" enctype="multipart/form-data">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit">Create account</button>
+<h2>Register - Step {{ step }}</h2>
+
+<div class="progress" style="height: 25px;">
+  <div class="progress-bar"
+       role="progressbar"
+       style="width: {{ step|floatformat:0|mul:33.33 }}%;"
+       aria-valuenow="{{ step }}"
+       aria-valuemin="1"
+       aria-valuemax="3">
+    Étape {{ step }} sur 3
+  </div>
+</div>
+
+<form method="post" enctype="multipart/form-data" class="mt-4">
+  {% csrf_token %}
+  <input type="hidden" name="step" value="{{ step }}">
+
+  {% if step == "1" %}
+    <div class="mb-3">
+      {{ form.email.label_tag }}<br>
+      {{ form.email }}
+      {{ form.email.errors }}
+    </div>
+    <div class="mb-3">
+      {{ form.username.label_tag }}<br>
+      {{ form.username }}
+      {{ form.username.errors }}
+    </div>
+
+  {% elif step == "2" %}
+    <div class="mb-3">
+      {{ form.first_name.label_tag }}<br>
+      {{ form.first_name }}
+      {{ form.first_name.errors }}
+    </div>
+    <div class="mb-3">
+      {{ form.last_name.label_tag }}<br>
+      {{ form.last_name }}
+      {{ form.last_name.errors }}
+    </div>
+    <div class="mb-3">
+      {{ form.date_of_birth.label_tag }}<br>
+      {{ form.date_of_birth }}
+      {{ form.date_of_birth.errors }}
+    </div>
+
+  {% elif step == "3" %}
+    <div class="mb-3">
+      {{ form.bio.label_tag }}<br>
+      {{ form.bio }}
+      {{ form.bio.errors }}
+    </div>
+    <div class="form-check mb-3">
+      {{ form.is_private }}
+      {{ form.is_private.label_tag }}
+      {{ form.is_private.errors }}
+    </div>
+    <div class="mb-3">
+      {{ form.profile_picture.label_tag }}<br>
+      {{ form.profile_picture }}
+      {{ form.profile_picture.errors }}
+    </div>
+    <hr>
+    <div class="mb-3">
+      {{ form.password1.label_tag }}<br>
+      {{ form.password1 }}
+      {{ form.password1.errors }}
+    </div>
+    <div class="mb-3">
+      {{ form.password2.label_tag }}<br>
+      {{ form.password2 }}
+      {{ form.password2.errors }}
+    </div>
+  {% endif %}
+
+  <div class="d-flex justify-content-between mt-3">
+<button 
+  type="submit" 
+  name="previous" 
+  value="1" 
+  class="btn btn-secondary" 
+  {% if step == "1" %}disabled{% endif %}
+  formnovalidate
+>
+  Précédent
+</button>
+
+    <button type="submit" class="btn {% if step == "3" %}btn-success{% else %}btn-primary{% endif %}">
+      {% if step == "3" %}Create Account{% else %}Next{% endif %}
+    </button>
+  </div>
 </form>
 
-{% if messages %}
-  <ul>
-  {% for message in messages %}
-    <li>{{ message }}</li>
-  {% endfor %}
-  </ul>
-{% endif %}
+<style>
+  .progress {
+    background-color: #e9ecef;
+    border-radius: 0.25rem;
+    overflow: hidden;
+  }
 
-{% if user.is_authenticated %}
-    <p>You are already logged in as {{ user.username }}.</p>
-{% else %}
-    <p>Already have an account? <a href="{% url 'login' %}">Login here</a>.</p>
-{% endif %}
+  .progress-bar {
+    height: 25px;
+    background-color: #0d6efd; /* bleu bootstrap */
+    color: white;
+    line-height: 25px;
+    text-align: center;
+    transition: width 0.4s ease;
+    white-space: nowrap;
+  }
+</style>
 
 {% endblock %}

@@ -4,7 +4,23 @@ import requests
 from pathlib import Path
 from django.utils import timezone
 from django.conf import settings
-from users.utils import get_location_from_ip
+
+
+def get_location_from_ip(ip_address):
+    """
+    Get approximate location info from IP address using ipinfo.io.
+    Returns dict with city, region, country or empty dict on failure.
+    """
+    try:
+        response = requests.get(f"https://ipinfo.io/{ip_address}/json/", timeout=2)
+        data = response.json()
+        return {
+            "city": data.get("city"),
+            "region": data.get("region"),
+            "country": data.get("country"),
+        }
+    except Exception:
+        return {}
 
 
 def log_user_action_json(

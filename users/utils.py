@@ -29,10 +29,13 @@ from django.core.mail import send_mail  # Email sending
 from django.core.files.storage import default_storage  # File storage API
 from django.utils import timezone  # Timezone-aware datetime
 from django.utils.http import http_date  # HTTP date formatting
-from django.contrib.auth import get_user_model  # Get custom user model
+from django.contrib.auth import get_backends, get_user_model
+from django.shortcuts import redirect
+from django.contrib.auth import login
 
 # === Local Imports ===
 from .models import TrustedDevice  # Model for trusted devices
+from logs.utils import log_user_action_json
 
 
 # === Logger Setup ===
@@ -405,3 +408,34 @@ def analyze_user_agent(ua_string):
         "device_family": device_family,
         "device_type": device_type,
     }
+
+
+def login_success(
+    request, user, ip, user_agent, location, twofa_method=None, remember_device=False
+):
+    user.backend = (
+        f"{get_backends()[0].__module__}.{get_backends()[0].__class__.__name__}"
+    )
+    login(request, user)
+    user.is_online = True
+    user.last_login_date = timezone.now()
+    user.save()
+
+    if remember_device:
+        response = redirect("profile")
+        create_trusted_device(response, user, request, ip, user_agent, location)
+    else:
+        response = redirect("profile")
+
+    log_user_action_json(
+        user=request.user,
+        action="login",
+        request=request,
+        extra_info={"2fa": twofa_method} if twofa_method else None,
+    )
+
+    # Nettoyage session
+    request.session.pop("pre_2fa_user_id", None)
+    request.session.pop("remember_device", None)
+
+    return response

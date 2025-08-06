@@ -1,64 +1,73 @@
 {% extends 'base.html' %}
-{% block title %}Login - Shuttrly{% endblock %}
+{% block title %}Connexion – Shuttrly{% endblock %}
 
 {% block content %}
-<h2>Connexion</h2>
+<h2>Login - {{step}}</h2>
 
 <form method="POST">
   {% csrf_token %}
-  
+  {{ form.non_field_errors }}
+
   {% if step == "login" or not step %}
     <input type="hidden" name="step" value="login">
-    <label>Email</label><br>
-    <input type="text" name="email" required><br>
-    
-    <label>Mot de passe :</label><br>
-    <input type="password" name="password" required><br><br>
-    
+
+    <label for="{{ form.email.id_for_label }}">Email ou nom d'utilisateur :</label><br>
+    {{ form.email }}<br>
+    {{ form.email.errors }}
+
+    <label for="{{ form.password.id_for_label }}">Mot de passe :</label><br>
+    {{ form.password }}<br>
+    {{ form.password.errors }}
+
+    <br>
     <button type="submit">Se connecter</button>
 
   {% elif step == "choose_2fa" %}
     <input type="hidden" name="step" value="choose_2fa">
     <p>Choisissez la méthode d'authentification à deux facteurs :</p>
 
-    <label>
-      <input type="radio" name="twofa_method" value="totp" {% if default_method == "totp" %}checked{% endif %}>
-      Application d'authentification (TOTP)
+    {{ form.twofa_method.errors }}
+    {{ form.twofa_method }}
+
+    <br><br>
+
+    <label for="{{ form.remember_device.id_for_label }}">
+      {{ form.remember_device }} Se souvenir de cet appareil (30 jours)
     </label><br>
-
-    <label>
-      <input type="radio" name="twofa_method" value="email" {% if default_method == "email" %}checked{% endif %}>
-      Code par e-mail
-    </label><br><br>
-
-    <label>
-      <input type="checkbox" name="remember_device" value="yes">
-      Se souvenir de cet appareil (30 jours)
-    </label>
 
     <button type="submit">Valider</button>
 
   {% elif step == "email_2fa" %}
     <input type="hidden" name="step" value="email_2fa">
-    <label>Entrez le code reçu par e-mail :</label><br>
-    <input type="text" name="twofa_code" required autofocus><br><br>
 
-    {% comment %} <label>
-      <input type="checkbox" name="remember_device" value="yes">
-      Se souvenir de cet appareil (30 jours)
-    </label> {% endcomment %}
+    <label for="{{ form.twofa_code.id_for_label }}">Entrez le code reçu par e-mail :</label><br>
+    {{ form.twofa_code }}<br>
+    {{ form.twofa_code.errors }}
+
+    <br><br>
+
+    <label for="{{ form.remember_device.id_for_label }}">
+      {{ form.remember_device }} Se souvenir de cet appareil (30 jours)
+    </label><br>
 
     <button type="submit">Valider</button>
     <button type="submit" name="step" value="login" formnovalidate>Annuler</button>
 
   {% elif step == "totp_2fa" %}
     <input type="hidden" name="step" value="totp_2fa">
-    <label>Entrez le code généré par votre application d'authentification :</label><br>
-    <input type="text" name="twofa_code" required autofocus><br><br>
+
+    <label for="{{ form.twofa_code.id_for_label }}">Entrez le code TOTP :</label><br>
+    {{ form.twofa_code }}<br>
+    {{ form.twofa_code.errors }}
+
+    <br><br>
+
+    <label for="{{ form.remember_device.id_for_label }}">
+      {{ form.remember_device }} Se souvenir de cet appareil (30 jours)
+    </label><br>
 
     <button type="submit">Valider</button>
     <button type="submit" name="step" value="login" formnovalidate>Annuler</button>
   {% endif %}
-
 </form>
 {% endblock %}

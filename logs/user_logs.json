@@ -1347,4 +1347,137 @@
   "extra_info": "Verification code resent",
   "restored": false
 }
+,
+{
+  "log_id": "18391ebc-2668-4179-90f0-116ee8f70c39",
+  "user": "admin",
+  "user_id": 1,
+  "action": "delete_user_account",
+  "timestamp": "2025-08-06T17:08:45.198417+00:00",
+  "ip_address": "127.0.0.1",
+  "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Safari/605.1.15",
+  "location": {
+    "city": null,
+    "region": null,
+    "country": null
+  },
+  "extra_info": {
+    "impacted_user_id": 9
+  },
+  "restored": false
+}
+,
+{
+  "log_id": "2ead220a-d4e6-4da0-ac11-a0b5323e0a1c",
+  "user": "Jul_Atn",
+  "user_id": 10,
+  "action": "register",
+  "timestamp": "2025-08-06T21:09:09.234284+00:00",
+  "ip_address": "127.0.0.1",
+  "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36",
+  "location": {
+    "city": null,
+    "region": null,
+    "country": null
+  },
+  "extra_info": {
+    "impacted_user_id": 10
+  },
+  "restored": false
+}
+,
+{
+  "log_id": "d43df36a-cd71-4c90-a5e6-323e662ce0e9",
+  "user": "Jul_Atn",
+  "user_id": 10,
+  "action": "logout",
+  "timestamp": "2025-08-06T22:17:27.193340+00:00",
+  "ip_address": "127.0.0.1",
+  "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36",
+  "location": {
+    "city": null,
+    "region": null,
+    "country": null
+  },
+  "extra_info": {
+    "impacted_user_id": 10
+  },
+  "restored": false
+}
+,
+{
+  "log_id": "79dcbacd-a4f4-4f52-8434-d94d1b45ae8e",
+  "user": "admin",
+  "user_id": 1,
+  "action": "delete_user_account",
+  "timestamp": "2025-08-06T22:17:40.490000+00:00",
+  "ip_address": "127.0.0.1",
+  "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Safari/605.1.15",
+  "location": {
+    "city": null,
+    "region": null,
+    "country": null
+  },
+  "extra_info": {
+    "impacted_user_id": 10
+  },
+  "restored": false
+}
+,
+{
+  "log_id": "0c5cbec3-d3bb-4246-b6bc-bc5ceb41efff",
+  "user": "Jul_atn",
+  "user_id": 11,
+  "action": "register",
+  "timestamp": "2025-08-06T22:41:42.222472+00:00",
+  "ip_address": "127.0.0.1",
+  "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36",
+  "location": {
+    "city": null,
+    "region": null,
+    "country": null
+  },
+  "extra_info": {
+    "impacted_user_id": 11
+  },
+  "restored": false
+}
+,
+{
+  "log_id": "76a110a7-33e3-4546-a14c-d1e642195d79",
+  "user": "Jul_atn",
+  "user_id": 11,
+  "action": "logout",
+  "timestamp": "2025-08-06T23:25:43.305715+00:00",
+  "ip_address": "127.0.0.1",
+  "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36",
+  "location": {
+    "city": null,
+    "region": null,
+    "country": null
+  },
+  "extra_info": {
+    "impacted_user_id": 11
+  },
+  "restored": false
+}
+,
+{
+  "log_id": "0cb1e55c-8d4b-4a2f-81ca-9641a9858a14",
+  "user": "JustJ3527",
+  "user_id": 12,
+  "action": "register",
+  "timestamp": "2025-08-07T00:37:50.602150+00:00",
+  "ip_address": "127.0.0.1",
+  "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36",
+  "location": {
+    "city": null,
+    "region": null,
+    "country": null
+  },
+  "extra_info": {
+    "impacted_user_id": 12
+  },
+  "restored": false
+}
 ]

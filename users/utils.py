@@ -14,7 +14,7 @@ import io  # For in-memory streams (QR code)
 import uuid  # Unique token generation
 import random  # For generating codes
 import string  # Characters for code generation
-from datetime import datetime, timedelta  # Date and time management
+from datetime import datetime, timedelta, date  # Date and time management
 import base64  # Encoding images to base64
 
 # === Third-Party Imports ===
@@ -439,3 +439,64 @@ def login_success(
     request.session.pop("remember_device", None)
 
     return response
+
+
+def generate_verification_code():
+    """Génère un code de vérification à 6 chiffres"""
+    return "".join(random.choices(string.digits, k=6))
+
+
+def calculate_age(birth_date):
+    """Calcule l'âge à partir de la date de naissance"""
+    today = date.today()
+    return (
+        today.year
+        - birth_date.year
+        - ((today.month, today.day) < (birth_date.month, birth_date.day))
+    )
+
+
+def can_resend_code(session_data):
+    """Vérifie si on peut renvoyer un code"""
+    code_sent_at = session_data.get("code_sent_at")
+    if not code_sent_at:
+        return True
+
+    try:
+        sent_time = datetime.fromisoformat(
+            code_sent_at.replace("Z", "+00:00")
+            if code_sent_at.endswith("Z")
+            else code_sent_at
+        )
+        if timezone.is_naive(sent_time):
+            sent_time = timezone.make_aware(sent_time)
+
+        # Attendre 2 minutes avant de permettre un renvoi
+        return (timezone.now() - sent_time).total_seconds() > 120
+    except:
+        return True
+
+
+def send_verification_email(email, code):
+    """
+    Fonction pour envoyer l'email de vérification
+    À adapter selon votre configuration email
+    """
+    from django.core.mail import send_mail
+    from django.conf import settings
+
+    try:
+        subject = "Code de vérification"
+        message = f"Votre code de vérification est : {code}\n\nCe code expire dans 10 minutes."
+
+        send_mail(
+            subject,
+            message,
+            settings.DEFAULT_FROM_EMAIL,
+            [email],
+            fail_silently=False,
+        )
+        return True
+    except Exception as e:
+        print(f"Erreur envoi email: {e}")
+        return False

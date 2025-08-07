@@ -5,18 +5,18 @@ body {
     background-color: #f0faff;
 }
 
-#main-content {
+/* #main-content {
     padding: 20px;
     max-width: 1200px;
     margin: auto;
-}
+} */
  a {
     color: #000000;
     text-decoration: none;
  }
 
 .navbar {
-    background-color: #507186;
+    background-color: #527970;
     color: white;
     padding: 1rem !important;
     display: flex;
@@ -53,7 +53,7 @@ body {
 }
 
 footer {
-    background-color: #507186;
+    background-color: #527970;
     color: white;
     text-align: center;
     padding: 1rem;

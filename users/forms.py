@@ -236,3 +236,120 @@ class LoginForm(forms.Form):
             }
         ),
     )
+
+
+class RegisterStep1Form(forms.Form):
+    email = forms.EmailField(
+        label="Adresse email",
+        widget=forms.EmailInput(
+            attrs={
+                "class": "form-control",
+                "placeholder": "votre@email.com",
+                "type": "email",
+                "autocomplete": "email",
+            }
+        ),
+    )
+
+
+class RegisterStep2Form(forms.Form):
+    verification_code = forms.CharField(
+        label="Code de vérification",
+        max_length=6,
+        min_length=6,
+        widget=forms.TextInput(
+            attrs={
+                "class": "form-control text-center",
+                "placeholder": "000000",
+                "maxlength": "6",
+                "pattern": "[0-9]{6}",
+                "autocomplete": "one-time-code",
+            }
+        ),
+        help_text="Entrez le code à 6 chiffres reçu par email",
+    )
+
+
+class RegisterStep3Form(forms.Form):
+    first_name = forms.CharField(
+        label="Prénom",
+        max_length=30,
+        widget=forms.TextInput(
+            attrs={
+                "class": "form-control",
+                "placeholder": "Votre prénom",
+                "autocomplete": "given-name",
+            }
+        ),
+    )
+    last_name = forms.CharField(
+        label="Nom",
+        max_length=30,
+        widget=forms.TextInput(
+            attrs={
+                "class": "form-control",
+                "placeholder": "Votre nom",
+                "autocomplete": "family-name",
+            }
+        ),
+    )
+    date_of_birth = forms.DateField(
+        label="Date de naissance",
+        widget=forms.DateInput(
+            attrs={"class": "form-control", "type": "date", "autocomplete": "bday"}
+        ),
+        help_text="Vous devez avoir au moins 16 ans",
+    )
+
+
+class RegisterStep4Form(forms.Form):
+    username = forms.CharField(
+        label="Nom d'utilisateur",
+        max_length=50,
+        widget=forms.TextInput(
+            attrs={
+                "class": "form-control",
+                "placeholder": "nom_utilisateur",
+                "autocomplete": "username",
+                "id": "username-input",
+            }
+        ),
+        help_text="Seuls les lettres, chiffres et underscores sont autorisés",
+    )
+
+
+class RegisterStep5Form(forms.Form):
+    password1 = forms.CharField(
+        label="Mot de passe",
+        widget=forms.PasswordInput(
+            attrs={
+                "class": "form-control",
+                "placeholder": "Votre mot de passe",
+                "autocomplete": "new-password",
+                "id": "password1",
+            }
+        ),
+        help_text="Au moins 8 caractères",
+    )
+    password2 = forms.CharField(
+        label="Confirmer le mot de passe",
+        widget=forms.PasswordInput(
+            attrs={
+                "class": "form-control",
+                "placeholder": "Confirmez votre mot de passe",
+                "autocomplete": "new-password",
+                "id": "password2",
+            }
+        ),
+    )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        password1 = cleaned_data.get("password1")
+        password2 = cleaned_data.get("password2")
+
+        if password1 and password2:
+            if password1 != password2:
+                raise forms.ValidationError("Les mots de passe ne correspondent pas.")
+
+        return cleaned_data

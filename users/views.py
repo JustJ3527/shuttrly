@@ -1,48 +1,70 @@
 # Context: Django user management views with detailed JSON logging.
 
-from django.shortcuts import render, redirect, get_object_or_404
+# === Python Standard Library ===
+from datetime import date, datetime, timedelta
+from urllib.parse import urlencode
+import re
+
+# === Django Imports ===
+from django.conf import settings
 from django.contrib import messages
+from django.contrib.auth import authenticate, get_backends, login, logout
+from django.db import transaction
+from django.db.models import Q
+from django.http import HttpResponseRedirect, JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
+from django.utils import timezone
+from django.utils.safestring import mark_safe
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods, require_POST
+
+# === Project Models ===
+from .models import CustomUser, TrustedDevice
+
+# === Project Forms ===
 from .forms import (
     RegisterStep1Form,
     RegisterStep2Form,
     RegisterStep3Form,
+    RegisterStep4Form,
+    RegisterStep5Form,
     CustomUserUpdateForm,
     LoginForm,
     Choose2FAMethodForm,
     Email2FAForm,
     TOTP2FAForm,
 )
-from django.contrib.auth import logout, authenticate, login
-from .models import CustomUser, TrustedDevice
-from django.utils import timezone
-from django.db import transaction
-from django.views.decorators.http import require_http_methods
-from django.urls import reverse
-from django.utils.safestring import mark_safe
-from logs.utils import log_user_action_json  # JSON logging utility
-from django.conf import settings
-from datetime import timedelta, date
-from urllib.parse import urlencode
-from django.contrib.auth import get_backends
+
+# === Project users/utils ===
 from .utils import (
-    generate_email_code,
-    send_email_code,
-    is_email_code_valid,
-    generate_totp_secret,
-    get_totp_uri,
-    generate_qr_code_base64,
-    verify_totp,
-    schedule_profile_picture_deletion,
-    is_trusted_device,
-    create_trusted_device,
-    get_location_from_ip,
     analyze_user_agent,
+    calculate_age,
+    can_resend_code,
+    create_trusted_device,
+    generate_email_code,
+    generate_qr_code_base64,
+    generate_totp_secret,
+    generate_verification_code,
+    get_location_from_ip,
+    get_totp_uri,
+    is_email_code_valid,
+    is_trusted_device,
     login_success,
+    schedule_profile_picture_deletion,
+    send_email_code,
+    send_verification_email,
+    verify_totp,
+    get_changes_dict,
+    get_user_agent,
+    get_client_ip,
 )
 
-# Decorators
+# === Project logs/utils ===
+from logs.utils import log_user_action_json
 
 
+# ========= DECORATORS =========
 def redirect_authenticated_user(view_func):
     def wrapper(request, *args, **kwargs):
         if request.user.is_authenticated:
@@ -63,136 +85,419 @@ def redirect_not_authenticated_user(view_func):
     return wrapper
 
 
-# Helper to get IP and User-Agent from request
+# ================ VIEWS ================ #
 
 
-def get_client_ip(request):
-    x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
-    if x_forwarded_for:
-        return x_forwarded_for.split(",")[0].strip()
-    return request.META.get("REMOTE_ADDR", "unknown")
-
-
-def get_user_agent(request):
-    return request.META.get("HTTP_USER_AGENT", "unknown")
-
-
-# Views
-
-
+# ------==== Registration Views ===------- #
 @redirect_authenticated_user
 def register_view(request):
+    "Main view for the 6-step registration process"
     if request.user.is_authenticated:
         return redirect("profile")
 
-    step = request.POST.get("step", "1") if request.method == "POST" else "1"
+    # Retrieve the current step
+    if request.method == "POST":
+        step = request.POST.get("step", "1")
+
+        # Previous button management
+        if "previous" in request.POST:
+            prev_step = str(max(1, int(step) - 1))
+            return handle_previous_step(request, prev_step)
+    else:
+        step = request.GET.get("step", "1")
+
+    # Dispatch to the appropriate function
+    step_handlers = {
+        "1": handle_step_1_email,
+        "2": handle_step_2_verification,
+        "3": handle_step_3_personal_info,
+        "4": handle_step_4_username,
+        "5": handle_step_5_password,
+        "6": handle_step_6_final,
+    }
+
+    handler = step_handlers.get(step, handle_step_1_email)
+    return handler(request)
+
+
+@redirect_authenticated_user
+def handle_previous_step(request, step):
+    """Management of return to the previous step"""
+    session_data = request.session.get("register_data", {})
+
+    form_classes = {
+        "1": RegisterStep1Form,
+        "2": RegisterStep2Form,
+        "3": RegisterStep3Form,
+        "4": RegisterStep4Form,
+        "5": RegisterStep5Form,
+    }
+
+    FormClass = form_classes.get(step, RegisterStep1Form)
+    form = FormClass(initial=session_data)
+
+    return render(
+        request,
+        "users/register.html",
+        {"form": form, "step": step, "progress": int(step) * 100 // 6},
+    )
+
+
+@redirect_authenticated_user
+def handle_step_1_email(request):
+    """Step 1: Enter email and generate code"""
     session_data = request.session.get("register_data", {})
 
     if request.method == "POST":
-        if "previous" in request.POST:
-            # bouton précédent cliqué : revenir à l’étape précédente
-            prev_step = str(max(1, int(step) - 1))
-            form_classes = {
-                "1": RegisterStep1Form,
-                "2": RegisterStep2Form,
-                "3": RegisterStep3Form,
-            }
-            form = form_classes[prev_step](initial=session_data)
-            return render(
-                request,
-                "users/register.html",
-                {"form": form, "step": prev_step},
-            )
-        elif step == "1":
-            form = RegisterStep1Form(request.POST)
-            if form.is_valid():
-                email = form.cleaned_data["email"]
-                username = form.cleaned_data["username"]
+        form = RegisterStep1Form(request.POST)
+        if form.is_valid():
+            email = form.cleaned_data["email"]
 
-                email_exists = CustomUser.objects.filter(email=email).exists()
-                username_exists = CustomUser.objects.filter(username=username).exists()
+            # Check if email is alredy registered
+            if CustomUser.objects.filter(email=email).exists():
+                form.add_error("email", "An account with this email already exists.")
+            else:
+                # Generate and send the verification code
+                verification_code = generate_verification_code()
 
-                if email_exists:
-                    form.add_error(
-                        "email", "An account with this email already exists."
-                    )
-                if username_exists:
-                    form.add_error("username", "This username is already taken.")
-
-                if not (email_exists or username_exists):
-                    session_data.update(form.cleaned_data)
-                    request.session["register_data"] = session_data
-                    return render(
-                        request,
-                        "users/register.html",
-                        {"form": RegisterStep2Form(), "step": "2"},
-                    )
-        elif step == "2":
-            form = RegisterStep2Form(request.POST)
-            if form.is_valid():
-                cleaned = form.cleaned_data.copy()
-                # Convert date in str ISO format to datetime object
-                cleaned["date_of_birth"] = cleaned["date_of_birth"].isoformat()
-                session_data.update(cleaned)
+                # Temporarily store data
+                session_data.update(
+                    {
+                        "email": email,
+                        "verification_code": verification_code,
+                        "code_sent_at": timezone.now().isoformat(),
+                        "code_attempts": 0,
+                    }
+                )
                 request.session["register_data"] = session_data
-                return render(
-                    request,
-                    "users/register.html",
-                    {"form": RegisterStep3Form(), "step": "3"},
-                )
-        elif step == "3":
-            form = RegisterStep3Form(request.POST, request.FILES)
-            if form.is_valid():
-                session_data.update(form.cleaned_data)
-                request.session.pop("register_data", None)  # Nettoyer la session
 
-                date_of_birth_str = session_data["date_of_birth"]
-                date_of_birth = date.fromisoformat(
-                    date_of_birth_str
-                )  # Convert string to datetime object
+                # Send email
+                # TODO: Personalize the email
+                success = send_verification_email(email, verification_code)
 
-                user = CustomUser(
-                    email=session_data["email"],
-                    username=session_data["username"],
-                    first_name=session_data["first_name"],
-                    last_name=session_data["last_name"],
-                    date_of_birth=session_data["date_of_birth"],
-                    bio=session_data.get("bio", ""),
-                    is_private=session_data.get("is_private", False),
-                    profile_picture=request.FILES.get("profile_picture"),
-                )
-                user.set_password(session_data["password1"])
-
-                ip = get_client_ip(request)
-                user.ip_address = ip
-                location = get_location_from_ip(ip)
-                user.save()
-
-                log_user_action_json(
-                    user=user,
-                    action="register",
-                    request=request,
-                    ip_address=ip,
-                    extra_info={"impacted_user_id": user.id},
-                )
-
-                success, msg = user.send_verification_email()
-                request.session["verification_email"] = user.email
                 if success:
-                    messages.success(
-                        request, "Account created successfully. A code has been sent."
-                    )
+                    messages.success(request, "Verification code sent to your email.")
+                    return HttpResponseRedirect(f"{reverse('register')}?step=2")
                 else:
-                    messages.error(
-                        request, f"Account created but error sending code: {msg}"
-                    )
-                return redirect("verify_email")
+                    form.add_error("email", "Error sending email.")
     else:
-        form = RegisterStep1Form()
+        form = RegisterStep1Form(initial=session_data)
 
-    return render(request, "users/register.html", {"form": form, "step": step})
+    return render(
+        request, "users/register.html", {"form": form, "step": "1", "progress": 17}
+    )
 
 
+@redirect_authenticated_user
+def handle_step_2_verification(request):
+    """ "Step 2: Verify Email Code"""
+    session_data = request.session.get("register_data", {})
+
+    if not session_data.get("email"):
+        messages.error(request, "Session expired. Please try again.")
+        return redirect("register")
+
+    if request.method == "POST":
+        form = RegisterStep2Form(request.POST)
+        if form.is_valid():
+            submitted_code = form.cleaned_data["verification_code"]
+            stored_code = session_data.get("verification_code")
+            code_sent_at = session_data.get("code_sent_at")
+            attempts = session_data.get("code_attempts", 0)
+
+            # Vérifier les tentatives
+            if attempts >= 3:
+                form.add_error(
+                    "verification_code",
+                    "Too many attempts. Request a new code.",
+                    # TODO: Send email notification to email adress if too many attempts to prevent person that someone tries to create an account with this email adress
+                )
+            else:
+                # Check expiration (10 minutes)
+                if code_sent_at:
+                    sent_time = datetime.fromisoformat(
+                        code_sent_at.replace("Z", "+00:00")
+                        if code_sent_at.endswith("Z")
+                        else code_sent_at
+                    )
+                    if timezone.is_naive(sent_time):
+                        sent_time = timezone.make_aware(sent_time)
+
+                    if (timezone.now() - sent_time).total_seconds() > 600:  # 10 minutes
+                        form.add_error(
+                            "verification_code",
+                            "LThe code has expired. Request a new code.",
+                        )
+                    elif submitted_code == stored_code:
+                        session_data["email_verified"] = True
+                        request.session["register_data"] = session_data
+                        return HttpResponseRedirect(f"{reverse('register')}?step=3")
+                    else:
+                        attempts += 1
+                        session_data["code_attempts"] = attempts
+                        request.session["register_data"] = session_data
+                        form.add_error(
+                            "verification_code",
+                            f"Incorrect code. {3-attempts} remaining attempt(s).",
+                        )
+                else:
+                    form.add_error(
+                        "verification_code", "Session error. Please try again."
+                    )
+    else:
+        form = RegisterStep2Form()
+
+    # Calculer le temps restant pour renvoyer le code
+    can_resend = can_resend_code(session_data)
+
+    return render(
+        request,
+        "users/register.html",
+        {
+            "form": form,
+            "step": "2",
+            "progress": 33,
+            "email": session_data.get("email"),
+            "can_resend": can_resend,
+        },
+    )
+
+
+@redirect_authenticated_user
+def handle_step_3_personal_info(request):
+    """Step 3: First name, last name and date of birth"""
+    session_data = request.session.get("register_data", {})
+
+    if not session_data.get("email_verified"):
+        messages.error(request, "Please check your email first.")
+        return HttpResponseRedirect(f"{reverse('register')}?step=2")
+
+    if request.method == "POST":
+        form = RegisterStep3Form(request.POST)
+        if form.is_valid():
+            # Check minimum age
+            birth_date = form.cleaned_data["date_of_birth"]
+            age = calculate_age(birth_date)
+            MINIMUM_AGE = 16
+            if age < MINIMUM_AGE:
+                form.add_error(
+                    "date_of_birth",
+                    f"You must be at least { age } years old to create an account.",
+                )
+            else:
+                session_data.update(
+                    {
+                        "first_name": form.cleaned_data["first_name"],
+                        "last_name": form.cleaned_data["last_name"],
+                        "date_of_birth": birth_date.isoformat(),
+                    }
+                )
+                request.session["register_data"] = session_data
+                return HttpResponseRedirect(f"{reverse('register')}?step=4")
+    else:
+        form = RegisterStep3Form(initial=session_data)
+
+    return render(
+        request, "users/register.html", {"form": form, "step": "3", "progress": 50}
+    )
+
+
+@redirect_authenticated_user
+def handle_step_4_username(request):
+    """Step 4: Choosing a Username"""
+    session_data = request.session.get("register_data", {})
+
+    if not session_data.get("first_name"):
+        messages.error(request, "Please complete the previous steps.")
+        return HttpResponseRedirect(f"{reverse('register')}?step=3")
+
+    if request.method == "POST":
+        if request.POST.get("check_username"):
+            # AJAX username verification
+            username = request.POST.get("username", "").strip()
+            is_available = not CustomUser.objects.filter(username=username).exists()
+            return JsonResponse({"available": is_available})
+
+        form = RegisterStep4Form(request.POST)
+        if form.is_valid():
+            username = form.cleaned_data["username"]
+
+            if CustomUser.objects.filter(username=username).exists():
+                form.add_error("username", "This username is already taken.")
+            else:
+                session_data["username"] = username
+                request.session["register_data"] = session_data
+                return HttpResponseRedirect(f"{reverse('register')}?step=5")
+    else:
+        form = RegisterStep4Form(initial=session_data)
+
+    return render(
+        request, "users/register.html", {"form": form, "step": "4", "progress": 67}
+    )
+
+
+@redirect_authenticated_user
+def handle_step_5_password(request):
+    """Step 5: Password and Confirmation"""
+    session_data = request.session.get("register_data", {})
+
+    if not session_data.get("username"):
+        messages.error(request, "Please complete the previous steps.")
+        return HttpResponseRedirect(f"{reverse('register')}?step=4")
+
+    if request.method == "POST":
+        form = RegisterStep5Form(request.POST)
+        if form.is_valid():
+            session_data.update(
+                {
+                    "password1": form.cleaned_data["password1"],
+                    "password2": form.cleaned_data["password2"],
+                }
+            )
+            request.session["register_data"] = session_data
+            return HttpResponseRedirect(f"{reverse('register')}?step=6")
+    else:
+        form = RegisterStep5Form()
+
+    return render(
+        request, "users/register.html", {"form": form, "step": "5", "progress": 83}
+    )
+
+
+@redirect_authenticated_user
+def handle_step_6_final(request):
+    """Step 6: Summary and account creation"""
+    session_data = request.session.get("register_data", {})
+
+    if not session_data.get("password1"):
+        messages.error(request, "Please complete the previous steps.")
+        return HttpResponseRedirect(f"{reverse('register')}?step=5")
+
+    if request.method == "POST":
+        # Create the user account
+        try:
+            date_of_birth = date.fromisoformat(session_data["date_of_birth"])
+
+            user = CustomUser(
+                email=session_data["email"],
+                username=session_data["username"],
+                first_name=session_data["first_name"],
+                last_name=session_data["last_name"],
+                date_of_birth=date_of_birth,
+                is_email_verified=True,  # Already verify at step 2
+            )
+            user.set_password(session_data["password1"])
+
+            # Log
+            ip = get_client_ip(request)
+            user.ip_address = ip
+            user.save()
+
+            log_user_action_json(
+                user=user,
+                action="register",
+                request=request,
+                ip_address=ip,
+                extra_info={"impacted_user_id": user.id},
+            )
+
+            # Clean session
+            request.session.pop("register_data", None)
+
+            # Automatically log in user
+            user.backend = (
+                f"{get_backends()[0].__module__}.{get_backends()[0].__class__.__name__}"
+            )
+            login(request, user)
+
+            user.is_online = True
+            user.last_login_date = timezone.now()
+            user.save()
+
+            messages.success(
+                request, f"Account created successfully! Welcome {user.first_name}"
+            )
+            return redirect("profile")
+
+        except Exception as e:
+            messages.error(request, "Error creating account. Please try again.")
+            return HttpResponseRedirect(f"{reverse('register')}?step=5")
+
+    return render(
+        request,
+        "users/register.html",
+        {"step": "6", "progress": 100, "session_data": session_data, "summary": True},
+    )
+
+
+@redirect_authenticated_user
+def resend_verification_code_view(request):
+    """View to return verification code"""
+    if request.method != "POST":
+        return HttpResponseRedirect(f"{reverse('register')}?step=2")
+
+    session_data = request.session.get("register_data", {})
+    email = session_data.get("email")
+
+    if not email:
+        messages.error(request, "Session expired.")
+        return redirect("register")
+
+    if not can_resend_code(session_data):
+        messages.warning(request, "Wait 2 minutes before requesting a new code.")
+        return HttpResponseRedirect(f"{reverse('register')}?step=2")
+
+    # Generate and send a new code
+    new_code = generate_verification_code()
+    session_data.update(
+        {
+            "verification_code": new_code,
+            "code_sent_at": timezone.now().isoformat(),
+            "code_attempts": 0,
+        }
+    )
+    request.session["register_data"] = session_data
+
+    if send_verification_email(email, new_code):
+        messages.success(request, "New code sent.")
+    else:
+        messages.error(request, "Error sending.")
+
+    return HttpResponseRedirect(f"{reverse('register')}?step=2")
+
+
+# ----- Ajax ----- #
+@csrf_exempt
+@require_POST
+def check_username_availability(request):
+    """AJAX view to check username availability in real time"""
+    username = request.POST.get("username", "").strip()
+
+    if not username:
+        return JsonResponse({"available": False, "message": "Username required"})
+
+    if len(username) < 3:
+        return JsonResponse({"available": False, "message": "Minimum 3 characters"})
+
+    # Check allowed characters
+
+    if not re.match("^[a-zA-Z0-9_]+$", username):
+        return JsonResponse(
+            {"available": False, "message": "Only letters, numbers and _ allowed"}
+        )
+
+    # Check disponibility
+    is_available = not CustomUser.objects.filter(username=username).exists()
+
+    return JsonResponse(
+        {
+            "available": is_available,
+            "message": "Available" if is_available else "Already taken",
+        }
+    )
+
+
+# ------==== Login Views ====------- #
 @redirect_authenticated_user
 def login_view(request):
     ip = get_client_ip(request)
@@ -370,170 +675,7 @@ def login_view(request):
     return render(request, "users/login.html", {"form": LoginForm(), "step": "login"})
 
 
-def verify_email_view(request):
-
-    ip = get_client_ip(request)
-    user_agent = get_user_agent(request)
-    location = get_location_from_ip(ip)
-
-    email = request.session.get("verification_email")
-    if not email:
-        messages.error(request, "Session expired. Please register again.")
-        return redirect("register")
-
-    try:
-        user = CustomUser.objects.get(email=email)
-    except CustomUser.DoesNotExist:
-        messages.error(request, "User not found.")
-        return redirect("register")
-
-    if user.is_email_verified:
-        messages.info(request, "Email already verified. You can login.")
-        return redirect("login")
-
-    if request.method == "POST":
-        submitted_code = request.POST.get("verification_code", "").strip()
-        if not submitted_code:
-            messages.error(request, "Please enter the verification code.")
-            return render(request, "users/verify_email.html", {"email": email})
-
-        if user.verify_email(submitted_code):
-            if "verification_email" in request.session:
-                del request.session["verification_email"]
-
-            user.backend = "users.backend.SuperuserUsernameBackend"
-            user.backend = (
-                f"{get_backends()[0].__module__}.{get_backends()[0].__class__.__name__}"
-            )
-            login(request, user)
-
-            user.is_online = True
-            user.last_login_date = timezone.now()
-            user.save()
-
-            ip = get_client_ip(request)
-            user_agent = get_user_agent(request)
-            log_user_action_json(
-                user=user,
-                action="verify_email",
-                request=request,
-                extra_info={
-                    "verification_code_used": submitted_code,
-                },
-            )
-
-            messages.success(
-                request, f"Email verified successfully! Welcome {user.first_name}"
-            )
-            return redirect("profile")
-
-        else:
-            messages.error(request, "The code is incorrect or has expired.")
-
-    can_resend = user.can_send_verification_code()
-    time_until_resend = 0
-    if not can_resend and user.verification_code_sent_at:
-        elapsed = timezone.now() - user.verification_code_sent_at
-        time_until_resend = max(0, 15 - int(elapsed.total_seconds()))
-
-    context = {
-        "email": email,
-        "can_resend": can_resend,
-        "time_until_resend": time_until_resend,
-    }
-    return render(request, "users/verify_email.html", context)
-
-
-def resend_verification_code_view(request):
-    if request.method != "POST":
-        return redirect("verify_email")
-
-    email = request.session.get("verification_email")
-    if not email:
-        messages.error(request, "Session expired. Please register again.")
-        return redirect("register")
-
-    try:
-        user = CustomUser.objects.get(email=email)
-    except CustomUser.DoesNotExist:
-        messages.error(request, "User not found.")
-        return redirect("register")
-
-    if not user.can_send_verification_code():
-        messages.warning(
-            request, "You must wait 2 minutes before requesting a new code."
-        )
-        return redirect("verify_email")
-
-    success, msg = user.send_verification_email()
-    if success:
-        log_user_action_json(
-            user=user,
-            action="resend_code",
-            request=request,
-            extra_info="Verification code resent",
-        )
-        messages.success(request, "A new code has been sent.")
-    else:
-        messages.error(request, msg)
-
-    return redirect("verify_email")
-
-
-from .utils import get_changes_dict
-from .models import CustomUser
-from .utils import get_client_ip, get_user_agent
-
-# autres imports ...
-
-
-@redirect_not_authenticated_user
-def profile_view(request):
-    user = request.user
-    if request.method == "POST":
-        form = CustomUserUpdateForm(request.POST, request.FILES, instance=user)
-        if form.is_valid():
-            old_data = CustomUser.objects.get(pk=user.pk)
-
-            # Sauvegarder l'ancienne photo pour suppression différée
-            old_profile_picture = None
-            if "profile_picture" in form.changed_data and old_data.profile_picture:
-                old_profile_picture = old_data.profile_picture.name
-
-            updated_user = form.save()
-
-            # Supprimer l'ancienne photo plus tard
-            if old_profile_picture:
-                delay = getattr(
-                    settings, "PROFILE_PICTURE_DELETION_DELAY_SECONDS", 86400
-                )
-                schedule_profile_picture_deletion(old_profile_picture, seconds=delay)
-
-            ip = get_client_ip(request)
-            user_agent = get_user_agent(request)
-            location = get_location_from_ip(ip)
-
-            # Utilise la fonction utilitaire ici
-            changes_dict = get_changes_dict(old_data, updated_user, form.changed_data)
-
-            log_user_action_json(
-                user=user,
-                action="update_profile",
-                request=request,
-                extra_info={
-                    "impacted_user_id": user.id,
-                    "changes": changes_dict,
-                },
-            )
-            return redirect("profile")
-        else:
-            return render(request, "users/profile.html", {"form": form})
-
-    else:
-        form = CustomUserUpdateForm(instance=user)
-        return render(request, "users/profile.html", {"form": form})
-
-
+# ------==== Logout View ====------- #
 def logout_view(request):
     if request.user.is_authenticated:
         user = request.user
@@ -556,6 +698,51 @@ def logout_view(request):
     return redirect("login")
 
 
+# ========== CUSTOMIZATION VIEWS
+# ------==== Profile View ====------- #
+@redirect_not_authenticated_user
+def profile_view(request):
+    user = request.user
+    if request.method == "POST":
+        form = CustomUserUpdateForm(request.POST, request.FILES, instance=user)
+        if form.is_valid():
+            old_data = CustomUser.objects.get(pk=user.pk)
+
+            # Save old photo for delayed deletion
+            old_profile_picture = None
+            if "profile_picture" in form.changed_data and old_data.profile_picture:
+                old_profile_picture = old_data.profile_picture.name
+
+            updated_user = form.save()
+
+            # Delete the old photo later
+            if old_profile_picture:
+                delay = getattr(
+                    settings, "PROFILE_PICTURE_DELETION_DELAY_SECONDS", 86400
+                )
+                schedule_profile_picture_deletion(old_profile_picture, seconds=delay)
+
+            changes_dict = get_changes_dict(old_data, updated_user, form.changed_data)
+
+            log_user_action_json(
+                user=user,
+                action="update_profile",
+                request=request,
+                extra_info={
+                    "impacted_user_id": user.id,
+                    "changes": changes_dict,
+                },
+            )
+            return redirect("profile")
+        else:
+            return render(request, "users/profile.html", {"form": form})
+
+    else:
+        form = CustomUserUpdateForm(instance=user)
+        return render(request, "users/profile.html", {"form": form})
+
+
+# ------==== Delete user View ====------- #
 @redirect_not_authenticated_user
 @require_http_methods(["GET", "POST"])
 def delete_account_view(request):
@@ -638,6 +825,7 @@ def delete_account_view(request):
     )
 
 
+# ------==== Two FA settings View ====------- #
 @redirect_not_authenticated_user
 def twofa_settings_view(request):
     user = request.user
@@ -659,10 +847,9 @@ def twofa_settings_view(request):
 
     context = {
         "trusted_devices": trusted_devices,
-        # autres variables de contexte...
     }
 
-    # Calcul du délai avant de pouvoir renvoyer un code email
+    # Calculating the time before being able to resend an email code
     if user.email_2fa_sent_at:
         delta = timezone.now() - user.email_2fa_sent_at
         time_until_resend = max(
@@ -687,9 +874,9 @@ def twofa_settings_view(request):
     if request.method == "POST":
         action = request.POST.get("action")
 
-        # === Annuler une opération en cours (ex : vérification code, configuration totp) ===
+        # Cancel an operation in progress
         if action == "cancel":
-            # Supprime la session de code email et totp si en cours
+            # Deletes the email and totp code session if in progress
             if step == "verify_email_code":
                 user.email_2fa_code = ""
                 user.email_2fa_sent_at = None
@@ -698,12 +885,12 @@ def twofa_settings_view(request):
                 user.twofa_totp_secret = ""
                 user.save()
 
-            # Suppression éventuelle du cookie remember_device
+            # Possible deletion of the remember_device cookie
             response = redirect(reverse("twofa_settings") + "?step=initial")
             response.delete_cookie("remember_device")
             return response
 
-        # === Activation 2FA par email (envoi du code) ===
+        # 2FA activation by email (sending the code)
         elif action == "enable_email":
             password = request.POST.get("password")
             if not user.check_password(password):
@@ -721,7 +908,7 @@ def twofa_settings_view(request):
                 )
                 return redirect(url)
 
-        # === Vérification du code email ===
+        # Email code verification
         elif action == "verify_email_code":
             input_code = request.POST.get("email_code")
             if is_email_code_valid(user, input_code):
@@ -744,7 +931,8 @@ def twofa_settings_view(request):
                 )
                 return redirect(url)
 
-        # === Désactivation 2FA par email ===
+        # Email deactigation
+
         elif action == "disable_email":
             password = request.POST.get("password")
             if not user.check_password(password):
@@ -762,7 +950,7 @@ def twofa_settings_view(request):
                 messages.success(request, "Authentification par e-mail désactivée.")
                 return redirect("twofa_settings")
 
-        # === Renvoi du code email ===
+        # Resend email code
         elif action == "resend_email_code":
             delta = (
                 (timezone.now() - user.email_2fa_sent_at)
@@ -774,11 +962,9 @@ def twofa_settings_view(request):
                 user.email_2fa_sent_at = timezone.now()
                 user.save()
                 send_email_code(user, user.email_2fa_code)
-                messages.success(request, "Nouveau code envoyé.")
+                messages.success(request, "New code sent.")
             else:
-                messages.error(
-                    request, "Veuillez attendre avant de demander un nouveau code."
-                )
+                messages.error(request, "Please wait before requesting a new code.")
 
             url = (
                 reverse("twofa_settings")
@@ -787,7 +973,7 @@ def twofa_settings_view(request):
             )
             return redirect(url)
 
-        # === Activation TOTP (génération secret et QR code) ===
+        # TOTP activation (secret link and QR code generation)
         elif action == "enable_totp":
             password = request.POST.get("password")
             if not user.check_password(password):
@@ -810,7 +996,7 @@ def twofa_settings_view(request):
                 )
                 return render(request, "users/2fa_settings.html", context)
 
-        # === Vérification du code TOTP ===
+        # TOTP code verification
         elif action == "verify_totp":
             code = request.POST.get("totp_code")
             if verify_totp(user.twofa_totp_secret, code):
@@ -821,10 +1007,10 @@ def twofa_settings_view(request):
                     action="enable_totp",
                     request=request,
                 )
-                messages.success(request, "2FA TOTP activée.")
+                messages.success(request, "2FA TOTP activated.")
                 return redirect("twofa_settings")
             else:
-                messages.error(request, "Code TOTP invalide.")
+                messages.error(request, "Invalid TOTP code.")
 
                 uri = get_totp_uri(user, user.twofa_totp_secret)
                 qr_base64 = generate_qr_code_base64(uri)
@@ -839,7 +1025,7 @@ def twofa_settings_view(request):
                 )
                 return render(request, "users/2fa_settings.html", context)
 
-        # === Désactivation TOTP ===
+        # TOTP deactivation
         elif action == "disable_totp":
             password = request.POST.get("password")
             code = request.POST.get("totp_code")
@@ -860,7 +1046,7 @@ def twofa_settings_view(request):
                 return redirect("twofa_settings")
             return redirect("twofa_settings")
 
-        # === Révocation d'un appareil de confiance ===
+        # Revoking a trusted device
         elif action == "revoke_device":
             device_id = request.POST.get("revoke_device_id")
             device = get_object_or_404(TrustedDevice, id=device_id, user=user)
@@ -868,5 +1054,4 @@ def twofa_settings_view(request):
             messages.success(request, "Appareil révoqué avec succès.")
             return redirect("twofa_settings")
 
-    # En cas d'accès GET ou POST sans action reconnue
     return render(request, "users/2fa_settings.html", context)

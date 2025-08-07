@@ -1,118 +1,792 @@
-{% extends "base.html" %}
-{% block title %}Register{% endblock %}
-{% load math_filters %}
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Register - Shuttrly{% endblock %}
+{% block head %}
+  {{ block.super}}
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inscription - Étape {{ step }}/6</title>
+{% endblock %}
 
 {% block content %}
+  <div class="container-bc">
+    <div class="container-fluid" style="height: 100%;position: absolute;">
+        <div class="registration-container">
+            <!-- Progress Indicator -->
+            <div class="progress-indicator">
+                <div class="progress-line">
+                    <div class="progress-fill" style="width: {{ progress|default:17 }}%;"></div>
+                </div>
+                {% for i in "123456" %}
+                <div class="progress-step {% if step|add:0 > i|add:0 %}completed{% elif step == i %}active{% endif %}">
+                    {% if step|add:0 > i|add:0 %}
+                        <i class="fas fa-check"></i>
+                    {% else %}
+                        {{ i }}
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
 
-<h2>Register - Step {{ step }}</h2>
+            <div class="step-content fade-in">
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                            <i class="fas {% if message.tags == 'success' %}fa-check-circle{% elif message.tags == 'error' %}fa-exclamation-triangle{% else %}fa-info-circle{% endif %}"></i>
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
 
-<div class="progress" style="height: 25px;">
-  <div class="progress-bar"
-       role="progressbar"
-       style="width: {{ step|floatformat:0|mul:33.33 }}%;"
-       aria-valuenow="{{ step }}"
-       aria-valuemin="1"
-       aria-valuemax="3">
-    Step {{ step }} on 3
+                <form method="post" id="registration-form" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <input type="hidden" name="step" value="{{ step }}">
+
+                    {% if step == "1" %}
+                        <h3 class="step-title">
+                            <i class="fas fa-envelope text-primary"></i>
+                            Your E-mail address
+                        </h3>
+                        <p class="step-description">
+                            We will send you a verification code to this address
+                        </p>
+                        
+                        <div class="mb-4">
+                            <label for="id_email" class="form-label">E-mail address</label>
+                            <input type="email" class="form-control" id="id_email" name="email" 
+                                    placeholder="votre@email.com" 
+                                    value="{{ form.email.value|default:'' }}"
+                                    autocomplete="email" required>
+                            {% if form.email.errors %}
+                                <div class="text-danger small mt-2">
+                                    {% for error in form.email.errors %}
+                                        <i class="fas fa-exclamation-circle"></i> {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                    {% elif step == "2" %}
+                        <h3 class="step-title">
+                            <i class="fas fa-shield-alt text-primary"></i>
+                            Verification code
+                        </h3>
+                        <p class="step-description">
+                            Enter the code received at: <strong>{{ email }}</strong>
+                        </p>
+                        
+                        <div class="mb-4">
+                            <label for="id_verification_code" class="form-label">Verification code</label>
+                            <input type="text" class="form-control verification-code-input" 
+                                    id="id_verification_code" name="verification_code" 
+                                    maxlength="6" pattern="[0-9]{6}"
+                                    placeholder="000000" autocomplete="one-time-code" required>
+                            {% if form.verification_code.errors %}
+                                <div class="text-danger small mt-2">
+                                    {% for error in form.verification_code.errors %}
+                                        <i class="fas fa-exclamation-circle"></i> {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <small class="form-text text-muted">Enter the 6-digit code received by email</small>
+                        </div>
+
+                        {% if can_resend %}
+                            <div class="text-center">
+                                <button type="button" class="btn btn-link" onclick="resendCode()">
+                                    <i class="fas fa-redo"></i> Resend code
+                                </button>
+                            </div>
+                        {% else %}
+                            <div class="resend-timer">
+                                <i class="fas fa-clock text-muted"></i>
+                                <span class="text-muted">You can request a new code in <strong id="countdown">120</strong> secondes</span>
+                            </div>
+                        {% endif %}
+
+                    {% elif step == "3" %}
+                        <h3 class="step-title">
+                            <i class="fas fa-user text-primary"></i>
+                            Your information
+                        </h3>
+                        <p class="step-description">
+                            Tell us a little about yourself
+                        </p>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="id_first_name" class="form-label">First name</label>
+                                <input type="text" class="form-control" id="id_first_name" name="first_name" 
+                                        placeholder="Your first name" 
+                                        value="{{ form.first_name.value|default:'' }}"
+                                        maxlength="30" autocomplete="given-name" required>
+                                {% if form.first_name.errors %}
+                                    <div class="text-danger small mt-1">
+                                        {% for error in form.first_name.errors %}
+                                            <i class="fas fa-exclamation-circle"></i> {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="id_last_name" class="form-label">Last name</label>
+                                <input type="text" class="form-control" id="id_last_name" name="last_name" 
+                                        placeholder="Your last name" 
+                                        value="{{ form.last_name.value|default:'' }}"
+                                        maxlength="30" autocomplete="family-name" required>
+                                {% if form.last_name.errors %}
+                                    <div class="text-danger small mt-1">
+                                        {% for error in form.last_name.errors %}
+                                            <i class="fas fa-exclamation-circle"></i> {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label for="id_date_of_birth" class="form-label">Date of birth</label>
+                            <input type="date" class="form-control" id="id_date_of_birth" name="date_of_birth" 
+                                    value="{{ form.date_of_birth.value|default:'' }}"
+                                    autocomplete="bday" required>
+                            {% if form.date_of_birth.errors %}
+                                <div class="text-danger small mt-2">
+                                    {% for error in form.date_of_birth.errors %}
+                                        <i class="fas fa-exclamation-circle"></i> {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <small class="form-text text-muted">You must be at least 16 years old</small>
+                        </div>
+
+                    {% elif step == "4" %}
+                        <h3 class="step-title">
+                            <i class="fas fa-at text-primary"></i>
+                            Username
+                        </h3>
+                        <p class="step-description">
+                            Choose a unique name that represents you
+                        </p>
+                        
+                        <div class="mb-4">
+                            <label for="id_username" class="form-label">Username</label>
+                            <input type="text" class="form-control" id="id_username" name="username" 
+                                    placeholder="username" 
+                                    value="{{ form.username.value|default:'' }}"
+                                    maxlength="50" autocomplete="username" required>
+                            <div id="username-feedback" class="username-feedback"></div>
+                            {% if form.username.errors %}
+                                <div class="text-danger small mt-1">
+                                    {% for error in form.username.errors %}
+                                        <i class="fas fa-exclamation-circle"></i> {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <small class="form-text text-muted">Only letters, numbers and underscores are allowed</small>
+                        </div>
+
+                    {% elif step == "5" %}
+                        <h3 class="step-title">
+                            <i class="fas fa-lock text-primary"></i>
+                            Password
+                        </h3>
+                        <p class="step-description">
+                            Choose a secure password
+                        </p>
+                        
+                        <div class="mb-3">
+                            <label for="id_password1" class="form-label">Password</label>
+                            <input type="password" class="form-control" id="id_password1" name="password1" 
+                                    placeholder="Your password" 
+                                    autocomplete="new-password" required>
+                            {% if form.password1.errors %}
+                                <div class="text-danger small mt-2">
+                                    {% for error in form.password1.errors %}
+                                        <i class="fas fa-exclamation-circle"></i> {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <small class="form-text text-muted">At least 8 characters</small>
+                            <div id="password-strength" class="password-strength"></div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label for="id_password2" class="form-label">Confirm password</label>
+                            <input type="password" class="form-control" id="id_password2" name="password2" 
+                                    placeholder="Confirm your password" 
+                                    autocomplete="new-password" required>
+                            {% if form.password2.errors %}
+                                <div class="text-danger small mt-2">
+                                    {% for error in form.password2.errors %}
+                                        <i class="fas fa-exclamation-circle"></i> {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <div id="password-match" class="password-match"></div>
+                        </div>
+
+                    {% elif step == "6" %}
+                        <h3 class="step-title">
+                            <i class="fas fa-check-circle text-success"></i>
+                            Summary
+                        </h3>
+                        <p class="step-description">
+                            Check your information before creating your account
+                        </p>
+                        
+                        <div class="summary-card">
+                            <div class="summary-item">
+                                <span class="summary-label">
+                                    <i class="fas fa-envelope text-primary"></i> Email :
+                                </span>
+                                <span class="summary-value">{{ session_data.email }}</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="summary-label">
+                                    <i class="fas fa-user text-primary"></i> Name :
+                                </span>
+                                <span class="summary-value">{{ session_data.first_name }} {{ session_data.last_name }}</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="summary-label">
+                                    <i class="fas fa-calendar text-primary"></i> Date of birth :
+                                </span>
+                                <span class="summary-value">{{ session_data.date_of_birth }}</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="summary-label">
+                                    <i class="fas fa-at text-primary"></i> Username :
+                                </span>
+                                <span class="summary-value">{{ session_data.username }}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i>
+                            By creating your account, you agree to our terms of use and privacy policy.
+                        </div>
+
+                    {% endif %}
+
+                    <div class="btn-navigation">
+                        {% if step != "1" %}
+                            <button type="submit" name="previous" class="btn btn-outline-secondary previous-btn">
+                                <i class="fas fa-arrow-left"></i> Previous
+                            </button>
+                        {% else %}
+                            <div></div>
+                        {% endif %}
+
+                        {% if step == "6" %}
+                            <button type="submit" class="btn btn-success btn-lg" >
+                                <i class="fas fa-user-plus" style="color: #fff !important;"></i> Create my account
+                            </button>
+                        {% else %}
+                            <button type="submit" class="btn btn-primary">
+                                Next <i class="fas fa-arrow-right" style="color: #fff !important;"></i>
+                            </button>
+                        {% endif %}
+                    </div>
+                </form>
+
+                {% if step == "1" %}
+                    <div class="text-center mt-4">
+                        <p class="text-muted">Already have an account?
+                            <a href="{% url 'login' %}" class="text-decoration-none link">Login</a>
+                        </p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
   </div>
-</div>
 
-<form method="post" enctype="multipart/form-data" class="mt-4">
-  {% csrf_token %}
-  <input type="hidden" name="step" value="{{ step }}">
+  <style>
+    .container-bc {
 
-  {% if step == "1" %}
-    <div class="mb-3">
-      {{ form.email.label_tag }}<br>
-      {{ form.email }}
-      {{ form.email.errors }}
-    </div>
-    <div class="mb-3">
-      {{ form.username.label_tag }}<br>
-      {{ form.username }}
-      {{ form.username.errors }}
-    </div>
+        background: #CAD2C5;
+        min-height: 100vh;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    
+    .registration-container {
+        max-width: 500px;
+        margin: 2rem auto;
+        padding: 0 1rem;
+    }
+    
+    .progress-indicator {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 2rem;
+        position: relative;
+        padding: 0 20px;
+    }
+    
+    .progress-step {
+        width: 45px;
+        height: 45px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        z-index: 2;
+        background: white;
+        border: 3px solid #dee2e6;
+        color: #6c757d;
+        font-weight: bold;
+        font-size: 14px;
+        transition: all 0.3s ease;
+    }
+    
+    .progress-step.active {
+        background: #2F3D46;
+        border-color: #2F3D46;
+        color: white;
+        transform: scale(1.1);
+    }
+    
+    .progress-step.completed {
+        background: #84A98D;
+        border-color: #84A98D;
+        color: white;
+    }
+    
+    .progress-line {
+        position: absolute;
+        top: 50%;
+        left: 35px;
+        right: 35px;
+        height: 3px;
+        background: #dee2e6;
+        z-index: 1;
+        transform: translateY(-50%);
+        border-radius: 2px;
+    }
+    
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #84A98D, #527970);
+        transition: width 0.5s ease;
+        border-radius: 2px;
+    }
 
-  {% elif step == "2" %}
-    <div class="mb-3">
-      {{ form.first_name.label_tag }}<br>
-      {{ form.first_name }}
-      {{ form.first_name.errors }}
-    </div>
-    <div class="mb-3">
-      {{ form.last_name.label_tag }}<br>
-      {{ form.last_name }}
-      {{ form.last_name.errors }}
-    </div>
-    <div class="mb-3">
-      {{ form.date_of_birth.label_tag }}<br>
-      {{ form.date_of_birth }}
-      {{ form.date_of_birth.errors }}
-    </div>
+    .link {
+      color:#84A98D !important;
+    }
+    
+    .step-content {
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        padding: 2.5rem;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .step-content::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, #84A98D, #527970);
 
-  {% elif step == "3" %}
-    <div class="mb-3">
-      {{ form.bio.label_tag }}<br>
-      {{ form.bio }}
-      {{ form.bio.errors }}
-    </div>
-    <div class="form-check mb-3">
-      {{ form.is_private }}
-      {{ form.is_private.label_tag }}
-      {{ form.is_private.errors }}
-    </div>
-    <div class="mb-3">
-      {{ form.profile_picture.label_tag }}<br>
-      {{ form.profile_picture }}
-      {{ form.profile_picture.errors }}
-    </div>
-    <hr>
-    <div class="mb-3">
-      {{ form.password1.label_tag }}<br>
-      {{ form.password1 }}
-      {{ form.password1.errors }}
-    </div>
-    <div class="mb-3">
-      {{ form.password2.label_tag }}<br>
-      {{ form.password2 }}
-      {{ form.password2.errors }}
-    </div>
-  {% endif %}
+    }
+    
+    .step-title {
+        text-align: center;
+        margin-bottom: 1rem;
+        color: #2c503f;
+        font-size: 1.5rem;
+    }
+    
+    .step-description {
+        text-align: center;
+        color: #6c7d6c;
+        margin-bottom: 2rem;
+        font-size: 1rem;
+    }
+    
+    .form-label {
+        font-weight: 600;
+        color: #2F3D46;
+        margin-bottom: 0.5rem;
+    }
+    
+    .form-control {
+        border: 2px solid #e9ecef;
+        border-radius: 8px;
+        padding: 12px 16px;
+        font-size: 16px;
+        transition: all 0.3s ease;
+    }
+    
+    .form-control:focus {
+        border-color: #2F3D46;
+        box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+        outline: none;
+    }
+    
+    .verification-code-input {
+        font-size: 2rem;
+        letter-spacing: 1rem;
+        text-align: center;
+        font-weight: bold;
+    }
+    
+    .username-feedback {
+        font-size: 0.875rem;
+        margin-top: 0.5rem;
+        min-height: 20px;
+    }
+    
+    .username-available {
+        color: #28a745;
+    }
+    
+    .username-taken {
+        color: #dc3545;
+    }
+    
+    .btn-navigation {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 2rem;
+    }
+    
+    .btn {
+        border-radius: 8px;
+        padding: 12px 24px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+    
+    .previous-btn {
+      border: solid 2px #84A98D !important;
+    }
+    .previous-btn:hover{
+      background: #84A98D;
+      color: #fffff
+    }
 
-  <div class="d-flex justify-content-between mt-3">
-    <button 
-      type="submit" 
-      name="previous" 
-      value="1" 
-      class="btn btn-secondary" 
-      {% if step == "1" %}disabled{% endif %}
-      formnovalidate
-    >
-      Previous
-    </button>
+    .btn-primary {
+        background: linear-gradient(270deg, #84A98D, #527970);
+        border: none;
+    }
+    
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 8px #527970;
+    }
+    
+    .btn-success {
+        background: linear-gradient(270deg, #84A98D, #527970);
+        border: none;
+        font-size: 16px;
+    }
+    
+    .btn-success:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(40, 167, 69, 0.4);
+    }
+    
+    .summary-card {
+        background: #cad2c57d;
+        border-radius: 10px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        border-left: 4px solid #2F3D46;
+    }
+    
+    .summary-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.75rem;
+        padding: 0.5rem 0;
+    }
+    
+    .summary-item:last-child {
+        margin-bottom: 0;
+    }
+    
+    .summary-label {
+        font-weight: 600;
+        color: #495057;
+    }
+    
+    .summary-value {
+        color: #6c7d6c;
+        font-weight: 500;
+    }
+    
+    .resend-timer {
+        text-align: center;
+        margin-top: 1rem;
+        padding: 1rem;
+        background: #f8f9fa;
+        border-radius: 8px;
+    }
+    
+    .password-strength {
+        margin-top: 0.5rem;
+    }
+    
+    .password-match {
+        margin-top: 0.5rem;
+        min-height: 20px;
+    }
+    
+    .alert {
+        border-radius: 10px;
+        border: none;
+        background: #cad2c57d;
+    }
+    
+    .fade-in {
+        animation: fadeIn 0.5s ease-in;
+    }
 
-    <button type="submit" class="btn {% if step == "3" %}btn-success{% else %}btn-primary{% endif %}" style="border: none; background-color: #507186;">
-      {% if step == "3" %}Create Account{% else %}Next{% endif %}
-    </button>
-  </div>
-</form>
+    .fas {
+      color: #527970 !important;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
 
-<style>
-  .progress {
-    background-color: #e9ecef;
-    border-radius: 0.25rem;
-    overflow: hidden;
-  }
+  </style>
+{% endblock %}
 
-  .progress-bar {
-    height: 25px;
-    background-color: #507186;
-    color: white;
-    line-height: 25px;
-    text-align: center;
-    transition: width 0.4s ease;
-    white-space: nowrap;
-  }
-</style>
+{% block scripts %}
+  {{ block.super}}
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+  
+  <script>
+      // Real-time username verification (Step 4)
+      {% if step == "4" %}
+      let usernameTimeout;
+      const usernameInput = document.getElementById('id_username');
+      const feedback = document.getElementById('username-feedback');
+      
+      usernameInput.addEventListener('input', function() {
+          clearTimeout(usernameTimeout);
+          const username = this.value.trim();
+          
+          if (username.length === 0) {
+              feedback.innerHTML = '';
+              return;
+          }
+          
+          if (username.length < 3) {
+              feedback.innerHTML = '<span class="username-taken"><i class="fas fa-times-circle"></i> Username must be at least 3 characters long </span>';
+              return;
+          }
+          
+          // Check allowed characters
+          if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+              feedback.innerHTML = '<span class="username-taken"><i class="fas fa-times-circle"></i> Only letters, numbers and _ are allowed</span>';
+              return;
+          }
+          
+          feedback.innerHTML = '<span class="text-muted"><i class="fas fa-spinner fa-spin"></i> Verification...</span>';
+          
+          usernameTimeout = setTimeout(() => {
+              fetch('{% url "check_username_availability" %}', {
+                  method: 'POST',
+                  headers: {
+                      'Content-Type': 'application/x-www-form-urlencoded',
+                      'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                  },
+                  body: 'username=' + encodeURIComponent(username)
+              })
+              .then(response => response.json())
+              .then(data => {
+                  if (data.available) {
+                      feedback.innerHTML = '<span class="username-available"><i class="fas fa-check-circle"></i> ' + data.message + '</span>';
+                  } else {
+                      feedback.innerHTML = '<span class="username-taken"><i class="fas fa-times-circle"></i> ' + data.message + '</span>';
+                  }
+              })
+              .catch(() => {
+                  feedback.innerHTML = '<span class="text-warning"><i class="fas fa-exclamation-triangle"></i> Verification error</span>';
+              });
+          }, 500);
+      });
+      {% endif %}
 
+      // Password Strength Indicator (Step 5)
+      {% if step == "5" %}
+      const password1 = document.getElementById('id_password1');
+      const password2 = document.getElementById('id_password2');
+      const strengthDiv = document.getElementById('password-strength');
+      const matchDiv = document.getElementById('password-match');
+      
+      function checkPasswordStrength(password) {
+          let strength = 0;
+          let feedback = [];
+          
+          if (password.length >= 8) strength++;
+          else feedback.push('Au moins 8 caractères');
+          
+          if (/[a-z]/.test(password)) strength++;
+          else feedback.push('Une lettre minuscule');
+          
+          if (/[A-Z]/.test(password)) strength++;
+          else feedback.push('Une lettre majuscule');
+          
+          if (/\d/.test(password)) strength++;
+          else feedback.push('Un chiffre');
+          
+          if (/[^A-Za-z0-9]/.test(password)) strength++;
+          else feedback.push('Un caractère spécial');
+          
+          const colors = ['danger', 'danger', 'warning', 'info', 'success', 'success'];
+          const labels = ['Très faible', 'Faible', 'Moyen', 'Bon', 'Fort', 'Très fort'];
+          
+          return {
+              strength: strength,
+              color: colors[strength],
+              label: labels[strength],
+              feedback: feedback
+          };
+      }
+      
+      password1.addEventListener('input', function() {
+          const result = checkPasswordStrength(this.value);
+          
+          if (this.value.length > 0) {
+              strengthDiv.innerHTML = `
+                  <div class="progress mt-2" style="height: 6px;">
+                      <div class="progress-bar bg-${result.color}" style="width: ${(result.strength/5)*100}%"></div>
+                  </div>
+                  <small class="text-${result.color} fw-bold">${result.label}</small>
+              `;
+          } else {
+              strengthDiv.innerHTML = '';
+          }
+          
+          // Check for matching if the confirmation field is not empty
+          if (password2.value) {
+              checkPasswordMatch();
+          }
+      });
+      
+      function checkPasswordMatch() {
+          if (password2.value.length > 0) {
+              if (password1.value === password2.value) {
+                  matchDiv.innerHTML = '<small class="text-success"><i class="fas fa-check"></i> Les mots de passe correspondent</small>';
+              } else {
+                  matchDiv.innerHTML = '<small class="text-danger"><i class="fas fa-times"></i> Les mots de passe ne correspondent pas</small>';
+              }
+          } else {
+              matchDiv.innerHTML = '';
+          }
+      }
+      
+      password2.addEventListener('input', checkPasswordMatch);
+      {% endif %}
+
+      // Countdown to code resend (Step 2)
+      {% if step == "2" and not can_resend %}
+      let timeLeft = 120;
+      const countdown = document.getElementById('countdown');
+      
+      const timer = setInterval(() => {
+          timeLeft--;
+          countdown.textContent = timeLeft;
+          
+          if (timeLeft <= 0) {
+              clearInterval(timer);
+              location.reload();
+          }
+      }, 1000);
+      {% endif %}
+
+      // Function to resend le code
+      function resendCode() {
+          const form = document.createElement('form');
+          form.method = 'POST';
+          form.action = '{% url "resend_verification_code" %}';
+          
+          const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+          const csrfInput = document.createElement('input');
+          csrfInput.type = 'hidden';
+          csrfInput.name = 'csrfmiddlewaretoken';
+          csrfInput.value = csrfToken;
+          
+          form.appendChild(csrfInput);
+          document.body.appendChild(form);
+          form.submit();
+      }
+
+      // Auto-focus and formatting for verification code
+      {% if step == "2" %}
+      const codeInput = document.querySelector('#id_verification_code');
+      codeInput.focus();
+      
+      codeInput.addEventListener('input', function() {
+          // Allow only numbers
+          this.value = this.value.replace(/[^0-9]/g, '');
+          
+          // Auto-submit if 6 numbers are entered
+          if (this.value.length === 6) {
+              setTimeout(() => {
+                  document.getElementById('registration-form').submit();
+              }, 500);
+          }
+      });
+      {% endif %}
+
+      // Auto-focus of the first field
+      document.addEventListener('DOMContentLoaded', function() {
+          const firstInput = document.querySelector('.form-control');
+          if (firstInput && '{{ step }}' !== '2') { // No auto-focus for step 2 because it is already managed
+              firstInput.focus();
+          }
+      });
+
+      // Client-side validation before submission
+      document.getElementById('registration-form').addEventListener('submit', function(e) {
+          const submitButton = e.submitter;
+          
+          // Do not validate if it is the "Previous" button
+          if (submitButton && submitButton.name === 'previous') {
+              return;
+          }
+          
+          {% if step == "4" %}
+          const username = document.getElementById('id_username').value.trim();
+          if (username.length < 3) {
+              e.preventDefault();
+              alert('Username must contain at least 3 characters.');
+              return;
+          }
+          {% endif %}
+          
+          {% if step == "5" %}
+          const pwd1 = document.getElementById('id_password1').value;
+          const pwd2 = document.getElementById('id_password2').value;
+          
+          if (pwd1.length < 8) {
+              e.preventDefault();
+              alert('Password must contain at least 8 characters.');
+              return;
+          }
+          
+          if (pwd1 !== pwd2) {
+              e.preventDefault();
+              alert('The passwords do not match.');
+              return;
+          }
+          {% endif %}
+      });
+
+  </script>
 {% endblock %}

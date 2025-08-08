@@ -97,59 +97,145 @@ class RegisterStep3Form(forms.Form):
 
 
 # ========= LOGIN FORMS =========
-class Choose2FAMethodForm(forms.Form):
-    twofa_method = forms.ChoiceField(
-        choices=[("email", "Code par e-mail"), ("totp", "App d’authentification")],
-        widget=forms.RadioSelect,
-        label="Choisissez votre méthode 2FA",
-        initial="totp",
+# class Choose2FAMethodForm(forms.Form):
+#     twofa_method = forms.ChoiceField(
+#         choices=[("email", "Code par e-mail"), ("totp", "App d’authentification")],
+#         widget=forms.RadioSelect,
+#         label="Choisissez votre méthode 2FA",
+#         initial="totp",
+#     )
+#     remember_device = forms.BooleanField(
+#         required=False, label="Faire confiance à cet appareil"
+#     )
+
+
+# class Email2FAForm(forms.Form):
+#     twofa_code = forms.CharField(
+#         label="Code received by email",
+#         widget=forms.TextInput(
+#             attrs={
+#                 "class": "form-control",
+#                 "placeholder": "Enter the 2FA code",
+#                 "autofocus": "autofocus",
+#             }
+#         ),
+#     )
+#     remember_device = forms.BooleanField(
+#         required=False,
+#         label="Trust this device for 30 days",
+#         widget=forms.CheckboxInput(
+#             attrs={
+#                 "class": "form-check-input",
+#             }
+#         ),
+#     )
+
+
+# class TOTP2FAForm(forms.Form):
+#     twofa_code = forms.CharField(
+#         label="TOTP code from your authenticator app",
+#         widget=forms.TextInput(
+#             attrs={
+#                 "class": "form-control",
+#                 "placeholder": "123 456 or 123456",
+#                 "autocomplete": "one-time-code",
+#             }
+#         ),
+#     )
+#     remember_device = forms.BooleanField(
+#         required=False,
+#         label="Trust this device for 30 days",
+#         widget=forms.CheckboxInput(
+#             attrs={
+#                 "class": "form-check-input",
+#             }
+#         ),
+#     )
+
+
+# ========= LOGIN FORMS =========
+class LoginForm(forms.Form):
+    email = forms.CharField(
+        label="Email ou nom d'utilisateur",
+        widget=forms.TextInput(
+            attrs={
+                "class": "form-control",
+                "placeholder": "votre@email.com ou nom_utilisateur",
+                "autocomplete": "username",
+                "id": "id_email",
+            }
+        ),
+        help_text="Vous pouvez utiliser votre email ou votre nom d'utilisateur",
+    )
+    password = forms.CharField(
+        label="Mot de passe",
+        widget=forms.PasswordInput(
+            attrs={
+                "class": "form-control",
+                "placeholder": "Votre mot de passe",
+                "autocomplete": "current-password",
+                "id": "id_password",
+            }
+        ),
     )
     remember_device = forms.BooleanField(
-        required=False, label="Faire confiance à cet appareil"
+        required=False,
+        label="Se souvenir de cet appareil",
+        widget=forms.CheckboxInput(
+            attrs={"class": "form-check-input", "id": "id_remember_device"}
+        ),
+    )
+
+
+class Choose2FAMethodForm(forms.Form):
+    TWOFA_CHOICES = [
+        ("email", "Code par email"),
+        ("totp", "Application d'authentification (TOTP)"),
+    ]
+
+    twofa_method = forms.ChoiceField(
+        label="Méthode de vérification",
+        choices=TWOFA_CHOICES,
+        widget=forms.RadioSelect(attrs={"class": "form-check-input"}),
+        help_text="Choisissez votre méthode de vérification préférée",
     )
 
 
 class Email2FAForm(forms.Form):
     twofa_code = forms.CharField(
-        label="Code received by email",
+        label="Code de vérification",
+        max_length=6,
+        min_length=6,
         widget=forms.TextInput(
             attrs={
-                "class": "form-control",
-                "placeholder": "Enter the 2FA code",
-                "autofocus": "autofocus",
+                "class": "form-control text-center",
+                "placeholder": "000000",
+                "maxlength": "6",
+                "pattern": "[0-9]{6}",
+                "autocomplete": "one-time-code",
+                "id": "id_twofa_code",
             }
         ),
-    )
-    remember_device = forms.BooleanField(
-        required=False,
-        label="Trust this device for 30 days",
-        widget=forms.CheckboxInput(
-            attrs={
-                "class": "form-check-input",
-            }
-        ),
+        help_text="Entrez le code reçu par email",
     )
 
 
 class TOTP2FAForm(forms.Form):
     twofa_code = forms.CharField(
-        label="TOTP code from your authenticator app",
+        label="Code d'authentification",
+        max_length=6,
+        min_length=6,
         widget=forms.TextInput(
             attrs={
-                "class": "form-control",
-                "placeholder": "123 456 or 123456",
+                "class": "form-control text-center",
+                "placeholder": "000000",
+                "maxlength": "6",
+                "pattern": "[0-9]{6}",
                 "autocomplete": "one-time-code",
+                "id": "id_twofa_code",
             }
         ),
-    )
-    remember_device = forms.BooleanField(
-        required=False,
-        label="Trust this device for 30 days",
-        widget=forms.CheckboxInput(
-            attrs={
-                "class": "form-check-input",
-            }
-        ),
+        help_text="Code de votre application d'authentification (Google Authenticator, Authy, etc.)",
     )
 
 
@@ -217,34 +303,34 @@ class CustomUserUpdateForm(forms.ModelForm):
         }
 
 
-class LoginForm(forms.Form):
-    email = forms.CharField(
-        label="Email or username",
-        widget=forms.TextInput(
-            attrs={
-                "class": "form-control",
-                "placeholder": "Enter your email or username",
-            }
-        ),
-    )
-    password = forms.CharField(
-        label="Password",
-        widget=forms.PasswordInput(
-            attrs={
-                "class": "form-control",
-                "placeholder": "Enter your password",
-            }
-        ),
-    )
+# class LoginForm(forms.Form):
+#     email = forms.CharField(
+#         label="Email or username",
+#         widget=forms.TextInput(
+#             attrs={
+#                 "class": "form-control",
+#                 "placeholder": "Enter your email or username",
+#             }
+#         ),
+#     )
+#     password = forms.CharField(
+#         label="Password",
+#         widget=forms.PasswordInput(
+#             attrs={
+#                 "class": "form-control",
+#                 "placeholder": "Enter your password",
+#             }
+#         ),
+#     )
 
 
 class RegisterStep1Form(forms.Form):
     email = forms.EmailField(
-        label="Adresse email",
+        label="E-Mail address",
         widget=forms.EmailInput(
             attrs={
                 "class": "form-control",
-                "placeholder": "votre@email.com",
+                "placeholder": "your@email.com",
                 "type": "email",
                 "autocomplete": "email",
             }
@@ -254,7 +340,7 @@ class RegisterStep1Form(forms.Form):
 
 class RegisterStep2Form(forms.Form):
     verification_code = forms.CharField(
-        label="Code de vérification",
+        label="Verification code",
         max_length=6,
         min_length=6,
         widget=forms.TextInput(
@@ -266,7 +352,7 @@ class RegisterStep2Form(forms.Form):
                 "autocomplete": "one-time-code",
             }
         ),
-        help_text="Entrez le code à 6 chiffres reçu par email",
+        help_text="Enter the 6-digit code received by email",
     )
 
 
@@ -277,7 +363,7 @@ class RegisterStep3Form(forms.Form):
         widget=forms.TextInput(
             attrs={
                 "class": "form-control",
-                "placeholder": "Votre prénom",
+                "placeholder": "Your first name",
                 "autocomplete": "given-name",
             }
         ),
@@ -288,7 +374,7 @@ class RegisterStep3Form(forms.Form):
         widget=forms.TextInput(
             attrs={
                 "class": "form-control",
-                "placeholder": "Votre nom",
+                "placeholder": "Your last name",
                 "autocomplete": "family-name",
             }
         ),
@@ -298,7 +384,7 @@ class RegisterStep3Form(forms.Form):
         widget=forms.DateInput(
             attrs={"class": "form-control", "type": "date", "autocomplete": "bday"}
         ),
-        help_text="Vous devez avoir au moins 16 ans",
+        help_text="You must be at least 16 years old",
     )
 
 
@@ -309,12 +395,12 @@ class RegisterStep4Form(forms.Form):
         widget=forms.TextInput(
             attrs={
                 "class": "form-control",
-                "placeholder": "nom_utilisateur",
+                "placeholder": "username",
                 "autocomplete": "username",
                 "id": "username-input",
             }
         ),
-        help_text="Seuls les lettres, chiffres et underscores sont autorisés",
+        help_text="Only letters, numbers and underscores are allowed",
     )
 
 
@@ -324,7 +410,7 @@ class RegisterStep5Form(forms.Form):
         widget=forms.PasswordInput(
             attrs={
                 "class": "form-control",
-                "placeholder": "Votre mot de passe",
+                "placeholder": "Your password",
                 "autocomplete": "new-password",
                 "id": "password1",
             }
@@ -336,7 +422,7 @@ class RegisterStep5Form(forms.Form):
         widget=forms.PasswordInput(
             attrs={
                 "class": "form-control",
-                "placeholder": "Confirmez votre mot de passe",
+                "placeholder": "Confirm your password",
                 "autocomplete": "new-password",
                 "id": "password2",
             }
@@ -350,6 +436,6 @@ class RegisterStep5Form(forms.Form):
 
         if password1 and password2:
             if password1 != password2:
-                raise forms.ValidationError("Les mots de passe ne correspondent pas.")
+                raise forms.ValidationError("The passwords do not match.")
 
         return cleaned_data

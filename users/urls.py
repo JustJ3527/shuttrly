@@ -4,21 +4,38 @@ from .views import *
 from . import views
 
 urlpatterns = [
+    # Registration in 6 steps
     path(
         "register/",
         register_view,
         name="register",
     ),
     path(
+        "check-username/",
+        check_username_availability,
+        name="check_username_availability",
+    ),
+    path(
+        "resend-code/",
+        resend_verification_code_view,
+        name="resend_verification_code",
+    ),
+    # Login in 3 steps with 2FA
+    path(
         "login/",
         login_view,
         name="login",
-    ),  # Custom login view
+    ),
+    path(
+        "resend-2fa-code/",
+        resend_email_2fa_code,
+        name="resend_email_2fa_code",
+    ),
     path(
         "profile/",
         profile_view,
         name="profile",
-    ),  # Profile view for logged-in users
+    ), 
     path(
         "logout/",
         logout_view,
@@ -38,15 +55,5 @@ urlpatterns = [
         "2fa/",
         twofa_settings_view,
         name="twofa_settings",
-    ),
-    path(
-        "check-username/",
-        check_username_availability,
-        name="check_username_availability",
-    ),
-    path(
-        "resend-code/",
-        resend_verification_code_view,
-        name="resend_verification_code",
     ),
 ]

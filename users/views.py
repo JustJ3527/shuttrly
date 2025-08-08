@@ -41,7 +41,6 @@ from .utils import (
     analyze_user_agent,
     calculate_age,
     can_resend_code,
-    create_trusted_device,
     generate_email_code,
     generate_qr_code_base64,
     generate_totp_secret,
@@ -58,6 +57,8 @@ from .utils import (
     get_changes_dict,
     get_user_agent,
     get_client_ip,
+    hash_token,
+    get_user_from_session,
 )
 
 # === Project logs/utils ===
@@ -497,184 +498,6 @@ def check_username_availability(request):
     )
 
 
-# ------==== Login Views ====------- #
-@redirect_authenticated_user
-def login_view(request):
-    ip = get_client_ip(request)
-    user_agent = get_user_agent(request)
-    location = get_location_from_ip(ip)
-
-    step = request.POST.get("step", "login")
-    context = {"step": step}
-    user = None
-
-    if step == "login":
-        form = LoginForm(request.POST or None)
-
-        if request.method == "POST" and form.is_valid():
-            identifier = request.POST.get("email")
-            password = request.POST.get("password")
-
-            user_qs = CustomUser.objects.filter(
-                email=identifier
-            ) | CustomUser.objects.filter(username=identifier)
-            if not user_qs.exists():
-                messages.error(
-                    request,
-                    mark_safe(
-                        f"No account found. <a href='{reverse('register')}'>Create one</a>."
-                    ),
-                )
-                return render(request, "users/login.html", {"form": form, "step": step})
-
-            user = authenticate(request, username=identifier, password=password)
-            if user is None:
-                messages.error(request, "Email or password is incorrect")
-                return render(request, "users/login.html", {"form": form, "step": step})
-
-            if not user.is_email_verified:
-                messages.warning(request, "Verify your email before login.")
-                request.session["verification_email"] = user.email
-                return redirect("verify_email")
-
-            # ==== Vérifie si appareil de confiance ====
-            if (user.email_2fa_enabled or user.totp_enabled) and is_trusted_device(
-                request, user
-            ):
-                return login_success(
-                    request,
-                    user,
-                    ip,
-                    user_agent,
-                    location,
-                    twofa_method="trusted_device",
-                )
-
-            # ==== Sinon : lancer 2FA ====
-            request.session["pre_2fa_user_id"] = user.id
-
-            if user.email_2fa_enabled and user.totp_enabled:
-                return render(
-                    request,
-                    "users/login.html",
-                    {
-                        "form": Choose2FAMethodForm(),
-                        "step": "choose_2fa",
-                        "user": user,
-                    },
-                )
-
-            elif user.email_2fa_enabled:
-                code = generate_email_code()
-                user.email_2fa_code = code
-                user.email_2fa_sent_at = timezone.now()
-                user.save()
-                send_email_code(user, code)
-                return render(
-                    request,
-                    "users/login.html",
-                    {
-                        "form": Email2FAForm(),
-                        "step": "email_2fa",
-                        "user": user,
-                    },
-                )
-
-            elif user.totp_enabled:
-                return render(
-                    request,
-                    "users/login.html",
-                    {
-                        "form": TOTP2FAForm(),
-                        "step": "totp_2fa",
-                        "user": user,
-                    },
-                )
-
-            # Pas de 2FA active
-            return login_success(request, user, ip, user_agent, location)
-        return render(request, "users/login.html", {"form": form, "step": step})
-
-    elif step == "choose_2fa":
-        form = Choose2FAMethodForm(request.POST or None)
-
-        if request.method == "POST" and form.is_valid():
-            user = CustomUser.objects.get(pk=request.session.get("pre_2fa_user_id"))
-            if not user:
-                messages.error(request, "Session expired.")
-                return redirect("login")
-
-            method = form.cleaned_data["twofa_method"]
-            remember_device = form.cleaned_data["remember_device"]
-            request.session["remember_device"] = remember_device
-
-            if method == "email" and user.email_2fa_enabled:
-                code = generate_email_code()
-                user.email_2fa_code = code
-                user.email_2fa_sent_at = timezone.now()
-                user.save()
-                send_email_code(user, code)
-                return render(
-                    request,
-                    "users/login.html",
-                    {
-                        "form": Email2FAForm(),
-                        "step": "email_2fa",
-                        "user": user,
-                    },
-                )
-
-            elif method == "totp" and user.totp_enabled:
-                return render(
-                    request,
-                    "users/login.html",
-                    {
-                        "form": TOTP2FAForm(),
-                        "step": "totp_2fa",
-                        "user": user,
-                    },
-                )
-
-        return render(request, "users/login.html", {"form": form, "step": step})
-
-    elif step in ["email_2fa", "totp_2fa"]:
-        FormClass = Email2FAForm if step == "email_2fa" else TOTP2FAForm
-        form = FormClass(request.POST or None)
-
-        if request.method == "POST" and form.is_valid():
-            user = CustomUser.objects.get(pk=request.session.get("pre_2fa_user_id"))
-            if not user:
-                messages.error(request, "Session expired.")
-                return redirect("login")
-
-            twofa_code = request.POST.get("twofa_code")
-            valid = (
-                is_email_code_valid(user, twofa_code)
-                if step == "email_2fa"
-                else verify_totp(user.twofa_totp_secret, twofa_code)
-            )
-
-            if valid:
-                remember_device = form.cleaned_data.get(
-                    "remember_device", False
-                ) or request.session.get("remember_device", False)
-                return login_success(
-                    request,
-                    user,
-                    ip,
-                    user_agent,
-                    location,
-                    twofa_method=step,
-                    remember_device=remember_device,
-                )
-
-            else:
-                messages.error(request, "Invalid or expired code.")
-        return render(request, "users/login.html", {"form": form, "step": step})
-
-    return render(request, "users/login.html", {"form": LoginForm(), "step": "login"})
-
-
 # ------==== Logout View ====------- #
 def logout_view(request):
     if request.user.is_authenticated:
@@ -829,7 +652,15 @@ def delete_account_view(request):
 @redirect_not_authenticated_user
 def twofa_settings_view(request):
     user = request.user
-    trusted_devices = user.trusted_devices.all().order_by("-last_used_at")
+
+    # Delete expired devices
+    user.trusted_devices.filter(expires_at__lte=timezone.now()).delete()
+
+    trusted_devices = user.trusted_devices.filter(
+        expires_at__gt=timezone.now()
+    ).order_by("-last_used_at")
+
+    cookie_token = request.COOKIES.get(f"trusted_device_{user.pk}")
 
     EMAIL_CODE_RESEND_DELAY_SECONDS = 120
 
@@ -841,9 +672,21 @@ def twofa_settings_view(request):
         device.browser_version = ua_info["browser_version"]
         device.os_family = ua_info["os_family"]
         device.os_version = ua_info["os_version"]
-        device.is_current_device = device.device_token == request.COOKIES.get(
-            "trusted_device"
+        device.is_current_device = (
+            device.device_token == hash_token(cookie_token) if cookie_token else False
         )
+        print(device.device_token, request.COOKIES.get(f"trusted_device_{user.pk}"))
+
+        expiration_duration = timedelta(days=30)
+        device.expires_at = device.last_used_at + expiration_duration
+        device.expires_soon = (device.expires_at - timezone.now()) < timedelta(days=7)
+
+        if device.expires_at:
+            device.expires_soon = device.expires_at <= timezone.now() + timedelta(
+                days=5
+            )
+        else:
+            device.expires_soon = False
 
     context = {
         "trusted_devices": trusted_devices,
@@ -1055,3 +898,263 @@ def twofa_settings_view(request):
             return redirect("twofa_settings")
 
     return render(request, "users/2fa_settings.html", context)
+
+
+# ========= VIEWS UPDATED =========
+
+
+def login_view(request):
+    """Vue de connexion avec 2FA améliorée"""
+    ip = get_client_ip(request)
+    user_agent = get_user_agent(request)
+    location = get_location_from_ip(ip)
+
+    step = request.POST.get("step", "login")
+    context = {"step": step}
+    user = None
+
+    if step == "login":
+        form = LoginForm(request.POST or None)
+
+        if request.method == "POST" and form.is_valid():
+            identifier = form.cleaned_data["email"]
+            password = form.cleaned_data["password"]
+            remember_device = form.cleaned_data.get("remember_device")
+            request.session["remember_device"] = remember_device
+            # Rechercher l'utilisateur par email ou username
+            user_qs = CustomUser.objects.filter(
+                email=identifier
+            ) | CustomUser.objects.filter(username=identifier)
+
+            if not user_qs.exists():
+                messages.error(
+                    request,
+                    mark_safe(
+                        f"Aucun compte trouvé. <a href='{reverse('register')}' class='alert-link'>Créer un compte</a>."
+                    ),
+                )
+                return render(request, "users/login.html", {"form": form, "step": step})
+
+            user = authenticate(request, username=identifier, password=password)
+            if user is None:
+                messages.error(
+                    request, "Email/nom d'utilisateur ou mot de passe incorrect"
+                )
+                return render(request, "users/login.html", {"form": form, "step": step})
+
+            if not user.is_email_verified:
+                messages.warning(
+                    request,
+                    mark_safe(
+                        f"Vérifiez votre email avant de vous connecter. <a href='{reverse('verify_email')}' class='alert-link'>Renvoyer le code</a>"
+                    ),
+                )
+                request.session["verification_email"] = user.email
+                return redirect("verify_email")
+
+            # Gérer "Se souvenir de moi"
+            if remember_device:
+                request.session.set_expiry(1209600)  # 2 weeks
+            else:
+                request.session.set_expiry(
+                    0
+                )  # Session expirée à la fermeture du navigateur
+
+            # Vérifier si c'est un appareil de confiance
+            if (user.email_2fa_enabled or user.totp_enabled) and is_trusted_device(
+                request, user
+            ):
+                request.session.pop("remember_device", False)
+                return login_success(
+                    request,
+                    user,
+                    ip,
+                    user_agent,
+                    location,
+                    twofa_method="trusted_device",
+                )
+
+            # Lancer le processus 2FA si activé
+            request.session["pre_2fa_user_id"] = user.id
+
+            # Si les deux méthodes sont activées, laisser choisir
+            if user.email_2fa_enabled and user.totp_enabled:
+                return render(
+                    request,
+                    "users/login.html",
+                    {
+                        "form": Choose2FAMethodForm(),
+                        "step": "choose_2fa",
+                        "user": user,
+                    },
+                )
+
+            # Si seul l'email 2FA est activé
+            elif user.email_2fa_enabled:
+                code = generate_email_code()
+                user.email_2fa_code = code
+                user.email_2fa_sent_at = timezone.now()
+                user.save()
+                send_email_code(user, code)
+                return render(
+                    request,
+                    "users/login.html",
+                    {
+                        "form": Email2FAForm(),
+                        "step": "email_2fa",
+                        "user": user,
+                    },
+                )
+
+            # Si seul le TOTP est activé
+            elif user.totp_enabled:
+                return render(
+                    request,
+                    "users/login.html",
+                    {
+                        "form": TOTP2FAForm(),
+                        "step": "totp_2fa",
+                        "user": user,
+                    },
+                )
+
+            # Pas de 2FA activée
+            return login_success(request, user, ip, user_agent, location)
+
+        return render(request, "users/login.html", {"form": form, "step": step})
+
+    elif step == "choose_2fa":
+        form = Choose2FAMethodForm(request.POST or None)
+
+        if request.method == "POST" and form.is_valid():
+            user = CustomUser.objects.get(pk=request.session.get("pre_2fa_user_id"))
+            if not user:
+                messages.error(request, "Session expirée.")
+                return redirect("login")
+
+            method = form.cleaned_data["twofa_method"]
+
+            if method == "email" and user.email_2fa_enabled:
+                code = generate_email_code()
+                user.email_2fa_code = code
+                user.email_2fa_sent_at = timezone.now()
+                user.save()
+                send_email_code(user, code)
+                return render(
+                    request,
+                    "users/login.html",
+                    {
+                        "form": Email2FAForm(),
+                        "step": "email_2fa",
+                        "user": user,
+                    },
+                )
+
+            elif method == "totp" and user.totp_enabled:
+                return render(
+                    request,
+                    "users/login.html",
+                    {
+                        "form": TOTP2FAForm(),
+                        "step": "totp_2fa",
+                        "user": user,
+                    },
+                )
+
+        return render(
+            request,
+            "users/login.html",
+            {"form": form, "step": step, "user": get_user_from_session(request)},
+        )
+
+    elif step in ["email_2fa", "totp_2fa"]:
+        FormClass = Email2FAForm if step == "email_2fa" else TOTP2FAForm
+        form = FormClass(request.POST or None)
+
+        user = get_user_from_session(request)
+        if not user:
+            messages.error(request, "Session expirée.")
+            return redirect("login")
+
+        # Gestion du renvoi de code email
+        if (
+            request.method == "POST"
+            and request.POST.get("resend_code")
+            and step == "email_2fa"
+        ):
+            if user.can_send_verification_code():
+                code = generate_email_code()
+                user.email_2fa_code = code
+                user.email_2fa_sent_at = timezone.now()
+                user.save()
+                send_email_code(user, code)
+                messages.success(request, "Nouveau code envoyé !")
+            else:
+                messages.warning(request, "Attendez avant de demander un nouveau code.")
+            return render(
+                request, "users/login.html", {"form": form, "step": step, "user": user}
+            )
+
+        if request.method == "POST" and form.is_valid():
+            twofa_code = form.cleaned_data["twofa_code"]
+            remember_device = request.session.get("remember_device", False)
+
+            # Validation du code
+            valid = (
+                is_email_code_valid(user, twofa_code)
+                if step == "email_2fa"
+                else verify_totp(user.twofa_totp_secret, twofa_code)
+            )
+
+            if valid:
+                # Nettoyer le code email après utilisation
+                if step == "email_2fa":
+                    user.email_2fa_code = None
+                    user.email_2fa_sent_at = None
+                    user.save()
+
+                return login_success(
+                    request,
+                    user,
+                    ip,
+                    user_agent,
+                    location,
+                    twofa_method=step,
+                    remember_device=remember_device,
+                )
+            else:
+                messages.error(request, "Code invalide ou expiré.")
+
+        return render(
+            request, "users/login.html", {"form": form, "step": step, "user": user}
+        )
+    else:
+        # Cas de sécurité : étape inconnue ou mal formée
+        messages.error(request, "Étape invalide dans le processus de connexion.")
+        return render(
+            request, "users/login.html", {"form": LoginForm(), "step": "login"}
+        )
+
+
+@csrf_exempt
+@require_POST
+def resend_email_2fa_code(request):
+    """Vue AJAX pour renvoyer le code 2FA par email"""
+    user = get_user_from_session(request)
+    if not user:
+        return JsonResponse({"success": False, "message": "Session expirée"})
+
+    if not user.can_send_verification_code():
+        return JsonResponse(
+            {"success": False, "message": "Attendez avant de demander un nouveau code"}
+        )
+
+    code = generate_email_code()
+    user.email_2fa_code = code
+    user.email_2fa_sent_at = timezone.now()
+    user.save()
+
+    if send_email_code(user, code):
+        return JsonResponse({"success": True, "message": "Code envoyé"})
+    else:
+        return JsonResponse({"success": False, "message": "Erreur lors de l'envoi"})

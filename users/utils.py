@@ -22,6 +22,11 @@ import requests  # HTTP requests for IP location
 import pyotp  # TOTP generation and verification
 import qrcode  # QR code generation
 from user_agents import parse  # Parse user agent strings
+import hashlib
+
+# === Decorators ===
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
 
 # === Django Imports ===
 from django.conf import settings  # Django settings access
@@ -32,9 +37,14 @@ from django.utils.http import http_date  # HTTP date formatting
 from django.contrib.auth import get_backends, get_user_model
 from django.shortcuts import redirect
 from django.contrib.auth import login
+from django.http import JsonResponse
 
 # === Local Imports ===
-from .models import TrustedDevice  # Model for trusted devices
+from .models import (
+    TrustedDevice,
+    CustomUser,
+    PendingFileDeletion,
+)  # Model for trusted devices
 from logs.utils import log_user_action_json
 
 
@@ -66,10 +76,6 @@ def schedule_profile_picture_deletion(file_path, seconds=None):
     Prevents multiple scheduling of the same file.
     """
     try:
-        from .models import (
-            PendingFileDeletion,
-        )  # Local import to avoid circular dependency
-
         if seconds is None:
             seconds = getattr(settings, "PROFILE_PICTURE_DELETION_DELAY_SECONDS", 86400)
 
@@ -119,8 +125,6 @@ def cleanup_old_files():
     Returns the count of deleted files.
     """
     try:
-        from .models import PendingFileDeletion
-
         now = timezone.now()
         files_to_delete = PendingFileDeletion.objects.filter(
             scheduled_deletion__lte=now
@@ -299,60 +303,28 @@ def verify_totp(secret, code):
 
 
 # --- Trusted Device Management ---
-def create_trusted_device(
-    response, user, request, ip, user_agent, location=None, max_age_days=30
-):
-    """
-    Register or update a trusted device cookie:
-    - If device already known, update last usage info
-    - Else create new trusted device record and cookie
-    """
-    token = request.COOKIES.get("trusted_device")
 
-    if token:
-        device = TrustedDevice.objects.filter(user=user, device_token=token).first()
-        if device:
-            device.last_used_at = timezone.now()
-            device.ip_address = ip
-            device.user_agent = user_agent[:255]  # truncate if too long
-            if location:
-                device.location = location
-            device.save(
-                update_fields=["last_used_at", "ip_address", "user_agent", "location"]
-            )
-            return  # No further action needed
 
-    # New device registration
-    token = uuid.uuid4().hex
-    TrustedDevice.objects.create(
-        user=user,
-        device_token=token,
-        user_agent=user_agent[:255],
-        ip_address=ip,
-        location=location or "",
-    )
-
-    max_age = max_age_days * 24 * 60 * 60
-    expires = http_date(timezone.now().timestamp() + max_age)
-    response.set_cookie(
-        "trusted_device",
-        token,
-        max_age=max_age,
-        expires=expires,
-        secure=True,
-        httponly=True,
-        samesite="Lax",
-    )
+def hash_token(token: str) -> str:
+    return hashlib.sha256(token.encode()).hexdigest()
 
 
 def is_trusted_device(request, user):
-    """
-    Check if the current device (via cookie) is trusted for the user.
-    """
-    token = request.COOKIES.get("trusted_device")
-    if not token:
-        return False
-    return TrustedDevice.objects.filter(user=user, device_token=token).exists()
+    for cookie_name, token in request.COOKIES.items():
+        if cookie_name.startswith(f"trusted_device_{user.pk}"):
+            token_hash = hash_token(token)
+            device = TrustedDevice.objects.filter(
+                user=user,
+                device_token=token_hash,
+                expires_at__gt=timezone.now(),
+            ).first()
+            if device:
+                device.last_used_at = timezone.now()
+                device.ip_address = get_client_ip(request)
+                device.user_agent = request.META.get("HTTP_USER_AGENT", "")[:255]
+                device.save(update_fields=["last_used_at", "ip_address", "user_agent"])
+                return True
+    return False
 
 
 # --- IP Geolocation ---
@@ -408,37 +380,6 @@ def analyze_user_agent(ua_string):
         "device_family": device_family,
         "device_type": device_type,
     }
-
-
-def login_success(
-    request, user, ip, user_agent, location, twofa_method=None, remember_device=False
-):
-    user.backend = (
-        f"{get_backends()[0].__module__}.{get_backends()[0].__class__.__name__}"
-    )
-    login(request, user)
-    user.is_online = True
-    user.last_login_date = timezone.now()
-    user.save()
-
-    if remember_device:
-        response = redirect("profile")
-        create_trusted_device(response, user, request, ip, user_agent, location)
-    else:
-        response = redirect("profile")
-
-    log_user_action_json(
-        user=request.user,
-        action="login",
-        request=request,
-        extra_info={"2fa": twofa_method} if twofa_method else None,
-    )
-
-    # Nettoyage session
-    request.session.pop("pre_2fa_user_id", None)
-    request.session.pop("remember_device", None)
-
-    return response
 
 
 def generate_verification_code():
@@ -500,3 +441,176 @@ def send_verification_email(email, code):
     except Exception as e:
         print(f"Erreur envoi email: {e}")
         return False
+
+
+def get_device_name(request):
+    """Génère un nom d'appareil basé sur le user agent"""
+    user_agent = get_user_agent(request)
+
+    if "iPhone" in user_agent:
+        return "iPhone"
+    elif "iPad" in user_agent:
+        return "iPad"
+    elif "Android" in user_agent:
+        return "Appareil Android"
+    elif "Windows" in user_agent:
+        return "PC Windows"
+    elif "Macintosh" in user_agent:
+        return "Mac"
+    elif "Linux" in user_agent:
+        return "Linux"
+    else:
+        return "Appareil inconnu"
+
+
+def is_safe_url(url, allowed_hosts, require_https=False):
+    """Vérifie si une URL de redirection est sûre"""
+    from urllib.parse import urlparse
+
+    if not url:
+        return False
+
+    parsed = urlparse(url)
+
+    # URL relative
+    if not parsed.netloc:
+        return True
+
+    # Vérifier le host
+    if parsed.netloc not in allowed_hosts:
+        return False
+
+    # Vérifier HTTPS si requis
+    if require_https and parsed.scheme != "https":
+        return False
+
+    return True
+
+
+from django.http import HttpResponseRedirect
+from django.urls import reverse
+from django.contrib import messages
+
+
+def login_success(
+    request, user, ip, user_agent, location, twofa_method=None, remember_device=False
+):
+    """Gère la connexion réussie"""
+    # Authentification manuelle
+    user.backend = (
+        f"{get_backends()[0].__module__}.{get_backends()[0].__class__.__name__}"
+    )
+    login(request, user)
+
+    # Mise à jour de l'état utilisateur
+    user.is_online = True
+    user.last_login_date = timezone.now()
+    user.last_login_ip = ip
+    user.save()
+
+    # Déterminer l'URL de redirection
+    next_url = request.GET.get("next") or request.POST.get("next")
+    redirect_url = (
+        next_url
+        if is_safe_url(next_url, allowed_hosts={request.get_host()})
+        else reverse("profile")
+    )
+    response = HttpResponseRedirect(redirect_url)
+
+    # === Gestion de l'appareil de confiance ===
+    remember_device = request.session.get("remember_device", False)
+
+    if remember_device:
+        # Recherche dans les cookies un token qui correspond à un appareil trusted
+        trusted_tokens = [
+            value
+            for key, value in request.COOKIES.items()
+            if key.startswith("trusted_device_")
+        ]
+
+        device = None
+        for token in trusted_tokens:
+            device = TrustedDevice.objects.filter(user=user, device_token=token).first()
+            if device:
+                break
+
+        if device:
+            # Mise à jour si le device est déjà connu pour cet utilisateur
+            device.last_used_at = timezone.now()
+            device.ip_address = ip
+            device.user_agent = user_agent[:255]
+            if location:
+                device.location = location
+            device.save(
+                update_fields=["last_used_at", "ip_address", "user_agent", "location"]
+            )
+        else:
+            # Nouveau token unique par user
+            cookie_name = f"trusted_device_{user.pk}"
+            max_age_days = 30
+            max_age = max_age_days * 24 * 60 * 60
+            expires = http_date(timezone.now().timestamp() + max_age)
+            token = f"{user.pk}-{uuid.uuid4().hex}"
+            token_hash = hash_token(token)
+            expires_in_days = 30
+
+            TrustedDevice.objects.create(
+                user=user,
+                device_token=token_hash,
+                user_agent=user_agent[:255],
+                ip_address=ip,
+                location=location or "",
+                expires_at=timezone.now() + timedelta(days=expires_in_days),
+            )
+
+            response.set_cookie(
+                cookie_name,
+                token,  # En clair dans le cookie
+                max_age=max_age,
+                expires=expires,
+                secure=True,
+                httponly=True,
+                samesite="Lax",
+            )
+
+        # Nettoyage après traitement
+        request.session.pop("remember_device", None)
+
+    # Logging
+    log_user_action_json(
+        user=user,
+        action="login",
+        request=request,
+        ip_address=ip,
+        extra_info={
+            "twofa_method": twofa_method,
+            "remember_device": remember_device,
+            "user_agent": user_agent[:200],
+            "location": location,
+        },
+    )
+
+    # Message flash
+    welcome_msg = f"Bienvenue {user.first_name} !"
+    if twofa_method == "trusted_device":
+        welcome_msg += " (Appareil de confiance)"
+    elif twofa_method:
+        welcome_msg += " Connexion sécurisée"
+    messages.success(request, welcome_msg)
+
+    # Nettoyage des données temporaires
+    request.session.pop("pre_2fa_user_id", None)
+    request.session.pop("remember_device", False)
+
+    return response
+
+
+def get_user_from_session(request):
+    """Récupère l'utilisateur depuis la session"""
+    user_id = request.session.get("pre_2fa_user_id")
+    if user_id:
+        try:
+            return CustomUser.objects.get(pk=user_id)
+        except CustomUser.DoesNotExist:
+            pass
+    return None

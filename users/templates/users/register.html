@@ -2,31 +2,35 @@
 {% load static %}
 {% block title %}Register - Shuttrly{% endblock %}
 {% block head %}
-  {{ block.super}}
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Inscription - Étape {{ step }}/6</title>
+    {{ block.super}}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inscription - Étape {{ step }}/6</title>
+
+    <!--Local CSS files-->
+    <link rel="stylesheet" href="{% static 'css/users.css' %}">
+
 {% endblock %}
 
 {% block content %}
-  <div class="container-bc">
-    <div class="container-fluid" style="height: 100%;position: absolute;">
-        <div class="registration-container">
-            <!-- Progress Indicator -->
-            <div class="progress-indicator">
-                <div class="progress-line">
-                    <div class="progress-fill" style="width: {{ progress|default:17 }}%;"></div>
+    <div class="container-bc">
+        <div class="container-fluid" style="height: 100%;position: absolute;">
+            <div class="registration-container">
+                <!-- Progress Indicator -->
+                <div class="progress-indicator">
+                    <div class="progress-line">
+                        <div class="progress-fill" style="width: {{ progress|default:17 }}%;"></div>
+                    </div>
+                    {% for i in "123456" %}
+                        <div class="progress-step {% if step|add:0 > i|add:0 %}completed{% elif step == i %}active{% endif %}">
+                            {% if step|add:0 > i|add:0 %}
+                                <i class="fas fa-check"></i>
+                            {% else %}
+                                {{ i }}
+                            {% endif %}
+                        </div>
+                    {% endfor %}
                 </div>
-                {% for i in "123456" %}
-                <div class="progress-step {% if step|add:0 > i|add:0 %}completed{% elif step == i %}active{% endif %}">
-                    {% if step|add:0 > i|add:0 %}
-                        <i class="fas fa-check"></i>
-                    {% else %}
-                        {{ i }}
-                    {% endif %}
-                </div>
-                {% endfor %}
-            </div>
 
             <div class="step-content fade-in">
                 {% if messages %}
@@ -55,7 +59,7 @@
                         <div class="mb-4">
                             <label for="id_email" class="form-label">E-mail address</label>
                             <input type="email" class="form-control" id="id_email" name="email" 
-                                    placeholder="votre@email.com" 
+                                    placeholder="your@email.com" 
                                     value="{{ form.email.value|default:'' }}"
                                     autocomplete="email" required>
                             {% if form.email.errors %}
@@ -301,267 +305,6 @@
         </div>
     </div>
   </div>
-
-  <style>
-    .container-bc {
-
-        background: #CAD2C5;
-        min-height: 100vh;
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }
-    
-    .registration-container {
-        max-width: 500px;
-        margin: 2rem auto;
-        padding: 0 1rem;
-    }
-    
-    .progress-indicator {
-        display: flex;
-        justify-content: space-between;
-        margin-bottom: 2rem;
-        position: relative;
-        padding: 0 20px;
-    }
-    
-    .progress-step {
-        width: 45px;
-        height: 45px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        position: relative;
-        z-index: 2;
-        background: white;
-        border: 3px solid #dee2e6;
-        color: #6c757d;
-        font-weight: bold;
-        font-size: 14px;
-        transition: all 0.3s ease;
-    }
-    
-    .progress-step.active {
-        background: #2F3D46;
-        border-color: #2F3D46;
-        color: white;
-        transform: scale(1.1);
-    }
-    
-    .progress-step.completed {
-        background: #84A98D;
-        border-color: #84A98D;
-        color: white;
-    }
-    
-    .progress-line {
-        position: absolute;
-        top: 50%;
-        left: 35px;
-        right: 35px;
-        height: 3px;
-        background: #dee2e6;
-        z-index: 1;
-        transform: translateY(-50%);
-        border-radius: 2px;
-    }
-    
-    .progress-fill {
-        height: 100%;
-        background: linear-gradient(90deg, #84A98D, #527970);
-        transition: width 0.5s ease;
-        border-radius: 2px;
-    }
-
-    .link {
-      color:#84A98D !important;
-    }
-    
-    .step-content {
-        background: white;
-        border-radius: 15px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-        padding: 2.5rem;
-        position: relative;
-        overflow: hidden;
-    }
-    
-    .step-content::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 4px;
-        background: linear-gradient(90deg, #84A98D, #527970);
-
-    }
-    
-    .step-title {
-        text-align: center;
-        margin-bottom: 1rem;
-        color: #2c503f;
-        font-size: 1.5rem;
-    }
-    
-    .step-description {
-        text-align: center;
-        color: #6c7d6c;
-        margin-bottom: 2rem;
-        font-size: 1rem;
-    }
-    
-    .form-label {
-        font-weight: 600;
-        color: #2F3D46;
-        margin-bottom: 0.5rem;
-    }
-    
-    .form-control {
-        border: 2px solid #e9ecef;
-        border-radius: 8px;
-        padding: 12px 16px;
-        font-size: 16px;
-        transition: all 0.3s ease;
-    }
-    
-    .form-control:focus {
-        border-color: #2F3D46;
-        box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
-        outline: none;
-    }
-    
-    .verification-code-input {
-        font-size: 2rem;
-        letter-spacing: 1rem;
-        text-align: center;
-        font-weight: bold;
-    }
-    
-    .username-feedback {
-        font-size: 0.875rem;
-        margin-top: 0.5rem;
-        min-height: 20px;
-    }
-    
-    .username-available {
-        color: #28a745;
-    }
-    
-    .username-taken {
-        color: #dc3545;
-    }
-    
-    .btn-navigation {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-top: 2rem;
-    }
-    
-    .btn {
-        border-radius: 8px;
-        padding: 12px 24px;
-        font-weight: 600;
-        transition: all 0.3s ease;
-    }
-    
-    .previous-btn {
-      border: solid 2px #84A98D !important;
-    }
-    .previous-btn:hover{
-      background: #84A98D;
-      color: #fffff
-    }
-
-    .btn-primary {
-        background: linear-gradient(270deg, #84A98D, #527970);
-        border: none;
-    }
-    
-    .btn-primary:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 5px 8px #527970;
-    }
-    
-    .btn-success {
-        background: linear-gradient(270deg, #84A98D, #527970);
-        border: none;
-        font-size: 16px;
-    }
-    
-    .btn-success:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 5px 15px rgba(40, 167, 69, 0.4);
-    }
-    
-    .summary-card {
-        background: #cad2c57d;
-        border-radius: 10px;
-        padding: 1.5rem;
-        margin-bottom: 1.5rem;
-        border-left: 4px solid #2F3D46;
-    }
-    
-    .summary-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 0.75rem;
-        padding: 0.5rem 0;
-    }
-    
-    .summary-item:last-child {
-        margin-bottom: 0;
-    }
-    
-    .summary-label {
-        font-weight: 600;
-        color: #495057;
-    }
-    
-    .summary-value {
-        color: #6c7d6c;
-        font-weight: 500;
-    }
-    
-    .resend-timer {
-        text-align: center;
-        margin-top: 1rem;
-        padding: 1rem;
-        background: #f8f9fa;
-        border-radius: 8px;
-    }
-    
-    .password-strength {
-        margin-top: 0.5rem;
-    }
-    
-    .password-match {
-        margin-top: 0.5rem;
-        min-height: 20px;
-    }
-    
-    .alert {
-        border-radius: 10px;
-        border: none;
-        background: #cad2c57d;
-    }
-    
-    .fade-in {
-        animation: fadeIn 0.5s ease-in;
-    }
-
-    .fas {
-      color: #527970 !important;
-    }
-    
-    @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(20px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-
-  </style>
 {% endblock %}
 
 {% block scripts %}

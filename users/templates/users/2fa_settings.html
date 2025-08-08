@@ -130,6 +130,10 @@
       <div class="device">
         <div class="device-summary" onclick="toggleDetails(this)">
           {{ device.device_type }}
+          {{ device.device_type }}
+          {% if device.expires_soon %}
+            <span style="color: orange; font-weight: bold; margin-left: 1em;">(Expiring soon)</span>
+          {% endif %}
           {% if device.is_current_device %}
             <span class="device-current">(current device)</span>
           {% endif %}
@@ -141,6 +145,9 @@
           <div><strong>Browser:</strong> {{ device.browser_family }} {{ device.browser_version }}</div>
           <div><strong>Operating System:</strong> {{ device.os_family }} {{ device.os_version }}</div>
           <div><strong>IP Address:</strong> {{ device.ip_address|default:"Unknown" }}</div>
+          {% if device.expires_at %}
+            <div><strong>Expires at:</strong> {{ device.expires_at|date:"SHORT_DATETIME_FORMAT" }}</div>
+          {% endif %}
           <form method="POST" style="margin-top: 0.5em;">
             {% csrf_token %}
             <input type="hidden" name="action" value="revoke_device">

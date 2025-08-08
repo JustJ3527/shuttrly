@@ -359,8 +359,12 @@ class TrustedDevice(models.Model):
         related_name="trusted_devices",
     )
     device_token = models.CharField(max_length=64, unique=True)
-    user_agent = models.TextField()
+    user_agent = models.TextField(blank=True, null=True)
     ip_address = models.GenericIPAddressField(blank=True, null=True)
     location = models.CharField(max_length=255, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     last_used_at = models.DateTimeField(auto_now=True)
+    expires_at = models.DateTimeField(blank=True, null=True)
+
+    def __str__(self):
+        return f"{self.user} - {self.device_token[:8]}..."

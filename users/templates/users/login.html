@@ -190,7 +190,7 @@
                         <!-- SECTION RENVOI DE CODE CORRIGÉE -->
                         <div class="resend-section text-center mb-3">
                             <div id="resend-button-container" {% if not can_resend %}style="display: none;"{% endif %}>
-                                <button type="submit" name="resend_code" value="1" class="btn btn-outline-secondary btn-sm">
+                                <button type="button" id="resend-code-btn" class="btn btn-outline-secondary btn-sm">
                                     <i class="fas fa-paper-plane"></i> Resend code
                                 </button>
                             </div>
@@ -372,6 +372,48 @@
                 }
             }, 1000);
         }
+        document.addEventListener('DOMContentLoaded', () => {
+            // Gestion bouton "Resend code"
+            const resendBtn = document.getElementById('resend-code-btn');
+            if (resendBtn) {
+                resendBtn.addEventListener('click', () => {
+                // On crée un formulaire temporaire pour envoyer uniquement resend_code=1
+                const form = document.getElementById('login-form');
+                if (!form) return;
+
+                const formData = new FormData();
+                formData.append('step', 'email_2fa');  // adapter selon l'étape
+                formData.append('resend_code', '1');
+                formData.append('csrfmiddlewaretoken', form.querySelector('[name=csrfmiddlewaretoken]').value);
+
+                fetch(form.action || window.location.href, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    credentials: 'same-origin',
+                })
+                .then(response => response.text())
+                .then(html => {
+                    // Tu peux choisir de rafraîchir la page pour mettre à jour ou manipuler le DOM
+                    // Ici simple reload
+                    window.location.reload();
+                })
+                .catch(() => {
+                    alert("Erreur lors de la demande de renvoi de code.");
+                });
+                });
+            }
+
+            // Gestion bouton "Back to login"
+            const backBtn = document.getElementById('back-btn');
+            if (backBtn) {
+                backBtn.addEventListener('click', () => {
+                window.location.href = "{% url 'login' %}?step=login";
+                });
+            }
+            });
         {% endif %}
 
         // Auto-focus et formatting pour le code de vérification
@@ -384,12 +426,6 @@
                 // Autoriser seulement les chiffres
                 this.value = this.value.replace(/[^0-9]/g, '');
                 
-                // Auto-submit si 6 chiffres sont entrés
-                if (this.value.length === 6) {
-                    setTimeout(() => {
-                        document.getElementById('login-form').submit();
-                    }, 500);
-                }
             });
         }
         {% endif %}

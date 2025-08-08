@@ -532,21 +532,17 @@ from django.contrib import messages
 def login_success(
     request, user, ip, user_agent, location, twofa_method=None, remember_device=False
 ):
-    print(f"login_success:{remember_device}")
-    """Gère la connexion réussie"""
-    # Authentification manuelle
+    print("login_success called")
     user.backend = (
         f"{get_backends()[0].__module__}.{get_backends()[0].__class__.__name__}"
     )
     login(request, user)
 
-    # Mise à jour de l'état utilisateur
     user.is_online = True
     user.last_login_date = timezone.now()
     user.last_login_ip = ip
     user.save()
 
-    # Déterminer l'URL de redirection
     next_url = request.GET.get("next") or request.POST.get("next")
     redirect_url = (
         next_url
@@ -555,19 +551,15 @@ def login_success(
     )
     response = HttpResponseRedirect(redirect_url)
 
-    # === Gestion de l'appareil de confiance ===
-    print(f"before:{remember_device}")
     remember_device = request.session.get("remember_device", False)
-    print(f"after: {remember_device}")
+    print(f"remember_device: {remember_device}")
 
     if remember_device:
-        # Recherche dans les cookies un token qui correspond à un appareil trusted
         trusted_tokens = [
             value
             for key, value in request.COOKIES.items()
             if key.startswith(f"trusted_device_{user.pk}")
         ]
-        print(f"trusted_tokens: {trusted_tokens}")
 
         device = None
         for token in trusted_tokens:
@@ -575,13 +567,10 @@ def login_success(
             device = TrustedDevice.objects.filter(
                 user=user, device_token=hashed_token
             ).first()
-            print(f"Device found: {device}")
             if device:
                 break
 
         if device:
-            print(f"Device found2: {device}")
-            # Mise à jour si le device est déjà connu pour cet utilisateur
             device.last_used_at = timezone.now()
             device.ip_address = ip
             device.user_agent = user_agent[:255]
@@ -591,14 +580,12 @@ def login_success(
                 update_fields=["last_used_at", "ip_address", "user_agent", "location"]
             )
         else:
-            # Nouveau token unique par user
             cookie_name = f"trusted_device_{user.pk}"
             max_age_days = 30
             max_age = max_age_days * 24 * 60 * 60
             expires = http_date(timezone.now().timestamp() + max_age)
             token = f"{user.pk}-{uuid.uuid4().hex}"
             token_hash = hash_token(token)
-            expires_in_days = 30
 
             TrustedDevice.objects.create(
                 user=user,
@@ -606,12 +593,12 @@ def login_success(
                 user_agent=user_agent[:255],
                 ip_address=ip,
                 location=location or "",
-                expires_at=timezone.now() + timedelta(days=expires_in_days),
+                expires_at=timezone.now() + timedelta(days=max_age_days),
             )
 
             response.set_cookie(
                 cookie_name,
-                token,  # En clair dans le cookie
+                token,
                 max_age=max_age,
                 expires=expires,
                 secure=True,
@@ -619,10 +606,8 @@ def login_success(
                 samesite="Lax",
             )
 
-        # Nettoyage après traitement
-        request.session.pop("remember_device", None)
+        request.session.pop("remember_device", None)  # Une seule fois ici
 
-    # Logging
     log_user_action_json(
         user=user,
         action="login",
@@ -636,7 +621,6 @@ def login_success(
         },
     )
 
-    # Message flash
     welcome_msg = f"Bienvenue {user.first_name} !"
     if twofa_method == "trusted_device":
         welcome_msg += " (Appareil de confiance)"
@@ -644,9 +628,7 @@ def login_success(
         welcome_msg += " Connexion sécurisée"
     messages.success(request, welcome_msg)
 
-    # Nettoyage des données temporaires
     request.session.pop("pre_2fa_user_id", None)
-    request.session.pop("remember_device", False)
 
     return response
 

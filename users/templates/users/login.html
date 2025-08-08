@@ -15,11 +15,10 @@
     <div class="container-bc">
         <div class="container-fluid" style="height: 100%;position: absolute;">
             <div class="registration-container">
-                <!-- Progress Indicator - CORRIGÉ -->
+                <!-- Progress Indicator -->
                 <div class="progress-indicator">
                     <div class="progress-line">
-                        <div class="progress-fill" style="width: 
-                            {% if step == 'login' %}25%{% elif step == 'choose_2fa' %}50%{% elif step == 'email_2fa' or step == 'totp_2fa' %}100%{% endif %};"></div>
+                        <div class="progress-fill" style="width: {{ progress|default:33 }}%;"></div>
                     </div>
                     
                     <div class="progress-step {% if step == 'login' %}active{% else %}completed{% endif %}">
@@ -187,7 +186,7 @@
                             <small class="form-text text-muted">Enter the 6-digit code received by email</small>
                         </div>
 
-                        <!-- SECTION RENVOI DE CODE CORRIGÉE -->
+                        <!-- Resend code section -->
                         <div class="resend-section text-center mb-3">
                             <div id="resend-button-container" {% if not can_resend %}style="display: none;"{% endif %}>
                                 <button type="button" id="resend-code-btn" class="btn btn-outline-secondary btn-sm">
@@ -231,9 +230,9 @@
 
                     <div class="btn-navigation">
                         {% if step != "login" %}
-                            <a href="{% url 'login' %}" class="btn btn-outline-secondary">
-                                <i class="fas fa-arrow-left"></i> Back to login
-                            </a>
+                            <button type="submit" name="previous" class="btn btn-outline-secondary">
+                                <i class="fas fa-arrow-left"></i> Previous
+                            </button>
                         {% else %}
                             <div></div>
                         {% endif %}
@@ -348,12 +347,12 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
     
     <script>
-        // Countdown timer pour le renvoi de code - VERSION CORRIGÉE
+        // Countdown timer for code resend
         {% if step == "email_2fa" %}
         const canResendInitial = {{ can_resend|yesno:"true,false" }};
         
         if (!canResendInitial) {
-            let timeLeft = 20; // 2 minutes en secondes
+            let timeLeft = 20;
             const countdown = document.getElementById('countdown');
             const timerContainer = document.getElementById('resend-timer-container');
             const buttonContainer = document.getElementById('resend-button-container');
@@ -366,81 +365,152 @@
                 
                 if (timeLeft <= 0) {
                     clearInterval(timer);
-                    // Au lieu de recharger, basculer l'affichage
                     if (timerContainer) timerContainer.style.display = 'none';
                     if (buttonContainer) buttonContainer.style.display = 'block';
                 }
             }, 1000);
         }
+
+        // Handle resend code button
         document.addEventListener('DOMContentLoaded', () => {
-            // Gestion bouton "Resend code"
             const resendBtn = document.getElementById('resend-code-btn');
             if (resendBtn) {
                 resendBtn.addEventListener('click', () => {
-                // On crée un formulaire temporaire pour envoyer uniquement resend_code=1
-                const form = document.getElementById('login-form');
-                if (!form) return;
+                    const form = document.getElementById('login-form');
+                    if (!form) return;
 
-                const formData = new FormData();
-                formData.append('step', 'email_2fa');  // adapter selon l'étape
-                formData.append('resend_code', '1');
-                formData.append('csrfmiddlewaretoken', form.querySelector('[name=csrfmiddlewaretoken]').value);
+                    const formData = new FormData();
+                    formData.append('step', 'email_2fa');
+                    formData.append('resend_code', '1');
+                    formData.append('csrfmiddlewaretoken', form.querySelector('[name=csrfmiddlewaretoken]').value);
 
-                fetch(form.action || window.location.href, {
-                    method: 'POST',
-                    body: formData,
-                    headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    },
-                    credentials: 'same-origin',
-                })
-                .then(response => response.text())
-                .then(html => {
-                    // Tu peux choisir de rafraîchir la page pour mettre à jour ou manipuler le DOM
-                    // Ici simple reload
-                    window.location.reload();
-                })
-                .catch(() => {
-                    alert("Erreur lors de la demande de renvoi de code.");
-                });
+                    fetch(form.action || window.location.href, {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                        credentials: 'same-origin',
+                    })
+                    .then(response => {
+                        if (response.ok) {
+                            // Show success message
+                            const successMessage = document.createElement('div');
+                            successMessage.className = 'alert alert-success alert-dismissible fade show';
+                            successMessage.innerHTML = `
+                                <i class="fas fa-check-circle"></i>
+                                A new verification code has been sent to your email address.
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            `;
+                            
+                            // Insert message at the top of the form
+                            const formContainer = form.closest('.step-content');
+                            if (formContainer) {
+                                const existingMessages = formContainer.querySelector('.alert');
+                                if (existingMessages) {
+                                    existingMessages.remove();
+                                }
+                                formContainer.insertBefore(successMessage, formContainer.firstChild);
+                            }
+                            
+                            // Update the resend button state
+                            const buttonContainer = document.getElementById('resend-button-container');
+                            const timerContainer = document.getElementById('resend-timer-container');
+                            if (buttonContainer && timerContainer) {
+                                buttonContainer.style.display = 'none';
+                                timerContainer.style.display = 'block';
+                                
+                                // Start countdown
+                                let timeLeft = 20;
+                                const countdown = document.getElementById('countdown');
+                                const timer = setInterval(() => {
+                                    timeLeft--;
+                                    if (countdown) {
+                                        countdown.textContent = timeLeft;
+                                    }
+                                    
+                                    if (timeLeft <= 0) {
+                                        clearInterval(timer);
+                                        timerContainer.style.display = 'none';
+                                        buttonContainer.style.display = 'block';
+                                    }
+                                }, 1000);
+                            }
+                        } else {
+                            // Show error message
+                            const errorMessage = document.createElement('div');
+                            errorMessage.className = 'alert alert-danger alert-dismissible fade show';
+                            errorMessage.innerHTML = `
+                                <i class="fas fa-exclamation-triangle"></i>
+                                Error sending verification code. Please try again.
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            `;
+                            
+                            const formContainer = form.closest('.step-content');
+                            if (formContainer) {
+                                const existingMessages = formContainer.querySelector('.alert');
+                                if (existingMessages) {
+                                    existingMessages.remove();
+                                }
+                                formContainer.insertBefore(errorMessage, formContainer.firstChild);
+                            }
+                        }
+                    })
+                    .catch(() => {
+                        // Show error message
+                        const errorMessage = document.createElement('div');
+                        errorMessage.className = 'alert alert-danger alert-dismissible fade show';
+                        errorMessage.innerHTML = `
+                            <i class="fas fa-exclamation-triangle"></i>
+                            Error requesting new code. Please try again.
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        `;
+                        
+                        const formContainer = form.closest('.step-content');
+                        if (formContainer) {
+                            const existingMessages = formContainer.querySelector('.alert');
+                            if (existingMessages) {
+                                existingMessages.remove();
+                            }
+                            formContainer.insertBefore(errorMessage, formContainer.firstChild);
+                        }
+                    });
                 });
             }
-
-            // Gestion bouton "Back to login"
-            const backBtn = document.getElementById('back-btn');
-            if (backBtn) {
-                backBtn.addEventListener('click', () => {
-                window.location.href = "{% url 'login' %}?step=login";
-                });
-            }
-            });
+        });
         {% endif %}
 
-        // Auto-focus et formatting pour le code de vérification
+        // Auto-focus and formatting for verification code
         {% if step == "email_2fa" or step == "totp_2fa" %}
         const codeInput = document.querySelector('#id_twofa_code');
         if (codeInput) {
             codeInput.focus();
             
             codeInput.addEventListener('input', function() {
-                // Autoriser seulement les chiffres
+                // Allow only numbers
                 this.value = this.value.replace(/[^0-9]/g, '');
                 
+                // Auto-submit if 6 numbers are entered
+                if (this.value.length === 6) {
+                    setTimeout(() => {
+                        document.getElementById('login-form').submit();
+                    }, 500);
+                }
             });
         }
         {% endif %}
 
-        // Gestion de la sélection des méthodes 2FA
+        // Handle 2FA method selection
         {% if step == "choose_2fa" %}
         document.querySelectorAll('.method-card').forEach(card => {
             card.addEventListener('click', function() {
-                // Retirer la classe selected de toutes les cartes
+                // Remove selected class from all cards
                 document.querySelectorAll('.method-card').forEach(c => c.classList.remove('selected'));
                 
-                // Ajouter la classe selected à la carte cliquée
+                // Add selected class to clicked card
                 this.classList.add('selected');
                 
-                // Cocher le radio button correspondant
+                // Check the corresponding radio button
                 const radio = this.querySelector('input[type="radio"]');
                 if (radio) {
                     radio.checked = true;
@@ -448,10 +518,18 @@
             });
         });
 
-        // Auto-sélectionner si une méthode est déjà cochée
+        // Auto-select if a method is already checked
         document.querySelectorAll('input[name="twofa_method"]:checked').forEach(radio => {
             radio.closest('.method-card').classList.add('selected');
         });
         {% endif %}
+
+        // Auto-focus on first field
+        document.addEventListener('DOMContentLoaded', function() {
+            const firstInput = document.querySelector('.form-control');
+            if (firstInput && '{{ step }}' !== 'email_2fa' && '{{ step }}' !== 'totp_2fa') {
+                firstInput.focus();
+            }
+        });
     </script>
 {% endblock %}

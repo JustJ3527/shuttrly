@@ -38,6 +38,8 @@ from django.contrib.auth import get_backends, get_user_model
 from django.shortcuts import redirect
 from django.contrib.auth import login
 from django.http import JsonResponse
+from django.db.models import Q
+from django.contrib.auth import authenticate
 
 # === Local Imports ===
 from .models import (
@@ -659,3 +661,270 @@ def initialize_2fa_session_data(request, user, code):
     )
     request.session["login_data"] = session_data
     return session_data
+
+
+def initialize_login_session_data(request, user, code=None):
+    """
+    Initialize session data for login process
+    Similar to register but for login flow
+    """
+    session_data = request.session.get("login_data", {})
+    session_data.update(
+        {
+            "user_id": user.id,
+            "email": user.email,
+            "username": user.username,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "email_2fa_enabled": user.email_2fa_enabled,
+            "totp_enabled": user.totp_enabled,
+            "code_attempts": 0,
+        }
+    )
+
+    if code:
+        session_data.update(
+            {
+                "verification_code": code,
+                "code_sent_at": timezone.now().isoformat(),
+            }
+        )
+
+    request.session["login_data"] = session_data
+    return session_data
+
+
+def handle_login_step_1_credentials(request):
+    """
+    Handle step 1 of login: email/username and password validation
+    Returns (success, user, error_message)
+    """
+    from .forms import LoginForm
+
+    form = LoginForm(request.POST)
+    if not form.is_valid():
+        return False, None, "Invalid form data"
+
+    identifier = form.cleaned_data["email"]
+    password = form.cleaned_data["password"]
+    remember_device = form.cleaned_data.get("remember_device", False)
+
+    # Store remember_device in session
+    request.session["remember_device"] = remember_device
+
+    # Find user by email or username
+    user_qs = CustomUser.objects.filter(Q(email=identifier) | Q(username=identifier))
+
+    if not user_qs.exists():
+        return False, None, "No account found with this email/username"
+
+    user = user_qs.first()
+
+    # Authenticate user
+    authenticated_user = authenticate(request, username=identifier, password=password)
+    if authenticated_user is None:
+        return False, None, "Incorrect email/username or password"
+
+    # Check if email is verified
+    if not user.is_email_verified:
+        return False, None, "Please verify your email before logging in"
+
+    return True, user, None
+
+
+def handle_login_step_2_2fa_choice(request):
+    """
+    Handle step 2 of login: 2FA method choice
+    Returns (success, user, error_message)
+    """
+    from .forms import Choose2FAMethodForm
+
+    session_data = request.session.get("login_data", {})
+    user_id = session_data.get("user_id")
+
+    if not user_id:
+        return False, None, "Session expired. Please try again."
+
+    try:
+        user = CustomUser.objects.get(pk=user_id)
+    except CustomUser.DoesNotExist:
+        return False, None, "User not found"
+
+    form = Choose2FAMethodForm(request.POST)
+    if not form.is_valid():
+        return False, user, "Invalid 2FA method selection"
+
+    method = form.cleaned_data["twofa_method"]
+
+    if method == "email" and not user.email_2fa_enabled:
+        return False, user, "Email 2FA is not enabled for this account"
+
+    if method == "totp" and not user.totp_enabled:
+        return False, user, "TOTP 2FA is not enabled for this account"
+
+    # Store the chosen method
+    session_data["chosen_2fa_method"] = method
+    request.session["login_data"] = session_data
+
+    return True, user, None
+
+
+def handle_login_step_3_2fa_verification_logic(request):
+    """
+    Handle step 3 of login: 2FA code verification
+    Returns (success, user, error_message)
+    """
+    from .forms import Email2FAForm, TOTP2FAForm
+
+    session_data = request.session.get("login_data", {})
+    user_id = session_data.get("user_id")
+    chosen_method = session_data.get("chosen_2fa_method")
+
+    if not user_id or not chosen_method:
+        return False, None, "Session expired. Please try again."
+
+    try:
+        user = CustomUser.objects.get(pk=user_id)
+    except CustomUser.DoesNotExist:
+        return False, None, "User not found"
+
+    # Validate the submitted code
+    if chosen_method == "email":
+        form = Email2FAForm(request.POST)
+        if not form.is_valid():
+            return False, user, "Invalid verification code format"
+
+        submitted_code = form.cleaned_data["twofa_code"]
+        stored_code = session_data.get("verification_code")
+        code_sent_at = session_data.get("code_sent_at")
+        attempts = session_data.get("code_attempts", 0)
+
+        # Check attempts
+        if attempts >= 3:
+            return False, user, "Too many attempts. Request a new code."
+
+        # Check expiration (10 minutes)
+        if code_sent_at:
+            sent_time = datetime.fromisoformat(
+                code_sent_at.replace("Z", "+00:00")
+                if code_sent_at.endswith("Z")
+                else code_sent_at
+            )
+            if timezone.is_naive(sent_time):
+                sent_time = timezone.make_aware(sent_time)
+
+            if (timezone.now() - sent_time).total_seconds() > 600:  # 10 minutes
+                return False, user, "Code has expired. Request a new code."
+
+            if submitted_code == stored_code:
+                # Clear session data after successful verification
+                request.session.pop("login_data", None)
+                return True, user, None
+            else:
+                attempts += 1
+                session_data["code_attempts"] = attempts
+                request.session["login_data"] = session_data
+                return (
+                    False,
+                    user,
+                    f"Incorrect code. {3-attempts} remaining attempt(s).",
+                )
+
+        return False, user, "Session error. Please try again."
+
+    elif chosen_method == "totp":
+        form = TOTP2FAForm(request.POST)
+        if not form.is_valid():
+            return False, user, "Invalid TOTP code format"
+
+        submitted_code = form.cleaned_data["twofa_code"]
+
+        if verify_totp(user.twofa_totp_secret, submitted_code):
+            # Clear session data after successful verification
+            request.session.pop("login_data", None)
+            return True, user, None
+        else:
+            return False, user, "Invalid TOTP code"
+
+    return False, user, "Invalid 2FA method"
+
+
+def handle_login_resend_code(request, user):
+    """
+    Handle resend code request for login 2FA
+    Returns (success, message)
+    """
+    session_data = request.session.get("login_data", {})
+    return handle_resend_code_request(request, session_data, user, "email")
+
+
+def get_login_step_progress(step):
+    """
+    Calculate progress percentage for login steps
+    """
+    step_progress = {
+        "login": 33,
+        "choose_2fa": 66,
+        "email_2fa": 100,
+        "totp_2fa": 100,
+    }
+    return step_progress.get(step, 0)
+
+
+def cleanup_login_session(request):
+    """
+    Clean up login session data
+    """
+    request.session.pop("login_data", None)
+    request.session.pop("remember_device", None)
+    request.session.pop("pre_2fa_user_id", None)
+
+
+def handle_resend_code_request(request, session_data, user, email_field="email"):
+    """
+    Common function to handle resend code requests for both register and login
+    Returns (success, message)
+    """
+    if not can_resend_code(session_data):
+        return False, "Please wait before requesting a new code"
+
+    # Generate and send new code
+    new_code = generate_email_code()
+
+    # Update session data
+    session_data.update(
+        {
+            "verification_code": new_code,
+            "code_sent_at": timezone.now().isoformat(),
+            "code_attempts": 0,
+        }
+    )
+
+    # Determine which session key to use
+    if "user_id" in session_data:
+        request.session["login_data"] = session_data
+        # Also update user object for login
+        user.email_2fa_code = new_code
+        user.email_2fa_sent_at = timezone.now()
+        user.save()
+    else:
+        request.session["register_data"] = session_data
+
+    # Send email
+    email = session_data.get(email_field)
+    if email:
+        success = send_verification_email(email, new_code)
+        if success:
+            return True, "A new verification code has been sent to your email address."
+        else:
+            return False, "Error sending verification code. Please try again."
+    else:
+        return False, "Email not found in session"
+
+
+def add_form_error_with_message(form, field, message):
+    """
+    Add error to form and also add a message for display
+    """
+    form.add_error(field, message)
+    return form

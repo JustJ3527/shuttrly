@@ -53,4 +53,4 @@ repo.git.bfg-report/
 .cache_ggshield
 
 # Logs
-logs/user_logs.json
+shuttrly/logs/user_logs.json

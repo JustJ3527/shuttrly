@@ -44,14 +44,13 @@ from .utils import (
     generate_email_code,
     generate_qr_code_base64,
     generate_totp_secret,
-    generate_verification_code,
     get_location_from_ip,
     get_totp_uri,
     is_email_code_valid,
     is_trusted_device,
     login_success,
     schedule_profile_picture_deletion,
-    send_email_code,
+    generate_email_code,
     send_verification_email,
     verify_totp,
     get_changes_dict,
@@ -59,6 +58,7 @@ from .utils import (
     get_client_ip,
     hash_token,
     get_user_from_session,
+    send_2FA_email,
 )
 
 # === Project logs/utils ===
@@ -159,7 +159,7 @@ def handle_step_1_email(request):
                 form.add_error("email", "An account with this email already exists.")
             else:
                 # Generate and send the verification code
-                verification_code = generate_verification_code()
+                verification_code = generate_email_code()
 
                 # Temporarily store data
                 session_data.update(
@@ -449,7 +449,7 @@ def resend_verification_code_view(request):
         return HttpResponseRedirect(f"{reverse('register')}?step=2")
 
     # Generate and send a new code
-    new_code = generate_verification_code()
+    new_code = generate_email_code()
     session_data.update(
         {
             "verification_code": new_code,
@@ -743,7 +743,7 @@ def twofa_settings_view(request):
                 user.email_2fa_code = code
                 user.email_2fa_sent_at = timezone.now()
                 user.save()
-                send_email_code(user, code)
+                generate_email_code(user, code)
                 url = (
                     reverse("twofa_settings")
                     + "?"
@@ -804,7 +804,7 @@ def twofa_settings_view(request):
                 user.email_2fa_code = generate_email_code()
                 user.email_2fa_sent_at = timezone.now()
                 user.save()
-                send_email_code(user, user.email_2fa_code)
+                generate_email_code(user, user.email_2fa_code)
                 messages.success(request, "New code sent.")
             else:
                 messages.error(request, "Please wait before requesting a new code.")
@@ -995,16 +995,30 @@ def login_view(request):
                 user.email_2fa_code = code
                 user.email_2fa_sent_at = timezone.now()
                 user.save()
-                send_email_code(user, code)
-                return render(
-                    request,
-                    "users/login.html",
+                session_data = request.session.get("login_data", {})
+
+                session_data.update(
                     {
-                        "form": Email2FAForm(),
-                        "step": "email_2fa",
-                        "user": user,
-                    },
+                        "email": user.email,
+                        "verification_code": code,
+                        "code_sent_at": timezone.now().isoformat(),
+                        "code_attempts": 0,
+                    }
                 )
+                request.session["login_data"] = session_data
+                success = send_2FA_email(user, code)
+                if success:
+                    return render(
+                        request,
+                        "users/login.html",
+                        {
+                            "form": Email2FAForm(),
+                            "step": "email_2fa",
+                            "user": user,
+                        },
+                    )
+                else:
+                    form.add_error("email", "Error sending 2FA email.")
 
             # Si seul le TOTP est activé
             elif user.totp_enabled:
@@ -1019,7 +1033,16 @@ def login_view(request):
                 )
 
             # Pas de 2FA activée
-            return login_success(request, user, ip, user_agent, location)
+            print(f"login_view:{remember_device}")
+            return login_success(
+                request=request,
+                user=user,
+                ip=ip,
+                user_agent=user_agent,
+                location=location,
+                twofa_method=None,
+                remember_device=remember_device,
+            )
 
         return render(request, "users/login.html", {"form": form, "step": step})
 
@@ -1039,7 +1062,7 @@ def login_view(request):
                 user.email_2fa_code = code
                 user.email_2fa_sent_at = timezone.now()
                 user.save()
-                send_email_code(user, code)
+                send_2FA_email(user, code)
                 return render(
                     request,
                     "users/login.html",
@@ -1087,7 +1110,7 @@ def login_view(request):
                 user.email_2fa_code = code
                 user.email_2fa_sent_at = timezone.now()
                 user.save()
-                send_email_code(user, code)
+                send_2FA_email(user, code)
                 messages.success(request, "Nouveau code envoyé !")
             else:
                 messages.warning(request, "Attendez avant de demander un nouveau code.")
@@ -1138,23 +1161,25 @@ def login_view(request):
 
 @csrf_exempt
 @require_POST
-def resend_email_2fa_code(request):
+def resend_2fa_code_view(request):
     """Vue AJAX pour renvoyer le code 2FA par email"""
+    session_data = request.session.get("login_data", {})
+    if request.method != "POST":
+        return JsonResponse({"error": "Invalid request method."}, status=400)
     user = get_user_from_session(request)
     if not user:
-        return JsonResponse({"success": False, "message": "Session expirée"})
-
-    if not user.can_send_verification_code():
+        return JsonResponse({"error": "Session expired."}, status=401)
+    if not can_resend_code(session_data):
+        messages.warning(request, "Wait 2 minutes before requesting a new code.")
         return JsonResponse(
-            {"success": False, "message": "Attendez avant de demander un nouveau code"}
+            {"error": "Cannot resend code within 2 minutes."}, status=403
         )
 
-    code = generate_email_code()
-    user.email_2fa_code = code
-    user.email_2fa_sent_at = timezone.now()
-    user.save()
-
-    if send_email_code(user, code):
-        return JsonResponse({"success": True, "message": "Code envoyé"})
-    else:
-        return JsonResponse({"success": False, "message": "Erreur lors de l'envoi"})
+    new_code = generate_email_code()
+    session_data.update(
+        {
+            "2fa_code": new_code,
+            "code_sent_at": timezone.now().isoformat(),
+        }
+    )
+    request.session["login_data"] = session_data

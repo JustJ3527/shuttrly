@@ -35,7 +35,7 @@
         </div>
 
         <ul id="navbar-menu" class="navbar-menu">
-            {% if user.is_authenticated %}
+            {% if user.is_authenticated and user.is_online%}
                 <li class="nav-item"><a href="{% url 'profile' %}" class="nav-link">Profile</a></li>
                 {% if user.is_superuser %}
                     <li class="nav-item"><a href="{% url 'admin:index' %}" class="nav-link">Admin Django</a></li>

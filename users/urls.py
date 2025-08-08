@@ -16,7 +16,7 @@ urlpatterns = [
         name="check_username_availability",
     ),
     path(
-        "resend-code/",
+        "resend-verfication-code/",
         resend_verification_code_view,
         name="resend_verification_code",
     ),
@@ -28,14 +28,14 @@ urlpatterns = [
     ),
     path(
         "resend-2fa-code/",
-        resend_email_2fa_code,
-        name="resend_email_2fa_code",
+        resend_2fa_code_view,
+        name="resend_2fa_code_view",
     ),
     path(
         "profile/",
         profile_view,
         name="profile",
-    ), 
+    ),
     path(
         "logout/",
         logout_view,

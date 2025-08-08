@@ -156,23 +156,23 @@ class RegisterStep3Form(forms.Form):
 # ========= LOGIN FORMS =========
 class LoginForm(forms.Form):
     email = forms.CharField(
-        label="Email ou nom d'utilisateur",
+        label="Email or username",
         widget=forms.TextInput(
             attrs={
                 "class": "form-control",
-                "placeholder": "votre@email.com ou nom_utilisateur",
+                "placeholder": "your@email.com ou username",
                 "autocomplete": "username",
                 "id": "id_email",
             }
         ),
-        help_text="Vous pouvez utiliser votre email ou votre nom d'utilisateur",
+        help_text="You can use your email address or username to log in.",
     )
     password = forms.CharField(
-        label="Mot de passe",
+        label="Password",
         widget=forms.PasswordInput(
             attrs={
                 "class": "form-control",
-                "placeholder": "Votre mot de passe",
+                "placeholder": "Your password",
                 "autocomplete": "current-password",
                 "id": "id_password",
             }
@@ -180,7 +180,7 @@ class LoginForm(forms.Form):
     )
     remember_device = forms.BooleanField(
         required=False,
-        label="Se souvenir de cet appareil",
+        label="Remember this device",
         widget=forms.CheckboxInput(
             attrs={"class": "form-check-input", "id": "id_remember_device"}
         ),
@@ -189,15 +189,15 @@ class LoginForm(forms.Form):
 
 class Choose2FAMethodForm(forms.Form):
     TWOFA_CHOICES = [
-        ("email", "Code par email"),
-        ("totp", "Application d'authentification (TOTP)"),
+        ("email", "Code by email"),
+        ("totp", "Authentification app (TOTP)"),
     ]
 
     twofa_method = forms.ChoiceField(
         label="Méthode de vérification",
         choices=TWOFA_CHOICES,
         widget=forms.RadioSelect(attrs={"class": "form-check-input"}),
-        help_text="Choisissez votre méthode de vérification préférée",
+        help_text="Choose your 2FA method",
     )
 
 
@@ -216,7 +216,7 @@ class Email2FAForm(forms.Form):
                 "id": "id_twofa_code",
             }
         ),
-        help_text="Entrez le code reçu par email",
+        help_text="Enter the 6-digit code sent to your email address",
     )
 
 
@@ -235,7 +235,7 @@ class TOTP2FAForm(forms.Form):
                 "id": "id_twofa_code",
             }
         ),
-        help_text="Code de votre application d'authentification (Google Authenticator, Authy, etc.)",
+        help_text="Code from your authentication app (Google Authenticator, Authy, etc.)",
     )
 
 

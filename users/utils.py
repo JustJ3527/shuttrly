@@ -252,16 +252,52 @@ def get_user_agent(request):
 
 
 # --- 2FA Email Code Utilities ---
-def generate_email_code(length=6):
+def generate_email_code():
     """Generate a numeric verification code of specified length."""
-    return "".join(random.choices(string.digits, k=length))
+    return "".join(random.choices(string.digits, k=6))
 
 
-def send_email_code(user, code):
-    """Send the 2FA verification code to the user's email."""
-    subject = "Your 2FA Verification Code"
-    message = f"Your verification code is: {code}"
-    send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [user.email])
+def send_email_code(email, code, subject=None, message=None):
+    """
+    Envoie un code par email avec possibilité de personnaliser le sujet et le message.
+    """
+    if subject is None:
+        subject = "Code de vérification"
+    if message is None:
+        message = f"Votre code est : {code}"
+
+    send_mail(
+        subject,
+        message,
+        settings.DEFAULT_FROM_EMAIL,
+        [email],
+        fail_silently=False,
+    )
+
+
+def send_2FA_email(user, code):
+    print(
+        f"Sending 2FA code to {user.email}"
+    )  # For demo purposes, replace with actual email sending logic
+    """
+    Fonction pour envoyer l'email de vérification
+    À adapter selon votre configuration email
+    """
+    subject = "2FA Code de vérification"
+    message = f"Your 2FA code is : {code}\n\nCe code expire dans 10 minutes."
+
+    try:
+        send_mail(
+            subject,
+            message,
+            settings.DEFAULT_FROM_EMAIL,
+            [user.email],
+            fail_silently=False,
+        )
+        return True
+    except Exception as e:
+        print(f"Erreur envoi email: {e}")
+        return False
 
 
 def is_email_code_valid(user, input_code):
@@ -382,9 +418,9 @@ def analyze_user_agent(ua_string):
     }
 
 
-def generate_verification_code():
-    """Génère un code de vérification à 6 chiffres"""
-    return "".join(random.choices(string.digits, k=6))
+# def generate_verification_code():
+#     """Génère un code de vérification à 6 chiffres"""
+#     return "".join(random.choices(string.digits, k=6))
 
 
 def calculate_age(birth_date):
@@ -413,18 +449,19 @@ def can_resend_code(session_data):
             sent_time = timezone.make_aware(sent_time)
 
         # Attendre 2 minutes avant de permettre un renvoi
-        return (timezone.now() - sent_time).total_seconds() > 120
+        return (timezone.now() - sent_time).total_seconds() > 20
     except:
         return True
 
 
 def send_verification_email(email, code):
+    print(
+        f"Sending verification email to {email}"
+    )  # For demo purposes, replace with actual email sending logic
     """
     Fonction pour envoyer l'email de vérification
     À adapter selon votre configuration email
     """
-    from django.core.mail import send_mail
-    from django.conf import settings
 
     try:
         subject = "Code de vérification"
@@ -495,6 +532,7 @@ from django.contrib import messages
 def login_success(
     request, user, ip, user_agent, location, twofa_method=None, remember_device=False
 ):
+    print(f"login_success:{remember_device}")
     """Gère la connexion réussie"""
     # Authentification manuelle
     user.backend = (
@@ -518,23 +556,31 @@ def login_success(
     response = HttpResponseRedirect(redirect_url)
 
     # === Gestion de l'appareil de confiance ===
+    print(f"before:{remember_device}")
     remember_device = request.session.get("remember_device", False)
+    print(f"after: {remember_device}")
 
     if remember_device:
         # Recherche dans les cookies un token qui correspond à un appareil trusted
         trusted_tokens = [
             value
             for key, value in request.COOKIES.items()
-            if key.startswith("trusted_device_")
+            if key.startswith(f"trusted_device_{user.pk}")
         ]
+        print(f"trusted_tokens: {trusted_tokens}")
 
         device = None
         for token in trusted_tokens:
-            device = TrustedDevice.objects.filter(user=user, device_token=token).first()
+            hashed_token = hash_token(token)
+            device = TrustedDevice.objects.filter(
+                user=user, device_token=hashed_token
+            ).first()
+            print(f"Device found: {device}")
             if device:
                 break
 
         if device:
+            print(f"Device found2: {device}")
             # Mise à jour si le device est déjà connu pour cet utilisateur
             device.last_used_at = timezone.now()
             device.ip_address = ip

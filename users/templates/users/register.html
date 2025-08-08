@@ -105,7 +105,7 @@
                         {% else %}
                             <div class="resend-timer">
                                 <i class="fas fa-clock text-muted"></i>
-                                <span class="text-muted">You can request a new code in <strong id="countdown">120</strong> secondes</span>
+                                <span class="text-muted">You can request a new code in <strong id="countdown">20</strong> secondes</span>
                             </div>
                         {% endif %}
 
@@ -438,7 +438,7 @@
 
       // Countdown to code resend (Step 2)
       {% if step == "2" and not can_resend %}
-      let timeLeft = 120;
+      let timeLeft = 20;
       const countdown = document.getElementById('countdown');
       
       const timer = setInterval(() => {

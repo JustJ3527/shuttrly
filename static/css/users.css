@@ -161,6 +161,7 @@
     .btn-primary {
         background: linear-gradient(270deg, #84A98D, #527970);
         border: none;
+        height: 52px;
     }
     
     .btn-primary:hover {

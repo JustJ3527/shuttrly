@@ -660,3 +660,20 @@ def get_user_from_session(request):
         except CustomUser.DoesNotExist:
             pass
     return None
+
+
+def initialize_2fa_session_data(request, user, code):
+    """
+    Initialize session data for 2FA process, similar to registration
+    """
+    session_data = request.session.get("login_data", {})
+    session_data.update(
+        {
+            "email": user.email,
+            "verification_code": code,
+            "code_sent_at": timezone.now().isoformat(),
+            "code_attempts": 0,
+        }
+    )
+    request.session["login_data"] = session_data
+    return session_data

@@ -1,11 +1,10 @@
 {% extends 'base.html' %}
 {% load static %}
-{% block title %}Register - Shuttrly{% endblock %}
+{% block title %}Login - Shuttrly{% endblock %}
 {% block head %}
     {{ block.super}}
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login</title>
 
     <!--Local CSS files-->
     <link rel="stylesheet" href="{% static 'css/users.css' %}">
@@ -16,20 +15,39 @@
     <div class="container-bc">
         <div class="container-fluid" style="height: 100%;position: absolute;">
             <div class="registration-container">
-                <!-- Progress Indicator -->
+                <!-- Progress Indicator - CORRIGÉ -->
                 <div class="progress-indicator">
                     <div class="progress-line">
-                        <div class="progress-fill" style="width: {{ progress|default:17 }}%;"></div>
+                        <div class="progress-fill" style="width: 
+                            {% if step == 'login' %}25%{% elif step == 'choose_2fa' %}50%{% elif step == 'email_2fa' or step == 'totp_2fa' %}100%{% endif %};"></div>
                     </div>
-                    {% for i in "login, choose_2fa, email_2fa, totp_2fa" %}
-                        <div class="progress-step {% if step|add:0 > i|add:0 %}completed{% elif step == i %}active{% endif %}">
-                            {% if step|add:0 > i|add:0 %}
-                                <i class="fas fa-check"></i>
-                            {% else %}
-                                {{ i }}
-                            {% endif %}
-                        </div>
-                    {% endfor %}
+                    
+                    <div class="progress-step {% if step == 'login' %}active{% else %}completed{% endif %}">
+                        {% if step != 'login' %}
+                            <i class="fas fa-check"></i>
+                        {% else %}
+                            1
+                        {% endif %}
+                        <span>Login</span>
+                    </div>
+                    
+                    {% if user.email_2fa_enabled or user.totp_enabled %}
+                    <div class="progress-step {% if step == 'choose_2fa' %}active{% elif step == 'email_2fa' or step == 'totp_2fa' %}completed{% endif %}">
+                        {% if step == 'email_2fa' or step == 'totp_2fa' %}
+                            <i class="fas fa-check"></i>
+                        {% elif step == 'choose_2fa' %}
+                            2
+                        {% else %}
+                            2
+                        {% endif %}
+                        <span>2FA Method</span>
+                    </div>
+                    
+                    <div class="progress-step {% if step == 'email_2fa' or step == 'totp_2fa' %}active{% endif %}">
+                        3
+                        <span>Verification</span>
+                    </div>
+                    {% endif %}
                 </div>
 
             <div class="step-content fade-in">
@@ -49,11 +67,11 @@
 
                     {% if step == "login" %}
                         <h3 class="step-title">
-                            <i class="fas fa-envelope text-primary"></i>
+                            <i class="fas fa-sign-in-alt text-primary"></i>
                             Login
                         </h3>
                         <p class="step-description">
-                            TODO: text...
+                            Enter your credentials to access your account.
                         </p>
                         
                         <div class="mb-4">
@@ -62,15 +80,7 @@
                                     placeholder="your@email.com or username" 
                                     value="{{ form.email.value|default:'' }}"
                                     autocomplete="username" required>
-                            <small class="form-text text-muted">Vous pouvez utiliser votre email ou votre nom d'utilisateur</small>
-
-                            <label for="id_password" class="form-label">Password</label>
-                            <input type="password" class="form-control" id="id_password" name="password" 
-                                    placeholder="your password" autocomplete="current-password" required>
-                            <input type="checkbox" class="form-check-input" id="id_remember_device" name="remember_device">
-                            <label class="form-check-label" for="id_remember_device">
-                                Remember my device for XX days
-                            </label>
+                            <small class="form-text text-muted">You can use your email or username</small>
 
                             {% if form.email.errors %}
                                 <div class="text-danger small mt-2">
@@ -79,6 +89,28 @@
                                     {% endfor %}
                                 </div>
                             {% endif %}
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="id_password" class="form-label">Password</label>
+                            <input type="password" class="form-control" id="id_password" name="password" 
+                                    placeholder="Your password" autocomplete="current-password" required>
+                            {% if form.password.errors %}
+                                <div class="text-danger small mt-2">
+                                    {% for error in form.password.errors %}
+                                        <i class="fas fa-exclamation-circle"></i> {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-4">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" id="id_remember_device" name="remember_device">
+                                <label class="form-check-label" for="id_remember_device">
+                                    Remember this device for 30 days
+                                </label>
+                            </div>
                         </div>
 
                     {% elif step == "choose_2fa" %}
@@ -92,53 +124,51 @@
                         
                         <div class="mb-4">
                             {% if user.email_2fa_enabled %}
-                        <div class="method-card" data-method="email">
-                            <div class="form-check">
-                                <input type="hidden" name="remember_device" value="{{ remember_device }}">
-                                <input class="form-check-input" type="radio" name="twofa_method" value="email" id="method_email" required>
-                                <label class="form-check-label w-100" for="method_email">
-                                    <div class="d-flex align-items-center">
-                                        <div class="method-icon me-3">
-                                            <i class="fas fa-envelope"></i>
+                            <div class="method-card" data-method="email">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="twofa_method" value="email" id="method_email" required>
+                                    <label class="form-check-label w-100" for="method_email">
+                                        <div class="d-flex align-items-center">
+                                            <div class="method-icon me-3">
+                                                <i class="fas fa-envelope"></i>
+                                            </div>
+                                            <div>
+                                                <div class="method-title">Code by email</div>
+                                                <div class="method-description">Receive a code to {{ user.email }}</div>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <div class="method-title">Code by email</div>
-                                            <div class="method-description">Receive a code to {{ user.email }}</div>
-                                        </div>
-                                    </div>
-                                </label>
+                                    </label>
+                                </div>
                             </div>
-                        </div>
-                        {% endif %}
+                            {% endif %}
 
-                        {% if user.totp_enabled %}
-                        <div class="method-card" data-method="totp">
-                            <div class="form-check">
-                                <input type="hidden" name="remember_device" value="{{ remember_device }}">
-                                <input class="form-check-input" type="radio" name="twofa_method" value="totp" id="method_totp" required>
-                                <label class="form-check-label w-100" for="method_totp">
-                                    <div class="d-flex align-items-center">
-                                        <div class="method-icon me-3">
-                                            <i class="fas fa-mobile-alt"></i>
+                            {% if user.totp_enabled %}
+                            <div class="method-card" data-method="totp">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="twofa_method" value="totp" id="method_totp" required>
+                                    <label class="form-check-label w-100" for="method_totp">
+                                        <div class="d-flex align-items-center">
+                                            <div class="method-icon me-3">
+                                                <i class="fas fa-mobile-alt"></i>
+                                            </div>
+                                            <div>
+                                                <div class="method-title">Authentication application</div>
+                                                <div class="method-description">Google Authenticator, Authy, etc.</div>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <div class="method-title">Authentication application</div>
-                                            <div class="method-description">Google Authenticator, Authy, etc.</div>
-                                        </div>
-                                    </div>
-                                </label>
+                                    </label>
+                                </div>
                             </div>
+                            {% endif %}
                         </div>
-                        {% endif %}
-                    </div>
 
                     {% elif step == "email_2fa" %}
                         <h3 class="step-title">
                             <i class="fas fa-shield-alt text-primary"></i>
-                            Verification code
+                            Email verification code
                         </h3>
                         <p class="step-description">
-                            Enter the code received at: <strong>{{ user.email }}</strong>
+                            Enter the code sent to: <strong>{{ user.email }}</strong>
                         </p>
                         
                         <div class="mb-4">
@@ -157,23 +187,26 @@
                             <small class="form-text text-muted">Enter the 6-digit code received by email</small>
                         </div>
 
-                        {% if can_resend %}
-                            <div class="text-center">
-                                <button type="button" class="btn btn-link" onclick="resendCode()">
-                                    <i class="fas fa-redo"></i> Resend code
+                        <!-- SECTION RENVOI DE CODE CORRIGÉE -->
+                        <div class="resend-section text-center mb-3">
+                            <div id="resend-button-container" {% if not can_resend %}style="display: none;"{% endif %}>
+                                <button type="submit" name="resend_code" value="1" class="btn btn-outline-secondary btn-sm">
+                                    <i class="fas fa-paper-plane"></i> Resend code
                                 </button>
                             </div>
-                        {% else %}
-                            <div class="resend-timer">
-                                <i class="fas fa-clock text-muted"></i>
-                                <span class="text-muted">You can request a new code in <strong id="countdown">20</strong> secondes</span>
+                            
+                            <div id="resend-timer-container" {% if can_resend %}style="display: none;"{% endif %}>
+                                <div class="resend-timer">
+                                    <i class="fas fa-clock text-muted"></i>
+                                    <span class="text-muted">You can request a new code in <strong id="countdown">20</strong> seconds</span>
+                                </div>
                             </div>
-                        {% endif %}
+                        </div>
 
-                        {% elif step == "totp_2fa" %}
+                    {% elif step == "totp_2fa" %}
                         <h3 class="step-title">
                             <i class="fas fa-shield-alt text-primary"></i>
-                            Verification code
+                            Authenticator verification
                         </h3>
                         <p class="step-description">
                             Open your authentication app (Google Authenticator, Authy, etc.) and enter the 6-digit code.
@@ -192,28 +225,28 @@
                                     {% endfor %}
                                 </div>
                             {% endif %}
-                            <small class="form-text text-muted">Enter the 6-digit code received by email</small>
+                            <small class="form-text text-muted">Enter the 6-digit code from your authenticator app</small>
                         </div>
                     {% endif %}
 
                     <div class="btn-navigation">
                         {% if step != "login" %}
-                            <button type="submit" name="previous" class="btn btn-outline-secondary previous-btn">
-                                <i class="fas fa-arrow-left"></i> Previous
-                            </button>
+                            <a href="{% url 'login' %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-arrow-left"></i> Back to login
+                            </a>
                         {% else %}
                             <div></div>
                         {% endif %}
 
-                        {% if step == "6" %}
-                            <button type="submit" class="btn btn-success btn-lg" >
-                                <i class="fas fa-user-plus" style="color: #fff !important;"></i> Create my account
-                            </button>
-                        {% else %}
-                            <button type="submit" class="btn btn-primary" {% if step == "login"%} style="width: 100%;" {% endif %}>
-                                {% if step in "login" or step == "email_2fa" or step == "totp_2fa"%} Login {% else %} Next {% endif %} <i class="fas fa-arrow-right" style="color: #fff !important;"></i>
-                            </button>
-                        {% endif %}
+                        <button type="submit" class="btn btn-primary" {% if step == "login"%} style="width: 100%;" {% endif %}>
+                            {% if step == "login" %}
+                                <i class="fas fa-sign-in-alt"></i> Login
+                            {% elif step == "choose_2fa" %}
+                                <i class="fas fa-arrow-right"></i> Continue
+                            {% else %}
+                                <i class="fas fa-sign-in-alt"></i> Login
+                            {% endif %}
+                        </button>
                     </div>
                 </form>
 
@@ -222,109 +255,167 @@
                         <p class="text-muted">Don't have an account?
                             <a href="{% url 'register' %}" class="text-decoration-none link">Register</a>
                         </p>
+                        <p class="text-muted">
+                            <a href="#" class="text-decoration-none link">Forgot your password?</a>
+                        </p>
                     </div>
                 {% endif %}
             </div>
         </div>
     </div>
-  </div>
-  <style>
-           .method-card {
-            border: 2px solid #e9ecef;
-            border-radius: 12px;
-            padding: 1.5rem;
-            margin-bottom: 1rem;
-            transition: all 0.3s ease;
-            cursor: pointer;
-        }
-        
-        .method-card:hover {
-            border-color: #007bff;
-            background: #f8f9ff;
-            transform: translateY(-1px);
-        }
-        
-        .method-card.selected {
-            border-color: #007bff;
-            background: #f8f9ff;
-            box-shadow: 0 4px 12px rgba(0, 123, 255, 0.15);
-        }
-        
-        .method-icon {
-            font-size: 2rem;
-            margin-bottom: 0.5rem;
-            color: #007bff;
-        }
-        
-        .method-title {
-            font-weight: 600;
-            margin-bottom: 0.25rem;
-            color: #2c3e50;
-        }
-        
-        .method-description {
-            font-size: 0.875rem;
-            color: #6c757d;
-            margin-bottom: 0;
-        }
-    </style>
+</div>
+
+<style>
+    .method-card {
+        border: 2px solid #e9ecef;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    
+    .method-card:hover {
+        border-color: #007bff;
+        background: #f8f9ff;
+        transform: translateY(-1px);
+    }
+    
+    .method-card.selected {
+        border-color: #007bff;
+        background: #f8f9ff;
+        box-shadow: 0 4px 12px rgba(0, 123, 255, 0.15);
+    }
+    
+    .method-icon {
+        font-size: 2rem;
+        color: #007bff;
+    }
+    
+    .method-title {
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+        color: #2c3e50;
+    }
+    
+    .method-description {
+        font-size: 0.875rem;
+        color: #6c757d;
+        margin-bottom: 0;
+    }
+
+    .verification-code-input {
+        text-align: center;
+        font-size: 1.5rem;
+        letter-spacing: 0.3em;
+        font-weight: bold;
+    }
+
+    .resend-section {
+        padding: 1rem 0;
+    }
+
+    .resend-timer {
+        padding: 0.5rem;
+        background: #f8f9fa;
+        border-radius: 8px;
+        display: inline-block;
+    }
+
+    .progress-step {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+
+    .progress-step span {
+        font-size: 0.75rem;
+        margin-top: 0.25rem;
+        color: #6c757d;
+    }
+
+    .progress-step.active span,
+    .progress-step.completed span {
+        color: #007bff;
+        font-weight: 600;
+    }
+</style>
 {% endblock %}
 
 {% block scripts %}
-  {{ block.super}}
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
-  
-  <script>
+    {{ block.super}}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // Countdown timer pour le renvoi de code - VERSION CORRIGÉE
+        {% if step == "email_2fa" %}
+        const canResendInitial = {{ can_resend|yesno:"true,false" }};
+        
+        if (!canResendInitial) {
+            let timeLeft = 20; // 2 minutes en secondes
+            const countdown = document.getElementById('countdown');
+            const timerContainer = document.getElementById('resend-timer-container');
+            const buttonContainer = document.getElementById('resend-button-container');
+            
+            const timer = setInterval(() => {
+                timeLeft--;
+                if (countdown) {
+                    countdown.textContent = timeLeft;
+                }
+                
+                if (timeLeft <= 0) {
+                    clearInterval(timer);
+                    // Au lieu de recharger, basculer l'affichage
+                    if (timerContainer) timerContainer.style.display = 'none';
+                    if (buttonContainer) buttonContainer.style.display = 'block';
+                }
+            }, 1000);
+        }
+        {% endif %}
 
-      // Countdown to code resend (Step 2)
-      {% if step == "email_2fa" and not can_resend %}
-      let timeLeft = 20;
-      const countdown = document.getElementById('countdown');
-      
-      const timer = setInterval(() => {
-          timeLeft--;
-          countdown.textContent = timeLeft;
-          
-          if (timeLeft <= 0) {
-              clearInterval(timer);
-              //location.reload();
-          }
-      }, 1000);
-      {% endif %}
+        // Auto-focus et formatting pour le code de vérification
+        {% if step == "email_2fa" or step == "totp_2fa" %}
+        const codeInput = document.querySelector('#id_twofa_code');
+        if (codeInput) {
+            codeInput.focus();
+            
+            codeInput.addEventListener('input', function() {
+                // Autoriser seulement les chiffres
+                this.value = this.value.replace(/[^0-9]/g, '');
+                
+                // Auto-submit si 6 chiffres sont entrés
+                if (this.value.length === 6) {
+                    setTimeout(() => {
+                        document.getElementById('login-form').submit();
+                    }, 500);
+                }
+            });
+        }
+        {% endif %}
 
-      // Function to resend le code
-      function resendCode() {
-          const form = document.createElement('form');
-          form.method = 'POST';
-          form.action = '{% url "resend_verification_code" %}';
-          
-          const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-          const csrfInput = document.createElement('input');
-          csrfInput.type = 'hidden';
-          csrfInput.name = 'csrfmiddlewaretoken';
-          csrfInput.value = csrfToken;
-          
-          form.appendChild(csrfInput);
-          document.body.appendChild(form);
-          form.submit();
-      }
+        // Gestion de la sélection des méthodes 2FA
+        {% if step == "choose_2fa" %}
+        document.querySelectorAll('.method-card').forEach(card => {
+            card.addEventListener('click', function() {
+                // Retirer la classe selected de toutes les cartes
+                document.querySelectorAll('.method-card').forEach(c => c.classList.remove('selected'));
+                
+                // Ajouter la classe selected à la carte cliquée
+                this.classList.add('selected');
+                
+                // Cocher le radio button correspondant
+                const radio = this.querySelector('input[type="radio"]');
+                if (radio) {
+                    radio.checked = true;
+                }
+            });
+        });
 
-      // Auto-focus and formatting for verification code
-      {% if step == "email_2fa" or step == "totp_2fa" %}
-      const codeInput = document.querySelector('#id_twofa_code');
-      codeInput.focus();
-      
-      codeInput.addEventListener('input', function() {
-          // Allow only numbers
-          this.value = this.value.replace(/[^0-9]/g, '');
-          
-          // Auto-submit if 6 numbers are entered
-          if (this.value.length === 6) {
-              setTimeout(() => {
-                  document.getElementById('registration-form').submit();
-              }, 500);
-          }
-      });
-      {% endif %}
-  </script>
+        // Auto-sélectionner si une méthode est déjà cochée
+        document.querySelectorAll('input[name="twofa_method"]:checked').forEach(radio => {
+            radio.closest('.method-card').classList.add('selected');
+        });
+        {% endif %}
+    </script>
 {% endblock %}

@@ -59,6 +59,7 @@ from .utils import (
     hash_token,
     get_user_from_session,
     send_2FA_email,
+    initialize_2fa_session_data,
 )
 
 # === Project logs/utils ===
@@ -662,7 +663,7 @@ def twofa_settings_view(request):
 
     cookie_token = request.COOKIES.get(f"trusted_device_{user.pk}")
 
-    EMAIL_CODE_RESEND_DELAY_SECONDS = 120
+    EMAIL_CODE_RESEND_DELAY_SECONDS = 20
 
     for device in trusted_devices:
         ua_info = analyze_user_agent(device.user_agent)
@@ -995,8 +996,9 @@ def login_view(request):
                 user.email_2fa_code = code
                 user.email_2fa_sent_at = timezone.now()
                 user.save()
-                session_data = request.session.get("login_data", {})
 
+                # AJOUTER: Initialiser les données de session
+                session_data = request.session.get("login_data", {})
                 session_data.update(
                     {
                         "email": user.email,
@@ -1006,6 +1008,7 @@ def login_view(request):
                     }
                 )
                 request.session["login_data"] = session_data
+
                 success = send_2FA_email(user, code)
                 if success:
                     return render(
@@ -1015,6 +1018,7 @@ def login_view(request):
                             "form": Email2FAForm(),
                             "step": "email_2fa",
                             "user": user,
+                            "can_resend": False,  # Nouveau code vient d'être envoyé
                         },
                     )
                 else:
@@ -1062,6 +1066,19 @@ def login_view(request):
                 user.email_2fa_code = code
                 user.email_2fa_sent_at = timezone.now()
                 user.save()
+
+                # AJOUTER: Initialiser les données de session
+                session_data = request.session.get("login_data", {})
+                session_data.update(
+                    {
+                        "email": user.email,
+                        "verification_code": code,
+                        "code_sent_at": timezone.now().isoformat(),
+                        "code_attempts": 0,
+                    }
+                )
+                request.session["login_data"] = session_data
+
                 send_2FA_email(user, code)
                 return render(
                     request,
@@ -1070,6 +1087,7 @@ def login_view(request):
                         "form": Email2FAForm(),
                         "step": "email_2fa",
                         "user": user,
+                        "can_resend": False,  # Nouveau code vient d'être envoyé
                     },
                 )
 
@@ -1099,25 +1117,65 @@ def login_view(request):
             messages.error(request, "Session expirée.")
             return redirect("login")
 
-        # Gestion du renvoi de code email
+        # Gestion du renvoi de code email - CORRIGÉ
         if (
             request.method == "POST"
             and request.POST.get("resend_code")
             and step == "email_2fa"
         ):
-            if user.can_send_verification_code():
-                code = generate_email_code()
-                user.email_2fa_code = code
-                user.email_2fa_sent_at = timezone.now()
-                user.save()
-                send_2FA_email(user, code)
-                messages.success(request, "Nouveau code envoyé !")
-            else:
-                messages.warning(request, "Attendez avant de demander un nouveau code.")
-            return render(
-                request, "users/login.html", {"form": form, "step": step, "user": user}
+            # Utiliser les données de session ET l'utilisateur pour vérifier le délai
+            session_data = request.session.get("login_data", {})
+
+            # Vérifier avec les données de session ET l'utilisateur
+            can_resend_session = can_resend_code(session_data)
+            can_resend_user = (
+                user.can_send_verification_code()
+                if hasattr(user, "can_send_verification_code")
+                else True
             )
 
+            if can_resend_session and can_resend_user:
+                # Générer un nouveau code
+                new_code = generate_email_code()
+
+                # Mettre à jour l'utilisateur
+                user.email_2fa_code = new_code
+                user.email_2fa_sent_at = timezone.now()
+                user.save()
+
+                # Mettre à jour les données de session
+                session_data.update(
+                    {
+                        "verification_code": new_code,
+                        "code_sent_at": timezone.now().isoformat(),
+                        "code_attempts": 0,
+                    }
+                )
+                request.session["login_data"] = session_data
+
+                # Envoyer l'email
+                success = send_2FA_email(user, new_code)
+
+                if success:
+                    messages.success(request, "Nouveau code envoyé à votre email.")
+                else:
+                    messages.error(request, "Erreur lors de l'envoi du code.")
+            else:
+                messages.warning(
+                    request, "Attendez 2 minutes avant de demander un nouveau code."
+                )
+
+            # IMPORTANT: Retourner la vue avec can_resend calculé
+            session_data = request.session.get("login_data", {})
+            can_resend = can_resend_code(session_data)
+
+            return render(
+                request,
+                "users/login.html",
+                {"form": form, "step": step, "user": user, "can_resend": can_resend},
+            )
+
+        # Validation du code soumis
         if request.method == "POST" and form.is_valid():
             twofa_code = form.cleaned_data["twofa_code"]
             remember_device = request.session.get("remember_device", False)
@@ -1130,11 +1188,13 @@ def login_view(request):
             )
 
             if valid:
-                # Nettoyer le code email après utilisation
+                # Nettoyer le code email et les données de session après utilisation
                 if step == "email_2fa":
                     user.email_2fa_code = None
                     user.email_2fa_sent_at = None
                     user.save()
+                    # Nettoyer les données de session
+                    request.session.pop("login_data", None)
 
                 return login_success(
                     request,
@@ -1148,14 +1208,19 @@ def login_view(request):
             else:
                 messages.error(request, "Code invalide ou expiré.")
 
+        # IMPORTANT: Préparer les données pour le template avec can_resend calculé
+        session_data = request.session.get("login_data", {})
+        can_resend = can_resend_code(session_data)
+
         return render(
-            request, "users/login.html", {"form": form, "step": step, "user": user}
-        )
-    else:
-        # Cas de sécurité : étape inconnue ou mal formée
-        messages.error(request, "Étape invalide dans le processus de connexion.")
-        return render(
-            request, "users/login.html", {"form": LoginForm(), "step": "login"}
+            request,
+            "users/login.html",
+            {
+                "form": form,
+                "step": step,
+                "user": user,
+                "can_resend": can_resend,  # S'assurer que cette variable est toujours passée
+            },
         )
 
 

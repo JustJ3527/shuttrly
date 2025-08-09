@@ -366,5 +366,13 @@ class TrustedDevice(models.Model):
     last_used_at = models.DateTimeField(auto_now=True)
     expires_at = models.DateTimeField(blank=True, null=True)
 
+    # Analyzed device information
+    device_type = models.CharField(max_length=50, blank=True, null=True)
+    device_family = models.CharField(max_length=100, blank=True, null=True)
+    browser_family = models.CharField(max_length=100, blank=True, null=True)
+    browser_version = models.CharField(max_length=50, blank=True, null=True)
+    os_family = models.CharField(max_length=100, blank=True, null=True)
+    os_version = models.CharField(max_length=50, blank=True, null=True)
+
     def __str__(self):
         return f"{self.user} - {self.device_token[:8]}..."

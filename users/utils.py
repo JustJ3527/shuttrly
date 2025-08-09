@@ -348,6 +348,16 @@ def hash_token(token: str) -> str:
 
 
 def is_trusted_device(request, user):
+    """
+    Check if the current request is from a trusted device.
+
+    Args:
+        request: HTTP request object
+        user: User object
+
+    Returns:
+        bool: True if the device is trusted, False otherwise
+    """
     for cookie_name, token in request.COOKIES.items():
         if cookie_name.startswith(f"trusted_device_{user.pk}"):
             token_hash = hash_token(token)
@@ -357,6 +367,7 @@ def is_trusted_device(request, user):
                 expires_at__gt=timezone.now(),
             ).first()
             if device:
+                # Update device usage
                 device.last_used_at = timezone.now()
                 device.ip_address = get_client_ip(request)
                 device.user_agent = request.META.get("HTTP_USER_AGENT", "")[:255]
@@ -486,20 +497,38 @@ def get_device_name(request):
     """Génère un nom d'appareil basé sur le user agent"""
     user_agent = get_user_agent(request)
 
-    if "iPhone" in user_agent:
+    # Try to use analyze_user_agent first
+    try:
+        ua_info = analyze_user_agent(user_agent)
+        device_type = ua_info.get("device_type", "Unknown Device")
+        if device_type != "Unknown device":
+            return device_type
+    except:
+        pass
+
+    # Fallback to simple string matching
+    user_agent_lower = user_agent.lower()
+
+    if "iphone" in user_agent_lower:
         return "iPhone"
-    elif "iPad" in user_agent:
+    elif "ipad" in user_agent_lower:
         return "iPad"
-    elif "Android" in user_agent:
-        return "Appareil Android"
-    elif "Windows" in user_agent:
-        return "PC Windows"
-    elif "Macintosh" in user_agent:
+    elif "android" in user_agent_lower:
+        return "Android Device"
+    elif "windows" in user_agent_lower:
+        return "Windows PC"
+    elif "macintosh" in user_agent_lower or "mac os" in user_agent_lower:
         return "Mac"
-    elif "Linux" in user_agent:
-        return "Linux"
+    elif "linux" in user_agent_lower:
+        return "Linux PC"
+    elif "chrome" in user_agent_lower:
+        return "Chrome Browser"
+    elif "firefox" in user_agent_lower:
+        return "Firefox Browser"
+    elif "safari" in user_agent_lower:
+        return "Safari Browser"
     else:
-        return "Appareil inconnu"
+        return "Unknown Device"
 
 
 def is_safe_url(url, allowed_hosts, require_https=False):
@@ -553,7 +582,6 @@ def login_success(
     )
     response = HttpResponseRedirect(redirect_url)
 
-    remember_device = request.session.get("remember_device", False)
     print(f"remember_device: {remember_device}")
 
     if remember_device:
@@ -589,6 +617,45 @@ def login_success(
             token = f"{user.pk}-{uuid.uuid4().hex}"
             token_hash = hash_token(token)
 
+            # Analyze user agent for better device information
+            device_info = {}
+            try:
+                ua_info = analyze_user_agent(user_agent)
+                device_info = {
+                    "device_type": ua_info.get("device_type", "Unknown Device"),
+                    "device_family": ua_info.get("device_family", "Unknown"),
+                    "browser_family": ua_info.get("browser_family", "Unknown"),
+                    "browser_version": ua_info.get("browser_version", ""),
+                    "os_family": ua_info.get("os_family", "Unknown"),
+                    "os_version": ua_info.get("os_version", ""),
+                }
+            except Exception as e:
+                # Fallback to simple device name
+                try:
+
+                    class MockRequest:
+                        def __init__(self, user_agent):
+                            self.META = {"HTTP_USER_AGENT": user_agent}
+
+                    mock_request = MockRequest(user_agent)
+                    device_info = {
+                        "device_type": get_device_name(mock_request),
+                        "device_family": "Unknown",
+                        "browser_family": "Unknown",
+                        "browser_version": "",
+                        "os_family": "Unknown",
+                        "os_version": "",
+                    }
+                except:
+                    device_info = {
+                        "device_type": "Unknown Device",
+                        "device_family": "Unknown",
+                        "browser_family": "Unknown",
+                        "browser_version": "",
+                        "os_family": "Unknown",
+                        "os_version": "",
+                    }
+
             TrustedDevice.objects.create(
                 user=user,
                 device_token=token_hash,
@@ -596,6 +663,12 @@ def login_success(
                 ip_address=ip,
                 location=location or "",
                 expires_at=timezone.now() + timedelta(days=max_age_days),
+                device_type=device_info.get("device_type", "Unknown Device"),
+                device_family=device_info.get("device_family", "Unknown"),
+                browser_family=device_info.get("browser_family", "Unknown"),
+                browser_version=device_info.get("browser_version", ""),
+                os_family=device_info.get("os_family", "Unknown"),
+                os_version=device_info.get("os_version", ""),
             )
 
             response.set_cookie(
@@ -630,7 +703,10 @@ def login_success(
         welcome_msg += " Connexion sécurisée"
     messages.success(request, welcome_msg)
 
+    # Clean up session data at the end
+    request.session.pop("login_data", None)
     request.session.pop("pre_2fa_user_id", None)
+    # Note: remember_device is already cleaned up earlier in the function
 
     return response
 

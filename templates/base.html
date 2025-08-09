@@ -49,14 +49,14 @@
         </ul>
     </nav>
     {% endblock %}
-    <!-- Display messages if any -->
+    {% comment %} <!-- Display messages if any -->
     {% if messages %}
         <div class="messages">
             {% for message in messages %}
                 <strong><p style="color: #911F21" class="{{ message.tags }}">{{ message }}</p></strong>
             {% endfor %}
         </div>
-    {% endif %}
+    {% endif %} {% endcomment %}
 
     <main id="main-content" class="content">
         {% block content %}
@@ -68,6 +68,7 @@
     <p>&copy; 2025 Shuttrly. All rights reserved.</p>
 </footer>
 {% block scripts %}
+<script src="{% static 'js/utils_scripts.js' %}"></script>
 <script src="{% static 'js/navbar.js' %}"></script>
 {% endblock %}
 </html>

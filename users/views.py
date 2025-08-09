@@ -72,6 +72,7 @@ from .utils import (
     initialize_login_session_data,
     cleanup_login_session,
     get_login_step_progress,
+    get_device_name,
 )
 
 # === Project Logs ===
@@ -683,6 +684,12 @@ def handle_login_step_1_credentials(request):
         if success:
             # Check if 2FA is required
             if user.email_2fa_enabled or user.totp_enabled:
+                # Check if this is a trusted device
+                if is_trusted_device(request, user):
+                    # Trusted device - proceed directly to login
+                    return handle_login_success(request, user)
+
+                # Not a trusted device - proceed with 2FA
                 # Initialize session data
                 initialize_login_session_data(request, user)
 
@@ -901,9 +908,6 @@ def handle_login_success(request, user):
     location = get_location_from_ip(ip)
     remember_device = request.session.get("remember_device", False)
 
-    # Clean up session data
-    cleanup_login_session(request)
-
     # Handle remember device setting
     if remember_device:
         request.session.set_expiry(1209600)  # 2 weeks
@@ -921,6 +925,7 @@ def handle_login_success(request, user):
             user_agent,
             location,
             twofa_method="trusted_device",
+            remember_device=remember_device,
         )
 
     # Regular login success
@@ -1166,6 +1171,80 @@ def twofa_settings_view(request):
         )
         can_resend = time_until_resend <= 0
 
+    # Mark current device
+    current_device_token = None
+    for cookie_name, token in request.COOKIES.items():
+        if cookie_name.startswith(f"trusted_device_{user.pk}"):
+            current_device_token = hash_token(token)
+            break
+
+    # Add device information and mark current device
+    for device in trusted_devices:
+        # Check if this is the current device
+        device.is_current_device = device.device_token == current_device_token
+
+        # Calculate if device expires soon (within 7 days)
+        if device.expires_at:
+            device.expires_soon = (device.expires_at - timezone.now()).days <= 7
+        else:
+            device.expires_soon = False
+
+        # Use stored device information or analyze if not available
+        if not device.device_type and device.user_agent:
+            try:
+                # Analyze user agent if not already stored
+                ua_info = analyze_user_agent(device.user_agent)
+                device.device_type = ua_info.get("device_type", "Unknown Device")
+                device.device_family = ua_info.get("device_family", "Unknown")
+                device.browser_family = ua_info.get("browser_family", "Unknown")
+                device.browser_version = ua_info.get("browser_version", "")
+                device.os_family = ua_info.get("os_family", "Unknown")
+                device.os_version = ua_info.get("os_version", "")
+
+                # Save the analyzed information
+                device.save(
+                    update_fields=[
+                        "device_type",
+                        "device_family",
+                        "browser_family",
+                        "browser_version",
+                        "os_family",
+                        "os_version",
+                    ]
+                )
+
+            except Exception as e:
+                # Fallback values
+                device.device_type = device.device_type or "Unknown Device"
+                device.device_family = device.device_family or "Unknown"
+                device.browser_family = device.browser_family or "Unknown"
+                device.browser_version = device.browser_version or ""
+                device.os_family = device.os_family or "Unknown"
+                device.os_version = device.os_version or ""
+        else:
+            # Use stored values or defaults
+            device.device_type = device.device_type or "Unknown Device"
+            device.device_family = device.device_family or "Unknown"
+            device.browser_family = device.browser_family or "Unknown"
+            device.browser_version = device.browser_version or ""
+            device.os_family = device.os_family or "Unknown"
+            device.os_version = device.os_version or ""
+
+        # Format location if it's a dict
+        if isinstance(device.location, dict):
+            location_parts = []
+            if device.location.get("city"):
+                location_parts.append(device.location["city"])
+            if device.location.get("region"):
+                location_parts.append(device.location["region"])
+            if device.location.get("country"):
+                location_parts.append(device.location["country"])
+            device.location_display = (
+                ", ".join(location_parts) if location_parts else "Unknown location"
+            )
+        else:
+            device.location_display = device.location or "Unknown location"
+
     context = {
         "trusted_devices": trusted_devices,
         "email_2fa_enabled": user.email_2fa_enabled,
@@ -1306,12 +1385,26 @@ def twofa_settings_view(request):
                 messages.success(request, "TOTP 2FA disabled successfully!")
 
         # Remove trusted device
-        elif action == "remove_trusted_device":
-            device_id = request.POST.get("device_id")
+        elif action == "remove_trusted_device" or action == "revoke_device":
+            device_id = request.POST.get("device_id") or request.POST.get(
+                "revoke_device_id"
+            )
             try:
                 device = TrustedDevice.objects.get(id=device_id, user=user)
-                device.delete()
-                messages.success(request, "Trusted device removed successfully!")
+
+                # If this is the current device, also remove the cookie
+                if device.device_token == current_device_token:
+                    response = redirect("twofa_settings")
+                    response.delete_cookie(f"trusted_device_{user.pk}")
+                    device.delete()
+                    messages.success(
+                        request, "Current trusted device removed successfully!"
+                    )
+                    return response
+                else:
+                    device.delete()
+                    messages.success(request, "Trusted device removed successfully!")
+
             except TrustedDevice.DoesNotExist:
                 messages.error(request, "Device not found.")
 

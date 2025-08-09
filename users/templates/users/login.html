@@ -16,7 +16,7 @@
         <div class="container-fluid" style="height: 100%;position: absolute;">
             <div class="registration-container">
                 <!-- Progress Indicator -->
-                <div class="progress-indicator">
+                {% comment %} <div class="progress-indicator">
                     <div class="progress-line">
                         <div class="progress-fill" style="width: {{ progress|default:33 }}%;"></div>
                     </div>
@@ -47,7 +47,7 @@
                         <span>Verification</span>
                     </div>
                     {% endif %}
-                </div>
+                </div> {% endcomment %}
 
             <div class="step-content fade-in">
                 {% if messages %}

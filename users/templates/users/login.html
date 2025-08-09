@@ -490,12 +490,13 @@
                 // Allow only numbers
                 this.value = this.value.replace(/[^0-9]/g, '');
                 
+                {% comment %} 
                 // Auto-submit if 6 numbers are entered
                 if (this.value.length === 6) {
                     setTimeout(() => {
                         document.getElementById('login-form').submit();
                     }, 500);
-                }
+                } {% endcomment %}
             });
         }
         {% endif %}

@@ -9,46 +9,41 @@ Utility functions for user-related operations including:
 """
 
 # === Standard Library Imports ===
-import os  # File system operations
-import io  # For in-memory streams (QR code)
-import uuid  # Unique token generation
-import random  # For generating codes
-import string  # Characters for code generation
-from datetime import datetime, timedelta, date  # Date and time management
-import base64  # Encoding images to base64
+import base64
+import hashlib
+import io
+import os
+import random
+import string
+import uuid
+from datetime import date, datetime, timedelta
+from urllib.parse import urlparse
 
 # === Third-Party Imports ===
-import requests  # HTTP requests for IP location
-import pyotp  # TOTP generation and verification
-import qrcode  # QR code generation
-from user_agents import parse  # Parse user agent strings
-import hashlib
+import pyotp
+import qrcode
+import requests
+from user_agents import parse
 
-# === Decorators ===
+# === Django Imports ===
+from django.conf import settings
+from django.contrib import messages
+from django.contrib.auth import authenticate, get_backends, get_user_model, login
+from django.core.files.storage import default_storage
+from django.core.mail import EmailMultiAlternatives, send_mail
+from django.db.models import Q
+from django.http import HttpResponseRedirect
+from django.template.loader import render_to_string
+from django.urls import reverse
+from django.utils import timezone
+from django.utils.html import strip_tags
+from django.utils.http import http_date
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
-# === Django Imports ===
-from django.conf import settings  # Django settings access
-from django.core.mail import send_mail  # Email sending
-from django.core.files.storage import default_storage  # File storage API
-from django.utils import timezone  # Timezone-aware datetime
-from django.utils.http import http_date  # HTTP date formatting
-from django.contrib.auth import get_backends, get_user_model
-from django.shortcuts import redirect
-from django.contrib.auth import login
-from django.http import JsonResponse
-from django.db.models import Q
-from django.contrib.auth import authenticate
-
 # === Local Imports ===
-from .models import (
-    TrustedDevice,
-    CustomUser,
-    PendingFileDeletion,
-)  # Model for trusted devices
 from logs.utils import log_user_action_json
-
+from .models import CustomUser, PendingFileDeletion, TrustedDevice
 
 # === Logger Setup ===
 import logging
@@ -56,7 +51,11 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-# --- IP Utilities ---
+# =============================================================================
+# IP UTILITIES
+# =============================================================================
+
+
 def get_client_ip(request):
     """
     Extract the real client IP address even behind proxies.
@@ -71,7 +70,11 @@ def get_client_ip(request):
     return ip
 
 
-# --- Profile Picture Deletion Scheduling and Cleanup ---
+# =============================================================================
+# PROFILE PICTURE DELETION SCHEDULING AND CLEANUP
+# =============================================================================
+
+
 def schedule_profile_picture_deletion(file_path, seconds=None):
     """
     Schedule a profile picture file for deletion after a delay.
@@ -110,7 +113,7 @@ def is_file_still_in_use(file_path):
         users_using_file = User.objects.filter(profile_picture=file_path)
         if users_using_file.exists():
             usernames = list(users_using_file.values_list("username", flat=True))
-            logger.warning(f"File {file_path} still in use by: {', '.join(usernames)}")
+            logger.warning(f'File {file_path} still in use by: {", ".join(usernames)}')
             return True
         return False
     except Exception as e:
@@ -119,113 +122,11 @@ def is_file_still_in_use(file_path):
         return True
 
 
-def cleanup_old_files():
-    """
-    Delete files whose scheduled deletion time has passed,
-    only if they are not still in use.
-    Also attempts to delete empty parent directories.
-    Returns the count of deleted files.
-    """
-    try:
-        now = timezone.now()
-        files_to_delete = PendingFileDeletion.objects.filter(
-            scheduled_deletion__lte=now
-        )
-        total_files = files_to_delete.count()
-
-        logger.info(f"Found {total_files} files to process")
-
-        deleted_count = 0
-        skipped_count = 0
-        error_count = 0
-
-        for file_deletion in files_to_delete:
-            try:
-                logger.info(f"Processing file {file_deletion.file_path}")
-
-                if default_storage.exists(file_deletion.file_path):
-                    if not is_file_still_in_use(file_deletion.file_path):
-                        default_storage.delete(file_deletion.file_path)
-                        logger.info(f"Deleted file {file_deletion.file_path}")
-
-                        # Delete parent directory if empty
-                        file_full_path = os.path.join(
-                            settings.MEDIA_ROOT, file_deletion.file_path
-                        )
-                        parent_dir = os.path.dirname(file_full_path)
-                        try:
-                            if os.path.isdir(parent_dir) and not os.listdir(parent_dir):
-                                os.rmdir(parent_dir)
-                                logger.info(f"Deleted empty folder {parent_dir}")
-                        except Exception as e:
-                            logger.warning(f"Could not delete folder {parent_dir}: {e}")
-
-                        deleted_count += 1
-                    else:
-                        logger.warning(
-                            f"File still in use, skipping {file_deletion.file_path}"
-                        )
-                        skipped_count += 1
-                        continue
-                else:
-                    logger.info(f"File already deleted {file_deletion.file_path}")
-
-                file_deletion.delete()
-
-            except Exception as e:
-                logger.error(f"Error deleting file {file_deletion.file_path}: {str(e)}")
-                error_count += 1
-
-        logger.info(
-            f"Summary: {deleted_count} deleted, {skipped_count} skipped, {error_count} errors"
-        )
-        return deleted_count
-
-    except Exception as e:
-        logger.error(f"Critical error in cleanup_old_files: {str(e)}")
-        return 0
+# =============================================================================
+# USER DATA UTILITIES
+# =============================================================================
 
 
-def get_storage_stats():
-    """
-    Retrieve statistics about files pending deletion:
-    total count, existing files, missing files, total size in MB.
-    Returns a dict or None if error occurs.
-    """
-    try:
-        from .models import PendingFileDeletion
-
-        pending_files = PendingFileDeletion.objects.all()
-        total_size = 0
-        existing_files = 0
-        missing_files = 0
-
-        for pending in pending_files:
-            if default_storage.exists(pending.file_path):
-                try:
-                    file_size = default_storage.size(pending.file_path)
-                    total_size += file_size
-                    existing_files += 1
-                except Exception:
-                    missing_files += 1
-            else:
-                missing_files += 1
-
-        total_size_mb = total_size / (1024 * 1024)
-
-        return {
-            "total_pending": pending_files.count(),
-            "existing_files": existing_files,
-            "missing_files": missing_files,
-            "total_size_mb": round(total_size_mb, 2),
-        }
-
-    except Exception as e:
-        logger.error(f"Error getting storage stats: {str(e)}")
-        return None
-
-
-# --- User Data Utilities ---
 def get_changes_dict(old_obj, new_obj, changed_fields):
     """
     Create a dictionary showing changes between old and new object for specified fields.
@@ -253,52 +154,47 @@ def get_user_agent(request):
     return request.META.get("HTTP_USER_AGENT", "unknown")
 
 
-# --- 2FA Email Code Utilities ---
+# =============================================================================
+# 2FA EMAIL CODE UTILITIES
+# =============================================================================
+
+
 def generate_email_code():
     """Generate a numeric verification code of specified length."""
     return "".join(random.choices(string.digits, k=6))
 
 
-def send_email_code(email, code, subject=None, message=None):
+def send_2FA_email(user, code):
     """
-    Envoie un code par email avec possibilité de personnaliser le sujet et le message.
+    Send a 2FA code to the user's email.
     """
-    if subject is None:
-        subject = "Code de vérification"
-    if message is None:
-        message = f"Votre code est : {code}"
+    subject = "Verification Code - Shuttrly"
 
-    send_mail(
-        subject,
-        message,
-        settings.DEFAULT_FROM_EMAIL,
-        [email],
-        fail_silently=False,
+    html_content = render_to_string(
+        "emails/2fa_code.html",
+        {
+            "user": user,
+            "code": code,
+            "expiration_minutes": 10,
+        },
     )
 
-
-def send_2FA_email(user, code):
-    print(
-        f"Sending 2FA code to {user.email}"
-    )  # For demo purposes, replace with actual email sending logic
-    """
-    Fonction pour envoyer l'email de vérification
-    À adapter selon votre configuration email
-    """
-    subject = "2FA Code de vérification"
-    message = f"Your 2FA code is : {code}\n\nCe code expire dans 10 minutes."
+    # Text version (fallback if HTML is disabled)
+    text_content = strip_tags(html_content)
 
     try:
-        send_mail(
+        email = EmailMultiAlternatives(
             subject,
-            message,
+            text_content,
             settings.DEFAULT_FROM_EMAIL,
             [user.email],
-            fail_silently=False,
         )
+        email.attach_alternative(html_content, "text/html")
+        email.send()
         return True
+
     except Exception as e:
-        print(f"Erreur envoi email: {e}")
+        print(f"Error sending 2FA email: {e}")
         return False
 
 
@@ -314,7 +210,11 @@ def is_email_code_valid(user, input_code):
     return timezone.now() <= expiration and input_code == user.email_2fa_code
 
 
-# --- TOTP (Time-Based One-Time Password) Utilities ---
+# =============================================================================
+# TOTP (TIME-BASED ONE-TIME PASSWORD) UTILITIES
+# =============================================================================
+
+
 def generate_totp_secret():
     """Generate a random base32 secret for TOTP."""
     return pyotp.random_base32()
@@ -340,10 +240,13 @@ def verify_totp(secret, code):
     return totp.verify(code, valid_window=1)
 
 
-# --- Trusted Device Management ---
+# =============================================================================
+# TRUSTED DEVICE MANAGEMENT
+# =============================================================================
 
 
 def hash_token(token: str) -> str:
+    """Hash a token using SHA256."""
     return hashlib.sha256(token.encode()).hexdigest()
 
 
@@ -376,7 +279,11 @@ def is_trusted_device(request, user):
     return False
 
 
-# --- IP Geolocation ---
+# =============================================================================
+# IP GEOLOCATION
+# =============================================================================
+
+
 def get_location_from_ip(ip_address):
     """
     Get approximate location info from IP address using ipinfo.io.
@@ -394,7 +301,11 @@ def get_location_from_ip(ip_address):
         return {}
 
 
-# --- User Agent Analysis ---
+# =============================================================================
+# USER AGENT ANALYSIS
+# =============================================================================
+
+
 def analyze_user_agent(ua_string):
     """
     Parse user agent string and return structured info:
@@ -431,13 +342,8 @@ def analyze_user_agent(ua_string):
     }
 
 
-# def generate_verification_code():
-#     """Génère un code de vérification à 6 chiffres"""
-#     return "".join(random.choices(string.digits, k=6))
-
-
 def calculate_age(birth_date):
-    """Calcule l'âge à partir de la date de naissance"""
+    """Calculate age from birth date."""
     today = date.today()
     return (
         today.year
@@ -447,7 +353,7 @@ def calculate_age(birth_date):
 
 
 def can_resend_code(session_data):
-    """Vérifie si on peut renvoyer un code"""
+    """Check if a code can be resent."""
     code_sent_at = session_data.get("code_sent_at")
     if not code_sent_at:
         return True
@@ -461,24 +367,24 @@ def can_resend_code(session_data):
         if timezone.is_naive(sent_time):
             sent_time = timezone.make_aware(sent_time)
 
-        # Attendre 2 minutes avant de permettre un renvoi
+        # Wait 2 minutes before allowing resend
         return (timezone.now() - sent_time).total_seconds() > 20
     except:
         return True
 
 
 def send_verification_email(email, code):
-    print(
-        f"Sending verification email to {email}"
-    )  # For demo purposes, replace with actual email sending logic
     """
-    Fonction pour envoyer l'email de vérification
-    À adapter selon votre configuration email
+    Function to send verification email.
+    To be adapted according to your email configuration.
     """
+    print(f"Sending verification email to {email}")  # For demo purposes
 
     try:
-        subject = "Code de vérification"
-        message = f"Votre code de vérification est : {code}\n\nCe code expire dans 10 minutes."
+        subject = "Verification Code"
+        message = (
+            f"Your verification code is: {code}\n\nThis code expires in 10 minutes."
+        )
 
         send_mail(
             subject,
@@ -489,12 +395,12 @@ def send_verification_email(email, code):
         )
         return True
     except Exception as e:
-        print(f"Erreur envoi email: {e}")
+        print(f"Email sending error: {e}")
         return False
 
 
 def get_device_name(request):
-    """Génère un nom d'appareil basé sur le user agent"""
+    """Generate a device name based on user agent."""
     user_agent = get_user_agent(request)
 
     # Try to use analyze_user_agent first
@@ -532,48 +438,68 @@ def get_device_name(request):
 
 
 def is_safe_url(url, allowed_hosts, require_https=False):
-    """Vérifie si une URL de redirection est sûre"""
-    from urllib.parse import urlparse
-
+    """Check if a redirect URL is safe."""
     if not url:
         return False
 
     parsed = urlparse(url)
 
-    # URL relative
+    # Relative URL
     if not parsed.netloc:
         return True
 
-    # Vérifier le host
+    # Check host
     if parsed.netloc not in allowed_hosts:
         return False
 
-    # Vérifier HTTPS si requis
+    # Check HTTPS if required
     if require_https and parsed.scheme != "https":
         return False
 
     return True
 
 
-from django.http import HttpResponseRedirect
-from django.urls import reverse
-from django.contrib import messages
+# =============================================================================
+# LOGIN AND AUTHENTICATION UTILITIES
+# =============================================================================
 
 
 def login_success(
     request, user, ip, user_agent, location, twofa_method=None, remember_device=False
 ):
+    """
+    Handle successful login and setup trusted device if requested.
+    This function manages the complete login flow including device trust.
+
+    Args:
+        request: HTTP request object
+        user: Authenticated user object
+        ip: Client IP address
+        user_agent: User agent string from browser
+        location: Geographic location info (optional)
+        twofa_method: Method used for 2FA verification
+        remember_device: Whether to remember this device for future logins
+
+    Returns:
+        HttpResponseRedirect: Redirect response after successful login
+    """
     print("login_success called")
+
+    # Set the authentication backend for the user
+    # This is required for Django's authentication system to work properly
     user.backend = (
         f"{get_backends()[0].__module__}.{get_backends()[0].__class__.__name__}"
     )
     login(request, user)
 
+    # Update user status and login information
     user.is_online = True
     user.last_login_date = timezone.now()
     user.last_login_ip = ip
     user.save()
 
+    # Handle redirect to next page or default to profile
+    # next_url can come from GET or POST parameters
     next_url = request.GET.get("next") or request.POST.get("next")
     redirect_url = (
         next_url
@@ -585,12 +511,15 @@ def login_success(
     print(f"remember_device: {remember_device}")
 
     if remember_device:
+        # Check for existing trusted device cookies
+        # Look for cookies that start with 'trusted_device_{user_id}'
         trusted_tokens = [
             value
             for key, value in request.COOKIES.items()
             if key.startswith(f"trusted_device_{user.pk}")
         ]
 
+        # Try to find an existing trusted device
         device = None
         for token in trusted_tokens:
             hashed_token = hash_token(token)
@@ -601,61 +530,31 @@ def login_success(
                 break
 
         if device:
+            # Update existing device with current usage information
             device.last_used_at = timezone.now()
             device.ip_address = ip
-            device.user_agent = user_agent[:255]
+            device.user_agent = user_agent[:255]  # Limit to database field size
             if location:
                 device.location = location
             device.save(
                 update_fields=["last_used_at", "ip_address", "user_agent", "location"]
             )
         else:
+            # Create new trusted device with 30-day expiration
             cookie_name = f"trusted_device_{user.pk}"
             max_age_days = 30
-            max_age = max_age_days * 24 * 60 * 60
+            max_age = max_age_days * 24 * 60 * 60  # Convert to seconds
             expires = http_date(timezone.now().timestamp() + max_age)
+
+            # Generate unique token: user_id + random UUID
             token = f"{user.pk}-{uuid.uuid4().hex}"
             token_hash = hash_token(token)
 
             # Analyze user agent for better device information
-            device_info = {}
-            try:
-                ua_info = analyze_user_agent(user_agent)
-                device_info = {
-                    "device_type": ua_info.get("device_type", "Unknown Device"),
-                    "device_family": ua_info.get("device_family", "Unknown"),
-                    "browser_family": ua_info.get("browser_family", "Unknown"),
-                    "browser_version": ua_info.get("browser_version", ""),
-                    "os_family": ua_info.get("os_family", "Unknown"),
-                    "os_version": ua_info.get("os_version", ""),
-                }
-            except Exception as e:
-                # Fallback to simple device name
-                try:
+            # This provides detailed browser/OS/device information
+            device_info = _get_device_info_from_user_agent(user_agent)
 
-                    class MockRequest:
-                        def __init__(self, user_agent):
-                            self.META = {"HTTP_USER_AGENT": user_agent}
-
-                    mock_request = MockRequest(user_agent)
-                    device_info = {
-                        "device_type": get_device_name(mock_request),
-                        "device_family": "Unknown",
-                        "browser_family": "Unknown",
-                        "browser_version": "",
-                        "os_family": "Unknown",
-                        "os_version": "",
-                    }
-                except:
-                    device_info = {
-                        "device_type": "Unknown Device",
-                        "device_family": "Unknown",
-                        "browser_family": "Unknown",
-                        "browser_version": "",
-                        "os_family": "Unknown",
-                        "os_version": "",
-                    }
-
+            # Create the trusted device record in database
             TrustedDevice.objects.create(
                 user=user,
                 device_token=token_hash,
@@ -671,18 +570,22 @@ def login_success(
                 os_version=device_info.get("os_version", ""),
             )
 
+            # Set secure HTTP-only cookie for trusted device
+            # This cookie will be used to identify the device on future visits
             response.set_cookie(
                 cookie_name,
                 token,
                 max_age=max_age,
                 expires=expires,
-                secure=True,
-                httponly=True,
-                samesite="Lax",
+                secure=True,  # Only sent over HTTPS
+                httponly=True,  # Not accessible via JavaScript
+                samesite="Lax",  # CSRF protection
             )
 
-        request.session.pop("remember_device", None)  # Une seule fois ici
+        # Clean up session flag - only needed once during login
+        request.session.pop("remember_device", None)
 
+    # Log the successful login action for security monitoring
     log_user_action_json(
         user=user,
         action="login",
@@ -691,28 +594,96 @@ def login_success(
         extra_info={
             "twofa_method": twofa_method,
             "remember_device": remember_device,
-            "user_agent": user_agent[:200],
+            "user_agent": user_agent[:200],  # Limit log entry size
             "location": location,
         },
     )
 
-    welcome_msg = f"Bienvenue {user.first_name} !"
+    # Display personalized welcome message
+    welcome_msg = f"Welcome {user.first_name}!"
     if twofa_method == "trusted_device":
-        welcome_msg += " (Appareil de confiance)"
+        welcome_msg += " (Trusted Device)"
     elif twofa_method:
-        welcome_msg += " Connexion sécurisée"
+        welcome_msg += " Secure Login"
     messages.success(request, welcome_msg)
 
-    # Clean up session data at the end
+    # Clean up session data to prevent memory leaks
     request.session.pop("login_data", None)
     request.session.pop("pre_2fa_user_id", None)
-    # Note: remember_device is already cleaned up earlier in the function
 
     return response
 
 
+def _get_device_info_from_user_agent(user_agent):
+    """
+    Extract device information from user agent string.
+    Returns a dictionary with device details.
+
+    This function attempts to parse the user agent string to extract:
+    - Device type (Desktop, Mobile, Tablet, Bot)
+    - Browser information (Chrome, Firefox, Safari, etc.)
+    - Operating system details (Windows, macOS, Linux, etc.)
+
+    Args:
+        user_agent: Raw user agent string from browser
+
+    Returns:
+        dict: Device information with fallback values if parsing fails
+    """
+    try:
+        # Try to use the user_agents library for detailed parsing
+        ua_info = analyze_user_agent(user_agent)
+        return {
+            "device_type": ua_info.get("device_type", "Unknown Device"),
+            "device_family": ua_info.get("device_family", "Unknown"),
+            "browser_family": ua_info.get("browser_family", "Unknown"),
+            "browser_version": ua_info.get("browser_version", ""),
+            "os_family": ua_info.get("os_family", "Unknown"),
+            "os_version": ua_info.get("os_version", ""),
+        }
+    except Exception as e:
+        # Fallback to simple device name detection if parsing fails
+        try:
+            # Create a mock request object to use with get_device_name function
+            # This allows us to reuse existing device detection logic
+            class MockRequest:
+                def __init__(self, user_agent):
+                    self.META = {"HTTP_USER_AGENT": user_agent}
+
+            mock_request = MockRequest(user_agent)
+            return {
+                "device_type": get_device_name(mock_request),
+                "device_family": "Unknown",
+                "browser_family": "Unknown",
+                "browser_version": "",
+                "os_family": "Unknown",
+                "os_version": "",
+            }
+        except:
+            # Final fallback with default values if everything fails
+            return {
+                "device_type": "Unknown Device",
+                "device_family": "Unknown",
+                "browser_family": "Unknown",
+                "browser_version": "",
+                "os_family": "Unknown",
+                "os_version": "",
+            }
+
+
 def get_user_from_session(request):
-    """Récupère l'utilisateur depuis la session"""
+    """
+    Retrieve user from session data.
+
+    This function is used during the 2FA process to get the user
+    who has already been authenticated but needs to complete 2FA.
+
+    Args:
+        request: HTTP request object
+
+    Returns:
+        CustomUser or None: User object if found, None otherwise
+    """
     user_id = request.session.get("pre_2fa_user_id")
     if user_id:
         try:
@@ -724,7 +695,18 @@ def get_user_from_session(request):
 
 def initialize_2fa_session_data(request, user, code):
     """
-    Initialize session data for 2FA process, similar to registration
+    Initialize session data for 2FA process, similar to registration.
+
+    This function sets up the session with verification code and metadata
+    needed for the 2FA verification step.
+
+    Args:
+        request: HTTP request object
+        user: User object
+        code: Verification code to store in session
+
+    Returns:
+        dict: Updated session data
     """
     session_data = request.session.get("login_data", {})
     session_data.update(
@@ -741,8 +723,19 @@ def initialize_2fa_session_data(request, user, code):
 
 def initialize_login_session_data(request, user, code=None):
     """
-    Initialize session data for login process
-    Similar to register but for login flow
+    Initialize session data for login process.
+    Similar to register but for login flow.
+
+    This function stores user information and 2FA settings in the session
+    to be used throughout the multi-step login process.
+
+    Args:
+        request: HTTP request object
+        user: User object
+        code: Optional verification code (for email 2FA)
+
+    Returns:
+        dict: Updated session data
     """
     session_data = request.session.get("login_data", {})
     session_data.update(
@@ -770,10 +763,23 @@ def initialize_login_session_data(request, user, code=None):
     return session_data
 
 
+# =============================================================================
+# LOGIN STEP HANDLERS
+# =============================================================================
+
+
 def handle_login_step_1_credentials(request):
     """
-    Handle step 1 of login: email/username and password validation
-    Returns (success, user, error_message)
+    Handle step 1 of login: email/username and password validation.
+
+    This is the first step of the multi-step login process.
+    It validates user credentials and checks if email verification is complete.
+
+    Args:
+        request: HTTP request object with POST data
+
+    Returns:
+        tuple: (success: bool, user: CustomUser or None, error_message: str or None)
     """
     from .forms import LoginForm
 
@@ -785,10 +791,10 @@ def handle_login_step_1_credentials(request):
     password = form.cleaned_data["password"]
     remember_device = form.cleaned_data.get("remember_device", False)
 
-    # Store remember_device in session
+    # Store remember_device preference in session for later use
     request.session["remember_device"] = remember_device
 
-    # Find user by email or username
+    # Find user by email or username (flexible login)
     user_qs = CustomUser.objects.filter(Q(email=identifier) | Q(username=identifier))
 
     if not user_qs.exists():
@@ -796,12 +802,12 @@ def handle_login_step_1_credentials(request):
 
     user = user_qs.first()
 
-    # Authenticate user
+    # Authenticate user with Django's built-in authentication
     authenticated_user = authenticate(request, username=identifier, password=password)
     if authenticated_user is None:
         return False, None, "Incorrect email/username or password"
 
-    # Check if email is verified
+    # Check if email is verified (security requirement)
     if not user.is_email_verified:
         return False, None, "Please verify your email before logging in"
 
@@ -810,8 +816,16 @@ def handle_login_step_1_credentials(request):
 
 def handle_login_step_2_2fa_choice(request):
     """
-    Handle step 2 of login: 2FA method choice
-    Returns (success, user, error_message)
+    Handle step 2 of login: 2FA method choice.
+
+    After successful credential validation, user chooses their 2FA method.
+    This step validates that the chosen method is enabled for the user.
+
+    Args:
+        request: HTTP request object with POST data
+
+    Returns:
+        tuple: (success: bool, user: CustomUser or None, error_message: str or None)
     """
     from .forms import Choose2FAMethodForm
 
@@ -832,13 +846,14 @@ def handle_login_step_2_2fa_choice(request):
 
     method = form.cleaned_data["twofa_method"]
 
+    # Validate that the chosen 2FA method is enabled for this user
     if method == "email" and not user.email_2fa_enabled:
         return False, user, "Email 2FA is not enabled for this account"
 
     if method == "totp" and not user.totp_enabled:
         return False, user, "TOTP 2FA is not enabled for this account"
 
-    # Store the chosen method
+    # Store the chosen method in session for the next step
     session_data["chosen_2fa_method"] = method
     request.session["login_data"] = session_data
 
@@ -847,8 +862,16 @@ def handle_login_step_2_2fa_choice(request):
 
 def handle_login_step_3_2fa_verification_logic(request):
     """
-    Handle step 3 of login: 2FA code verification
-    Returns (success, user, error_message)
+    Handle step 3 of login: 2FA code verification.
+
+    This is the final step where the user provides their 2FA code.
+    The function routes to the appropriate verification handler based on the method.
+
+    Args:
+        request: HTTP request object with POST data
+
+    Returns:
+        tuple: (success: bool, user: CustomUser or None, error_message: str or None)
     """
     from .forms import Email2FAForm, TOTP2FAForm
 
@@ -864,92 +887,167 @@ def handle_login_step_3_2fa_verification_logic(request):
     except CustomUser.DoesNotExist:
         return False, None, "User not found"
 
-    # Validate the submitted code
+    # Route to appropriate verification handler based on chosen method
     if chosen_method == "email":
-        form = Email2FAForm(request.POST)
-        if not form.is_valid():
-            return False, user, "Invalid verification code format"
-
-        submitted_code = form.cleaned_data["twofa_code"]
-        stored_code = session_data.get("verification_code")
-        code_sent_at = session_data.get("code_sent_at")
-        attempts = session_data.get("code_attempts", 0)
-
-        # Check attempts
-        if attempts >= 3:
-            return False, user, "Too many attempts. Request a new code."
-
-        # Check expiration (10 minutes)
-        if code_sent_at:
-            sent_time = datetime.fromisoformat(
-                code_sent_at.replace("Z", "+00:00")
-                if code_sent_at.endswith("Z")
-                else code_sent_at
-            )
-            if timezone.is_naive(sent_time):
-                sent_time = timezone.make_aware(sent_time)
-
-            if (timezone.now() - sent_time).total_seconds() > 600:  # 10 minutes
-                return False, user, "Code has expired. Request a new code."
-
-            if submitted_code == stored_code:
-                # Clear session data after successful verification
-                request.session.pop("login_data", None)
-                return True, user, None
-            else:
-                attempts += 1
-                session_data["code_attempts"] = attempts
-                request.session["login_data"] = session_data
-                return (
-                    False,
-                    user,
-                    f"Incorrect code. {3-attempts} remaining attempt(s).",
-                )
-
-        return False, user, "Session error. Please try again."
-
+        return _handle_email_2fa_verification(request, session_data, user)
     elif chosen_method == "totp":
-        form = TOTP2FAForm(request.POST)
-        if not form.is_valid():
-            return False, user, "Invalid TOTP code format"
-
-        submitted_code = form.cleaned_data["twofa_code"]
-
-        if verify_totp(user.twofa_totp_secret, submitted_code):
-            # Clear session data after successful verification
-            request.session.pop("login_data", None)
-            return True, user, None
-        else:
-            return False, user, "Invalid TOTP code"
+        return _handle_totp_2fa_verification(request, user)
 
     return False, user, "Invalid 2FA method"
 
 
+def _handle_email_2fa_verification(request, session_data, user):
+    """
+    Handle email 2FA verification logic.
+
+    This function validates the email verification code with the following checks:
+    - Code format validation
+    - Attempt limit (max 3 attempts)
+    - Code expiration (10 minutes)
+    - Code matching
+
+    Args:
+        request: HTTP request object
+        session_data: Current session data
+        user: User object
+
+    Returns:
+        tuple: (success: bool, user: CustomUser or None, error_message: str or None)
+    """
+    from .forms import Email2FAForm
+
+    form = Email2FAForm(request.POST)
+    if not form.is_valid():
+        return False, user, "Invalid verification code format"
+
+    submitted_code = form.cleaned_data["twofa_code"]
+    stored_code = session_data.get("verification_code")
+    code_sent_at = session_data.get("code_sent_at")
+    attempts = session_data.get("code_attempts", 0)
+
+    # Check attempt limit to prevent brute force attacks
+    if attempts >= 3:
+        return False, user, "Too many attempts. Request a new code."
+
+    # Check code expiration (10 minutes from when code was sent)
+    if code_sent_at:
+        # Parse ISO format timestamp and handle timezone
+        sent_time = datetime.fromisoformat(
+            code_sent_at.replace("Z", "+00:00")
+            if code_sent_at.endswith("Z")
+            else code_sent_at
+        )
+        if timezone.is_naive(sent_time):
+            sent_time = timezone.make_aware(sent_time)
+
+        # Check if code has expired (600 seconds = 10 minutes)
+        if (timezone.now() - sent_time).total_seconds() > 600:
+            return False, user, "Code has expired. Request a new code."
+
+        # Validate the submitted code against stored code
+        if submitted_code == stored_code:
+            # Clear session data after successful verification
+            request.session.pop("login_data", None)
+            return True, user, None
+        else:
+            # Increment attempt counter and update session
+            attempts += 1
+            session_data["code_attempts"] = attempts
+            request.session["login_data"] = session_data
+            return (
+                False,
+                user,
+                f"Incorrect code. {3-attempts} remaining attempt(s).",
+            )
+
+    return False, user, "Session error. Please try again."
+
+
+def _handle_totp_2fa_verification(request, user):
+    """
+    Handle TOTP 2FA verification logic.
+
+    This function validates the TOTP code using the user's secret key.
+    TOTP codes are time-based and automatically expire.
+
+    Args:
+        request: HTTP request object
+        user: User object with TOTP secret
+
+    Returns:
+        tuple: (success: bool, user: CustomUser or None, error_message: str or None)
+    """
+    from .forms import TOTP2FAForm
+
+    form = TOTP2FAForm(request.POST)
+    if not form.is_valid():
+        return False, user, "Invalid TOTP code format"
+
+    submitted_code = form.cleaned_data["twofa_code"]
+
+    # Verify TOTP code using user's secret key
+    if verify_totp(user.twofa_totp_secret, submitted_code):
+        # Clear session data after successful verification
+        request.session.pop("login_data", None)
+        return True, user, None
+    else:
+        return False, user, "Invalid TOTP code"
+
+
 def handle_login_resend_code(request, user):
     """
-    Handle resend code request for login 2FA
-    Returns (success, message)
+    Handle resend code request for login 2FA.
+
+    This function allows users to request a new verification code
+    if the previous one expired or was lost.
+
+    Args:
+        request: HTTP request object
+        user: User object
+
+    Returns:
+        tuple: (success: bool, message: str)
     """
     session_data = request.session.get("login_data", {})
     return handle_resend_code_request(request, session_data, user, "email")
 
 
+# =============================================================================
+# SESSION MANAGEMENT AND UTILITIES
+# =============================================================================
+
+
 def get_login_step_progress(step):
     """
-    Calculate progress percentage for login steps
+    Calculate progress percentage for login steps.
+
+    This function provides visual feedback to users about their progress
+    through the multi-step login process.
+
+    Args:
+        step: Current login step identifier
+
+    Returns:
+        int: Progress percentage (0-100)
     """
     step_progress = {
-        "login": 33,
-        "choose_2fa": 66,
-        "email_2fa": 100,
-        "totp_2fa": 100,
+        "login": 33,  # Step 1: Credentials
+        "choose_2fa": 66,  # Step 2: 2FA Method Selection
+        "email_2fa": 100,  # Step 3a: Email 2FA
+        "totp_2fa": 100,  # Step 3b: TOTP 2FA
     }
     return step_progress.get(step, 0)
 
 
 def cleanup_login_session(request):
     """
-    Clean up login session data
+    Clean up login session data.
+
+    This function removes all temporary session data used during
+    the login process to prevent memory leaks and security issues.
+
+    Args:
+        request: HTTP request object
     """
     request.session.pop("login_data", None)
     request.session.pop("remember_device", None)
@@ -958,16 +1056,28 @@ def cleanup_login_session(request):
 
 def handle_resend_code_request(request, session_data, user, email_field="email"):
     """
-    Common function to handle resend code requests for both register and login
-    Returns (success, message)
+    Common function to handle resend code requests for both register and login.
+
+    This function generates a new verification code, updates session data,
+    and sends the code via email. It handles both registration and login flows.
+
+    Args:
+        request: HTTP request object
+        session_data: Current session data
+        user: User object
+        email_field: Key name for email in session data
+
+    Returns:
+        tuple: (success: bool, message: str)
     """
+    # Check if enough time has passed since last code request
     if not can_resend_code(session_data):
         return False, "Please wait before requesting a new code"
 
     # Generate and send new code
     new_code = generate_email_code()
 
-    # Update session data
+    # Update session data with new code and reset attempts
     session_data.update(
         {
             "verification_code": new_code,
@@ -976,17 +1086,19 @@ def handle_resend_code_request(request, session_data, user, email_field="email")
         }
     )
 
-    # Determine which session key to use
+    # Determine which session key to use based on context
     if "user_id" in session_data:
+        # Login flow: update login_data session
         request.session["login_data"] = session_data
-        # Also update user object for login
+        # Also update user object for immediate use
         user.email_2fa_code = new_code
         user.email_2fa_sent_at = timezone.now()
         user.save()
     else:
+        # Registration flow: update register_data session
         request.session["register_data"] = session_data
 
-    # Send email
+    # Send email with new verification code
     email = session_data.get(email_field)
     if email:
         success = send_verification_email(email, new_code)
@@ -1000,7 +1112,18 @@ def handle_resend_code_request(request, session_data, user, email_field="email")
 
 def add_form_error_with_message(form, field, message):
     """
-    Add error to form and also add a message for display
+    Add error to form and also add a message for display.
+
+    This utility function ensures that both form validation errors
+    and user-friendly messages are displayed to the user.
+
+    Args:
+        form: Django form object
+        field: Field name to add error to
+        message: Error message to display
+
+    Returns:
+        form: Updated form object with error
     """
     form.add_error(field, message)
     return form

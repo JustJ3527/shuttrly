@@ -145,7 +145,7 @@
           <div><strong>Operating System:</strong> {{ device.os_family|default:"Unknown" }} {{ device.os_version|default:"" }}</div>
           <div><strong>IP Address:</strong> {{ device.ip_address|default:"Unknown" }}</div>
           {% if device.expires_at %}
-            <div><strong>Expires at:</strong> {{ device.expires_at|date:"SHORT_DATETIME_FORMAT" }}</div>
+            <div><strong>Expires at:</strong> {% local_datetime device.expires_at %}</div>
           {% endif %}
           <form method="POST" style="margin-top: 0.5em;">
             {% csrf_token %}

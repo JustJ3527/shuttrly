@@ -18,14 +18,12 @@ import re
 # === Django Imports ===
 from django.conf import settings
 from django.contrib import messages
-from django.contrib.auth import authenticate, get_backends, login, logout
-from django.db import transaction
+from django.contrib.auth import get_backends, login, logout
 from django.db.models import Q
 from django.http import HttpResponseRedirect, JsonResponse
-from django.shortcuts import get_object_or_404, redirect, render
+from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
-from django.utils.safestring import mark_safe
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods, require_POST
 
@@ -68,11 +66,8 @@ from .utils import (
     hash_token,
     get_user_from_session,
     send_2FA_email,
-    initialize_2fa_session_data,
     initialize_login_session_data,
-    cleanup_login_session,
     get_login_step_progress,
-    get_device_name,
 )
 
 # === Project Logs ===

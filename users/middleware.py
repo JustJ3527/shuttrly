@@ -2,6 +2,8 @@
 
 from django.utils import timezone
 from datetime import timedelta
+from django.contrib import messages
+
 
 class OnlineStatusMiddleware:
     def __init__(self, get_response):
@@ -13,4 +15,10 @@ class OnlineStatusMiddleware:
             if not user.is_online:
                 user.is_online = True
                 user.save(update_fields=["is_online"])
-        return self.get_response(request)
+
+        response = self.get_response(request)
+
+        # Let the JavaScript MessageManager handle message lifecycle
+        # No need to clear messages here as they are handled client-side
+
+        return response

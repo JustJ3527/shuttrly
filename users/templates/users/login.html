@@ -229,14 +229,6 @@
                     {% endif %}
 
                     <div class="btn-navigation">
-                        {% if step != "login" %}
-                            <button type="submit" name="previous" class="btn btn-outline-secondary">
-                                <i class="fas fa-arrow-left"></i> Previous
-                            </button>
-                        {% else %}
-                            <div></div>
-                        {% endif %}
-
                         <button type="submit" class="btn btn-primary" {% if step == "login"%} style="width: 100%;" {% endif %}>
                             {% if step == "login" %}
                                 <i class="fas fa-sign-in-alt"></i> Login
@@ -246,6 +238,12 @@
                                 <i class="fas fa-sign-in-alt"></i> Login
                             {% endif %}
                         </button>
+
+                        {% if step != "login" %}
+                            <button type="submit" name="previous" class="btn btn-outline-secondary" formnovalidate>
+                                <i class="fas fa-arrow-left"></i> Previous
+                            </button>
+                        {% endif %}
                     </div>
                 </form>
 
@@ -347,12 +345,13 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
     
     <script>
-        // Countdown timer for code resend
+        // Countdown timer for code resend - Persistent countdown
         {% if step == "email_2fa" %}
         const canResendInitial = {{ can_resend|yesno:"true,false" }};
+        const timeUntilResend = {{ time_until_resend|default:0 }};
         
-        if (!canResendInitial) {
-            let timeLeft = 20;
+        if (!canResendInitial && timeUntilResend > 0) {
+            let timeLeft = timeUntilResend;
             const countdown = document.getElementById('countdown');
             const timerContainer = document.getElementById('resend-timer-container');
             const buttonContainer = document.getElementById('resend-button-container');
@@ -420,8 +419,8 @@
                                 buttonContainer.style.display = 'none';
                                 timerContainer.style.display = 'block';
                                 
-                                // Start countdown
-                                let timeLeft = 20;
+                                // Start countdown - Use persistent timing
+                                let timeLeft = 120; // 2 minutes (same as EMAIL_CODE_RESEND_DELAY_SECONDS)
                                 const countdown = document.getElementById('countdown');
                                 const timer = setInterval(() => {
                                     timeLeft--;
@@ -530,6 +529,43 @@
             const firstInput = document.querySelector('.form-control');
             if (firstInput && '{{ step }}' !== 'email_2fa' && '{{ step }}' !== 'totp_2fa') {
                 firstInput.focus();
+            }
+        });
+
+        // Required fields
+        document.addEventListener("DOMContentLoaded", () => {
+            const form = document.getElementById("login-form");
+        
+            if (form) {
+                // Disable native validation to take control
+                form.setAttribute("novalidate", true);
+        
+                form.addEventListener("submit", (e) => {
+                    let isValid = true;
+                    let firstInvalid = null;
+        
+                    // Select only fields with "required"
+                    form.querySelectorAll("[required]").forEach(input => {
+                        const errorContainer = input.closest(".mb-4")?.querySelector(".custom-error");
+                        if (errorContainer) errorContainer.remove(); // remove old messages
+        
+                        if (!input.value.trim()) {
+                            isValid = false;
+                            if (!firstInvalid) firstInvalid = input;
+        
+                            // Ajout message d’erreur personnalisé
+                            const errorMsg = document.createElement("div");
+                            errorMsg.className = "custom-error text-danger small mt-2";
+                            errorMsg.innerHTML = `<i class="fas fa-exclamation-circle"></i> This field is required`;
+                            input.closest(".mb-4")?.appendChild(errorMsg);
+                        }
+                    });
+        
+                    if (!isValid) {
+                        e.preventDefault();
+                        if (firstInvalid) firstInvalid.focus();
+                    }
+                });
             }
         });
     </script>

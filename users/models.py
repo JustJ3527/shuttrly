@@ -15,6 +15,8 @@ import random
 from django.core.mail import send_mail
 from django.core.files.storage import default_storage
 
+from .constants import EMAIL_CODE_EXPIRY_SECONDS
+
 
 def user_directory_path(instance, filename):
     ext = filename.split(".")[-1]
@@ -273,7 +275,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
 
         # Check if the code has not expired (10 minutes)
         time_since_sent = timezone.now() - self.verification_code_sent_at
-        return time_since_sent.total_seconds() <= 600
+        return time_since_sent.total_seconds() <= EMAIL_CODE_EXPIRY_SECONDS
 
     def verify_email(self, code):
         if self.is_verification_code_valid(code):

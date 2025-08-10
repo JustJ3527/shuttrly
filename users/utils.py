@@ -17,7 +17,7 @@ import random
 import string
 import uuid
 from datetime import date, datetime, timedelta
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urlencode
 
 # === Third-Party Imports ===
 import pyotp
@@ -352,6 +352,14 @@ def calculate_age(birth_date):
     )
 
 
+# Import constants from centralized configuration
+from .constants import (
+    EMAIL_CODE_RESEND_DELAY_SECONDS,
+    EMAIL_CODE_EXPIRY_SECONDS,
+    MAX_2FA_ATTEMPTS,
+)
+
+
 def can_resend_code(session_data):
     """Check if a code can be resent."""
     code_sent_at = session_data.get("code_sent_at")
@@ -368,7 +376,9 @@ def can_resend_code(session_data):
             sent_time = timezone.make_aware(sent_time)
 
         # Wait 2 minutes before allowing resend
-        return (timezone.now() - sent_time).total_seconds() > 20
+        return (
+            timezone.now() - sent_time
+        ).total_seconds() > EMAIL_CODE_RESEND_DELAY_SECONDS
     except:
         return True
 
@@ -940,8 +950,8 @@ def _handle_email_2fa_verification(request, session_data, user):
         if timezone.is_naive(sent_time):
             sent_time = timezone.make_aware(sent_time)
 
-        # Check if code has expired (600 seconds = 10 minutes)
-        if (timezone.now() - sent_time).total_seconds() > 600:
+        # Check if code has expired
+        if (timezone.now() - sent_time).total_seconds() > EMAIL_CODE_EXPIRY_SECONDS:
             return False, user, "Code has expired. Request a new code."
 
         # Validate the submitted code against stored code
@@ -1070,9 +1080,17 @@ def handle_resend_code_request(request, session_data, user, email_field="email")
     Returns:
         tuple: (success: bool, message: str)
     """
-    # Check if enough time has passed since last code request
-    if not can_resend_code(session_data):
-        return False, "Please wait before requesting a new code"
+    # Check if enough time has passed since last code request using database
+    if "user_id" in session_data:
+        # Login flow: check user object timing
+        if user.email_2fa_sent_at:
+            time_since_sent = timezone.now() - user.email_2fa_sent_at
+            if time_since_sent.total_seconds() < EMAIL_CODE_RESEND_DELAY_SECONDS:
+                return False, "Please wait before requesting a new code"
+    else:
+        # Registration flow: check session timing (fallback)
+        if not can_resend_code(session_data):
+            return False, "Please wait before requesting a new code"
 
     # Generate and send new code
     new_code = generate_email_code()
@@ -1110,6 +1128,35 @@ def handle_resend_code_request(request, session_data, user, email_field="email")
         return False, "Email not found in session"
 
 
+def _calculate_time_until_resend(session_data):
+    """
+    Calculate time until code can be resent for login flow.
+
+    This function calculates the remaining time before a user can request
+    a new 2FA code, based on the user's email_2fa_sent_at timestamp.
+
+    Args:
+        session_data: Session data containing user_id
+
+    Returns:
+        int: Seconds remaining until resend is allowed (0 if can resend now)
+    """
+    user_id = session_data.get("user_id")
+    if not user_id:
+        return 0
+
+    try:
+        user = CustomUser.objects.get(id=user_id)
+        if user.email_2fa_sent_at:
+            time_since_sent = timezone.now() - user.email_2fa_sent_at
+            return max(
+                0, EMAIL_CODE_RESEND_DELAY_SECONDS - time_since_sent.total_seconds()
+            )
+        return 0
+    except CustomUser.DoesNotExist:
+        return 0
+
+
 def add_form_error_with_message(form, field, message):
     """
     Add error to form and also add a message for display.
@@ -1127,3 +1174,348 @@ def add_form_error_with_message(form, field, message):
     """
     form.add_error(field, message)
     return form
+
+
+# =============================================================================
+# 2FA SETTINGS UTILITY FUNCTIONS
+# =============================================================================
+
+
+def get_2fa_resend_status(user):
+    """
+    Calculate time until resend is available for 2FA codes.
+
+    Args:
+        user: CustomUser instance
+
+    Returns:
+        dict: Contains 'time_until_resend' and 'can_resend' status
+    """
+    time_until_resend = 0
+    can_resend = True
+
+    if user.email_2fa_sent_at:
+        time_since_sent = timezone.now() - user.email_2fa_sent_at
+        time_until_resend = max(
+            0, EMAIL_CODE_RESEND_DELAY_SECONDS - time_since_sent.total_seconds()
+        )
+        can_resend = time_until_resend <= 0
+
+    return {"time_until_resend": int(time_until_resend), "can_resend": can_resend}
+
+
+def get_current_device_token(request, user):
+    """
+    Get the current device token from cookies.
+
+    Args:
+        request: HTTP request object
+        user: CustomUser instance
+
+    Returns:
+        str: Hashed device token or None
+    """
+    for cookie_name, token in request.COOKIES.items():
+        if cookie_name.startswith(f"trusted_device_{user.pk}"):
+            return hash_token(token)
+    return None
+
+
+def enhance_trusted_device_info(device, current_device_token):
+    """
+    Enhance trusted device with additional information and mark current device.
+
+    Args:
+        device: TrustedDevice instance
+        current_device_token: Current device token hash
+
+    Returns:
+        TrustedDevice: Enhanced device instance
+    """
+    # Mark current device
+    device.is_current_device = device.device_token == current_device_token
+
+    # Calculate if device expires soon (within 7 days)
+    if device.expires_at:
+        device.expires_soon = (device.expires_at - timezone.now()).days <= 7
+    else:
+        device.expires_soon = False
+
+    # Use stored device information or analyze if not available
+    if not device.device_type and device.user_agent:
+        try:
+            # Analyze user agent if not already stored
+            ua_info = analyze_user_agent(device.user_agent)
+            device.device_type = ua_info.get("device_type", "Unknown Device")
+            device.device_family = ua_info.get("device_family", "Unknown")
+            device.browser_family = ua_info.get("browser_family", "Unknown")
+            device.browser_version = ua_info.get("browser_version", "")
+            device.os_family = ua_info.get("os_family", "Unknown")
+            device.os_version = ua_info.get("os_version", "")
+
+            # Save the analyzed information
+            device.save(
+                update_fields=[
+                    "device_type",
+                    "device_family",
+                    "browser_family",
+                    "browser_version",
+                    "os_family",
+                    "os_version",
+                ]
+            )
+
+        except Exception as e:
+            # Fallback values
+            device.device_type = device.device_type or "Unknown Device"
+            device.device_family = device.device_family or "Unknown"
+            device.browser_family = device.browser_family or "Unknown"
+            device.browser_version = device.browser_version or ""
+            device.os_family = device.os_family or "Unknown"
+            device.os_version = device.os_version or ""
+    else:
+        # Use stored values or defaults
+        device.device_type = device.device_type or "Unknown Device"
+        device.device_family = device.device_family or "Unknown"
+        device.browser_family = device.browser_family or "Unknown"
+        device.browser_version = device.browser_version or ""
+        device.os_family = device.os_family or "Unknown"
+        device.os_version = device.os_version or ""
+
+    # Format location if it's a dict
+    if isinstance(device.location, dict):
+        location_parts = []
+        if device.location.get("city"):
+            location_parts.append(device.location["city"])
+        if device.location.get("region"):
+            location_parts.append(device.location["region"])
+        if device.location.get("country"):
+            location_parts.append(device.location["country"])
+        device.location_display = (
+            ", ".join(location_parts) if location_parts else "Unknown location"
+        )
+    else:
+        device.location_display = device.location or "Unknown location"
+
+    return device
+
+
+def handle_2fa_cancel_operation(user, step):
+    """
+    Handle cancellation of 2FA operations in progress.
+
+    Args:
+        user: CustomUser instance
+        step: Current step to cancel
+
+    Returns:
+        HttpResponseRedirect: Redirect response
+    """
+    if step == "verify_email_code":
+        user.email_2fa_code = ""
+        user.email_2fa_sent_at = None
+        user.save()
+    elif step == "verify_totp":
+        user.twofa_totp_secret = ""
+        user.save()
+
+    response = HttpResponseRedirect(reverse("twofa_settings") + "?step=initial")
+    response.delete_cookie("remember_device")
+    return response
+
+
+def handle_enable_email_2fa(user, password):
+    """
+    Handle enabling email 2FA for a user.
+
+    Args:
+        user: CustomUser instance
+        password: User's password for verification
+
+    Returns:
+        tuple: (success, redirect_url, error_message)
+    """
+    if not user.check_password(password):
+        return False, None, "Incorrect password."
+
+    code = generate_email_code()
+    user.email_2fa_code = code
+    user.email_2fa_sent_at = timezone.now()
+    user.save()
+    send_2FA_email(user, code)
+
+    url = reverse("twofa_settings") + "?" + urlencode({"step": "verify_email_code"})
+    return True, url, None
+
+
+def handle_verify_email_2fa(user, code):
+    """
+    Handle verification of email 2FA code.
+
+    Args:
+        user: CustomUser instance
+        code: Email verification code
+
+    Returns:
+        tuple: (success, error_message)
+    """
+    if is_email_code_valid(user, code):
+        user.email_2fa_enabled = True
+        user.email_2fa_code = ""
+        user.email_2fa_sent_at = None
+        user.save()
+        return True, None
+    else:
+        return False, "Invalid or expired code."
+
+
+def handle_resend_email_2fa_code(user):
+    """
+    Handle resending of email 2FA code.
+
+    Args:
+        user: CustomUser instance
+
+    Returns:
+        tuple: (success, redirect_url, error_message)
+    """
+    delta = (
+        (timezone.now() - user.email_2fa_sent_at)
+        if user.email_2fa_sent_at
+        else timedelta(minutes=999)
+    )
+
+    if delta.total_seconds() >= EMAIL_CODE_RESEND_DELAY_SECONDS:
+        user.email_2fa_code = generate_email_code()
+        user.email_2fa_sent_at = timezone.now()
+        user.save()
+        send_2FA_email(user, user.email_2fa_code)
+        return True, None, "New code sent."
+    else:
+        return False, None, "Please wait before requesting a new code."
+
+
+def handle_enable_totp_2fa(user, password):
+    """
+    Handle enabling TOTP 2FA for a user.
+
+    Args:
+        user: CustomUser instance
+        password: User's password for verification
+
+    Returns:
+        tuple: (success, context_data, error_message)
+    """
+    if not user.check_password(password):
+        return False, None, "Incorrect password."
+
+    secret = generate_totp_secret()
+    user.twofa_totp_secret = secret
+    user.save()
+
+    uri = get_totp_uri(user, secret)
+    qr_base64 = generate_qr_code_base64(uri)
+
+    context_data = {
+        "qr_code_url": qr_base64,
+        "totp_secret": secret,
+        "totp_uri": uri,
+        "step": "verify_totp",
+    }
+    return True, context_data, None
+
+
+def handle_verify_totp_2fa(user, code):
+    """
+    Handle verification of TOTP 2FA code.
+
+    Args:
+        user: CustomUser instance
+        code: TOTP verification code
+
+    Returns:
+        tuple: (success, error_message)
+    """
+    if verify_totp(user.twofa_totp_secret, code):
+        user.totp_enabled = True
+        user.twofa_totp_secret = ""
+        user.save()
+        return True, None
+    else:
+        return False, "Invalid TOTP code."
+
+
+def handle_disable_2fa_method(user, password, method):
+    """
+    Handle disabling of 2FA methods.
+
+    Args:
+        user: CustomUser instance
+        password: User's password for verification
+        method: Method to disable ('email' or 'totp')
+
+    Returns:
+        tuple: (success, error_message)
+    """
+    if not user.check_password(password):
+        return False, "Incorrect password."
+
+    if method == "email":
+        user.email_2fa_enabled = False
+        user.email_2fa_code = ""
+        user.email_2fa_sent_at = None
+        user.save()
+        return True, "Email 2FA disabled successfully!"
+    elif method == "totp":
+        user.totp_enabled = False
+        user.twofa_totp_secret = ""
+        user.save()
+        return True, "TOTP 2FA disabled successfully!"
+
+    return False, "Invalid method specified."
+
+
+def handle_remove_trusted_device(user, device_id, current_device_token):
+    """
+    Handle removal of trusted devices.
+
+    Args:
+        user: CustomUser instance
+        device_id: ID of device to remove
+        current_device_token: Current device token hash
+
+    Returns:
+        tuple: (success, is_current_device, error_message)
+    """
+    try:
+        device = TrustedDevice.objects.get(id=device_id, user=user)
+        is_current_device = device.device_token == current_device_token
+        device.delete()
+        return True, is_current_device, None
+    except TrustedDevice.DoesNotExist:
+        return False, False, "Device not found."
+
+
+def get_2fa_settings_context(user, trusted_devices, step):
+    """
+    Get context data for 2FA settings view.
+
+    Args:
+        user: CustomUser instance
+        trusted_devices: List of trusted devices
+        step: Current step
+
+    Returns:
+        dict: Context data for template
+    """
+    resend_status = get_2fa_resend_status(user)
+
+    return {
+        "trusted_devices": trusted_devices,
+        "email_2fa_enabled": user.email_2fa_enabled,
+        "totp_enabled": user.totp_enabled,
+        "time_until_resend": resend_status["time_until_resend"],
+        "can_resend": resend_status["can_resend"],
+        "email_code_resend_delay": EMAIL_CODE_RESEND_DELAY_SECONDS,
+        "step": step,
+    }

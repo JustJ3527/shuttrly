@@ -57,7 +57,7 @@
                         </p>
                         
                         <div class="mb-4">
-                            <label for="id_email" class="form-label">E-mail address</label>
+                            <label for="id_email" class="form-label">E-mail address <span class="text-danger">*</span></label>
                             <input type="email" class="form-control" id="id_email" name="email" 
                                     placeholder="your@email.com" 
                                     value="{{ form.email.value|default:'' }}"
@@ -96,18 +96,16 @@
                             <small class="form-text text-muted">Enter the 6-digit code received by email</small>
                         </div>
 
-                        {% if can_resend %}
-                            <div class="text-center">
-                                <button type="button" class="btn btn-link" onclick="resendCode()">
-                                    <i class="fas fa-redo"></i> Resend code
-                                </button>
-                            </div>
-                        {% else %}
-                            <div class="resend-timer">
-                                <i class="fas fa-clock text-muted"></i>
-                                <span class="text-muted">You can request a new code in <strong id="countdown">20</strong> secondes</span>
-                            </div>
-                        {% endif %}
+                        <div class="text-center" id="resend-button-container" {% if not can_resend and time_until_resend > 0 %}style="display: none;"{% endif %}>
+                            <button type="button" class="btn btn-link" onclick="resendCode()">
+                                <i class="fas fa-redo"></i> Resend code
+                            </button>
+                        </div>
+                        
+                        <div class="resend-timer" id="resend-timer-container" {% if can_resend or time_until_resend <= 0 %}style="display: none;"{% endif %}>
+                            <i class="fas fa-clock text-muted"></i>
+                            <span class="text-muted">You can request a new code in <strong id="countdown">{{ time_until_resend }}</strong> seconds</span>
+                        </div>
 
                     {% elif step == "3" %}
                         <h3 class="step-title">
@@ -274,14 +272,6 @@
                     {% endif %}
 
                     <div class="btn-navigation">
-                        {% if step != "1" %}
-                            <button type="submit" name="previous" class="btn btn-outline-secondary previous-btn">
-                                <i class="fas fa-arrow-left"></i> Previous
-                            </button>
-                        {% else %}
-                            <div></div>
-                        {% endif %}
-
                         {% if step == "6" %}
                             <button type="submit" class="btn btn-success btn-lg" >
                                 <i class="fas fa-user-plus" style="color: #fff !important;"></i> Create my account
@@ -289,6 +279,12 @@
                         {% else %}
                             <button type="submit" class="btn btn-primary">
                                 Next <i class="fas fa-arrow-right" style="color: #fff !important;"></i>
+                            </button>
+                        {% endif %}
+
+                        {% if step != "1" %}
+                            <button type="submit" name="previous" class="btn btn-outline-secondary previous-btn" formnovalidate>
+                                <i class="fas fa-arrow-left"></i> Previous
                             </button>
                         {% endif %}
                     </div>
@@ -424,9 +420,9 @@
       function checkPasswordMatch() {
           if (password2.value.length > 0) {
               if (password1.value === password2.value) {
-                  matchDiv.innerHTML = '<small class="text-success"><i class="fas fa-check"></i> Les mots de passe correspondent</small>';
+                  matchDiv.innerHTML = '<small class="text-success"><i class="fas fa-check"></i> Passwords match</small>';
               } else {
-                  matchDiv.innerHTML = '<small class="text-danger"><i class="fas fa-times"></i> Les mots de passe ne correspondent pas</small>';
+                  matchDiv.innerHTML = '<small class="text-danger"><i class="fas fa-times"></i> Passwords do not match</small>';
               }
           } else {
               matchDiv.innerHTML = '';
@@ -436,18 +432,24 @@
       password2.addEventListener('input', checkPasswordMatch);
       {% endif %}
 
-      // Countdown to code resend (Step 2)
-      {% if step == "2" and not can_resend %}
-      let timeLeft = 20;
+      // Countdown to code resend (Step 2) - Dynamic countdown without reload
+      {% if step == "2" and not can_resend and time_until_resend > 0 %}
+      let timeLeft = {{ time_until_resend }};
       const countdown = document.getElementById('countdown');
+      const resendTimerContainer = document.getElementById('resend-timer-container');
+      const resendButtonContainer = document.getElementById('resend-button-container');
       
       const timer = setInterval(() => {
           timeLeft--;
-          countdown.textContent = timeLeft;
+          if (countdown) {
+              countdown.textContent = timeLeft;
+          }
           
           if (timeLeft <= 0) {
               clearInterval(timer);
-              location.reload();
+              // Hide countdown and show resend button
+              if (resendTimerContainer) resendTimerContainer.style.display = 'none';
+              if (resendButtonContainer) resendButtonContainer.style.display = 'block';
           }
       }, 1000);
       {% endif %}

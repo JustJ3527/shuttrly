@@ -211,6 +211,10 @@
         font-weight: 500;
     }
     
+    .resend-section {
+        padding: 1rem 0;
+    }
+    
     .resend-timer {
         text-align: center;
         margin-top: 1rem;
@@ -240,4 +244,46 @@
 
     .fas {
       color: #527970 !important;
+    }
+    
+    /* Password visibility toggle icon styles */
+    .password-input-wrapper {
+        position: relative;
+        display: flex;
+        align-items: center;
+    }
+    
+    .password-field {
+        padding-right: 40px; /* Space for the icon */
+        border-radius: 8px;
+        border: 2px solid #e9ecef;
+        transition: all 0.2s ease;
+    }
+    
+    .password-field:focus {
+        border-color: #86b7fe;
+        box-shadow: 0 0 0 0.2rem rgba(134, 183, 254, 0.25);
+    }
+    
+    .password-toggle-icon {
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #6c757d;
+        cursor: pointer;
+        font-size: 16px;
+        padding: 8px;
+        border-radius: 50%;
+        transition: all 0.2s ease;
+        z-index: 10;
+    }
+    
+    .password-toggle-icon:hover {
+        color: #495057;
+        background-color: rgba(108, 117, 125, 0.1);
+    }
+    
+    .password-toggle-icon:active {
+        transform: translateY(-50%) scale(0.95);
     }

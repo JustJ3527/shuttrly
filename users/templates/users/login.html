@@ -92,8 +92,11 @@
 
                         <div class="mb-4">
                             <label for="id_password" class="form-label">Password</label>
-                            <input type="password" class="form-control" id="id_password" name="password" 
-                                    placeholder="Your password" autocomplete="current-password" required>
+                            <div class="password-input-wrapper">
+                                <input type="password" class="form-control password-field" id="id_password" name="password" 
+                                        placeholder="Your password" autocomplete="current-password" required>
+                                <i class="fas fa-eye password-toggle-icon" id="toggle-password"></i>
+                            </div>
                             {% if form.password.errors %}
                                 <div class="text-danger small mt-2">
                                     {% for error in form.password.errors %}

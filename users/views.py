@@ -26,6 +26,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods, require_POST
+from django.core.exceptions import ValidationError
 
 # === Project Models ===
 from .models import CustomUser, TrustedDevice
@@ -223,7 +224,12 @@ def handle_previous_step(request, step):
     return render(
         request,
         "users/register.html",
-        {"form": form, "step": step, "progress": int(step) * 100 // 6},
+        {
+            "form": form,
+            "step": step,
+            "progress": int(step) * 100 // 6,
+            "EMAIL_CODE_RESEND_DELAY_SECONDS": EMAIL_CODE_RESEND_DELAY_SECONDS,
+        },
     )
 
 
@@ -286,15 +292,35 @@ def handle_step_1_email(request):
                 success = send_verification_email(email, verification_code)
 
                 if success:
-                    messages.success(request, "Verification code sent to your email.")
+                    messages.success(
+                        request,
+                        f"✅ Verification code sent to {email}. Please check your inbox and enter the 6-digit code on the next step.",
+                    )
                     return HttpResponseRedirect(f"{reverse('register')}?step=2")
                 else:
                     form.add_error("email", "Error sending email.")
     else:
         form = RegisterStep1Form(initial=session_data)
 
+        # Add informational message about the verification process only on first visit
+        if not session_data.get("info_message_shown"):
+            messages.info(
+                request,
+                "📧 We'll send a verification code to your email address. This helps us verify your identity and prevent spam accounts.",
+            )
+            # Mark that the message has been shown
+            session_data["info_message_shown"] = True
+            request.session["register_data"] = session_data
+
     return render(
-        request, "users/register.html", {"form": form, "step": "1", "progress": 17}
+        request,
+        "users/register.html",
+        {
+            "form": form,
+            "step": "1",
+            "progress": 17,
+            "EMAIL_CODE_RESEND_DELAY_SECONDS": EMAIL_CODE_RESEND_DELAY_SECONDS,
+        },
     )
 
 
@@ -394,6 +420,13 @@ def handle_step_2_verification(request):
     except CustomUser.DoesNotExist:
         pass
 
+    # Add informational message about resending if user just arrived
+    if not request.POST and can_resend:
+        messages.info(
+            request,
+            "📧 Enter the 6-digit verification code sent to your email. Didn't receive it? You can request a new code below.",
+        )
+
     return render(
         request,
         "users/register.html",
@@ -403,6 +436,7 @@ def handle_step_2_verification(request):
             "progress": 33,
             "can_resend": can_resend,
             "time_until_resend": int(time_until_resend),
+            "EMAIL_CODE_RESEND_DELAY_SECONDS": EMAIL_CODE_RESEND_DELAY_SECONDS,
         },
     )
 
@@ -447,7 +481,14 @@ def handle_step_3_personal_info(request):
         form = RegisterStep3Form(initial=session_data)
 
     return render(
-        request, "users/register.html", {"form": form, "step": "3", "progress": 50}
+        request,
+        "users/register.html",
+        {
+            "form": form,
+            "step": "3",
+            "progress": 50,
+            "EMAIL_CODE_RESEND_DELAY_SECONDS": EMAIL_CODE_RESEND_DELAY_SECONDS,
+        },
     )
 
 
@@ -474,6 +515,8 @@ def handle_step_4_username(request):
         form = RegisterStep4Form(request.POST)
         if form.is_valid():
             username = form.cleaned_data["username"]
+            # Convert to lowercase for consistency
+            username = username.lower()
 
             if CustomUser.objects.filter(username=username).exists():
                 form.add_error("username", "This username is already taken.")
@@ -485,7 +528,14 @@ def handle_step_4_username(request):
         form = RegisterStep4Form(initial=session_data)
 
     return render(
-        request, "users/register.html", {"form": form, "step": "4", "progress": 67}
+        request,
+        "users/register.html",
+        {
+            "form": form,
+            "step": "4",
+            "progress": 67,
+            "EMAIL_CODE_RESEND_DELAY_SECONDS": EMAIL_CODE_RESEND_DELAY_SECONDS,
+        },
     )
 
 
@@ -517,7 +567,14 @@ def handle_step_5_password(request):
         form = RegisterStep5Form()
 
     return render(
-        request, "users/register.html", {"form": form, "step": "5", "progress": 83}
+        request,
+        "users/register.html",
+        {
+            "form": form,
+            "step": "5",
+            "progress": 83,
+            "EMAIL_CODE_RESEND_DELAY_SECONDS": EMAIL_CODE_RESEND_DELAY_SECONDS,
+        },
     )
 
 
@@ -578,7 +635,7 @@ def handle_step_6_final(request):
             # Create the user
             user = CustomUser(
                 email=session_data["email"],
-                username=session_data["username"],
+                username=session_data["username"].lower(),  # Ensure lowercase
                 first_name=session_data["first_name"],
                 last_name=session_data["last_name"],
                 date_of_birth=date_of_birth,
@@ -663,6 +720,7 @@ def handle_step_6_final(request):
             "step": "6",
             "progress": 100,
             "session_data": session_data,
+            "EMAIL_CODE_RESEND_DELAY_SECONDS": EMAIL_CODE_RESEND_DELAY_SECONDS,
         },
     )
 
@@ -675,7 +733,7 @@ def resend_verification_code_view(request):
     Handles POST requests to resend verification codes with proper timing controls.
     """
     if request.method != "POST":
-        return HttpResponseRedirect(f"{reverse('register')}?step=2")
+        return redirect(f"{reverse('register')}?step=2")
 
     session_data = request.session.get("register_data", {})
     email = session_data.get("email")
@@ -692,8 +750,14 @@ def resend_verification_code_view(request):
             delta = timezone.now() - temp_user.verification_code_sent_at
 
             if delta.total_seconds() < EMAIL_CODE_RESEND_DELAY_SECONDS:
-                messages.error(request, "Please wait before requesting a new code.")
-                return HttpResponseRedirect(f"{reverse('register')}?step=2")
+                remaining_time = int(
+                    EMAIL_CODE_RESEND_DELAY_SECONDS - delta.total_seconds()
+                )
+                messages.warning(
+                    request,
+                    f"⏳ Please wait {remaining_time} seconds before requesting a new code. This helps prevent spam.",
+                )
+                return redirect(f"{reverse('register')}?step=2")
     except CustomUser.DoesNotExist:
         pass
 
@@ -736,11 +800,15 @@ def resend_verification_code_view(request):
     )
 
     if send_verification_email(email, new_code):
-        messages.success(request, "New code sent.")
+        messages.success(
+            request,
+            f"✅ New verification code sent to {email}. Please check your inbox and spam folder.",
+        )
+        # Use redirect() instead of HttpResponseRedirect() to ensure messages are preserved
+        return redirect(f"{reverse('register')}?step=2")
     else:
-        messages.error(request, "Error sending code.")
-
-    return HttpResponseRedirect(f"{reverse('register')}?step=2")
+        messages.error(request, "❌ Error sending verification code. Please try again.")
+        return redirect(f"{reverse('register')}?step=2")
 
 
 # ========= AJAX VIEWS =========
@@ -752,22 +820,23 @@ def check_username_availability(request):
 
     Returns JSON response with availability status and message.
     """
+    from .validators import UsernameValidator
+
     username = request.POST.get("username", "").strip()
+    validator = UsernameValidator()
 
     if not username:
         return JsonResponse({"available": False, "message": "Username required"})
 
-    if len(username) < 3:
-        return JsonResponse({"available": False, "message": "Minimum 3 characters"})
+    try:
+        # Use the same validator as the forms (converts to lowercase)
+        validator.validate(username)
+    except ValidationError as e:
+        return JsonResponse({"available": False, "message": str(e)})
 
-    # Check allowed characters
-    if not re.match("^[a-zA-Z0-9_]+$", username):
-        return JsonResponse(
-            {"available": False, "message": "Only letters, numbers and _ allowed"}
-        )
-
-    # Check availability
-    is_available = not CustomUser.objects.filter(username=username).exists()
+    # Check availability (case-insensitive)
+    # The validator already converted username to lowercase
+    is_available = not CustomUser.objects.filter(username__iexact=username).exists()
 
     return JsonResponse(
         {
@@ -1038,30 +1107,37 @@ def handle_login_step_3_2fa_verification(request):
             request, session_data, user, "email"
         )
 
-        if success:
-            messages.success(request, message)
+        # Check if this is an AJAX request
+        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            if success:
+                return JsonResponse({"success": True, "message": message})
+            else:
+                return JsonResponse({"success": False, "message": message}, status=400)
         else:
-            messages.error(request, message)
+            if success:
+                messages.success(request, message)
+            else:
+                messages.error(request, message)
 
-        # Return to the same step with updated form
-        FormClass = Email2FAForm if chosen_method == "email" else TOTP2FAForm
-        form = FormClass()
+            # Return to the same step with updated form
+            FormClass = Email2FAForm if chosen_method == "email" else TOTP2FAForm
+            form = FormClass()
 
-        return render(
-            request,
-            "users/login.html",
-            {
-                "form": form,
-                "step": "email_2fa" if chosen_method == "email" else "totp_2fa",
-                "progress": get_login_step_progress(
-                    "email_2fa" if chosen_method == "email" else "totp_2fa"
-                ),
-                "user": user,
-                "can_resend": can_resend_code(session_data),
-                "time_until_resend": _calculate_time_until_resend(session_data),
-                "email_code_resend_delay": EMAIL_CODE_RESEND_DELAY_SECONDS,
-            },
-        )
+            return render(
+                request,
+                "users/login.html",
+                {
+                    "form": form,
+                    "step": "email_2fa" if chosen_method == "email" else "totp_2fa",
+                    "progress": get_login_step_progress(
+                        "email_2fa" if chosen_method == "email" else "totp_2fa"
+                    ),
+                    "user": user,
+                    "can_resend": can_resend_code(session_data),
+                    "time_until_resend": _calculate_time_until_resend(session_data),
+                    "email_code_resend_delay": EMAIL_CODE_RESEND_DELAY_SECONDS,
+                },
+            )
 
     if request.method == "POST":
         success, user, error_message = handle_login_step_3_2fa_verification_logic(

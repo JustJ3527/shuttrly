@@ -2,8 +2,14 @@
 // Handles form validation, 2FA, countdown timers, and user interactions
 
 // =============================================================================
+
+    }
+}
 // GLOBAL VARIABLES AND UTILITIES
 // =============================================================================
+
+    }
+}
 
 let usernameTimeout;
 let timeLeft;
@@ -12,17 +18,23 @@ let timeLeft;
 // This ensures consistency across the application
 
 // =============================================================================
+
+    }
+}
 // FORM VALIDATION SYSTEM (UNIFIED)
 // =============================================================================
 
+    }
+}
+
 function initializeFormValidation() {
-    const form = document.getElementById("login-form") || document.getElementById("registration-form");
+    const mainForm = document.getElementById("login-form") || document.getElementById("registration-form");
     
-    if (form) {
+    if (mainForm) {
         // Disable native validation to take control
-        form.setAttribute("novalidate", true);
+        mainForm.setAttribute("novalidate", true);
     
-        form.addEventListener("submit", (e) => {
+        mainForm.addEventListener("submit", (e) => {
             const submitButton = e.submitter;
             
             // Do not validate if it is the "Previous" button
@@ -34,7 +46,7 @@ function initializeFormValidation() {
             let firstInvalid = null;
     
             // Select only fields with "required"
-            form.querySelectorAll("[required]").forEach(input => {
+            mainForm.querySelectorAll("[required]").forEach(input => {
                 const errorContainer = input.closest(".mb-4, .mb-3")?.querySelector(".custom-error");
                 if (errorContainer) errorContainer.remove(); // remove old messages
         
@@ -75,11 +87,19 @@ function initializeFormValidation() {
             }
         });
     }
+    
+    });
 }
 
 // =============================================================================
+
+    }
+}
 // COUNTDOWN TIMER SYSTEM (UNIFIED)
 // =============================================================================
+
+    }
+}
 
 function initializeCountdownTimer() {
     // For login page
@@ -162,8 +182,14 @@ function updateResendButtonState() {
 }
 
 // =============================================================================
+
+    }
+}
 // RESEND CODE FUNCTIONALITY (UNIFIED)
 // =============================================================================
+
+    }
+}
 
 function initializeResendCodeButton() {
     const resendBtn = document.getElementById('resend-code-btn');
@@ -265,8 +291,14 @@ function handleRegisterResendCode() {
 }
 
 // =============================================================================
+
+    }
+}
 // VERIFICATION CODE INPUT (UNIFIED)
 // =============================================================================
+
+    }
+}
 
 function initializeVerificationCodeInput() {
     const codeInput = document.querySelector('#id_twofa_code, #id_verification_code');
@@ -288,8 +320,14 @@ function initializeVerificationCodeInput() {
 }
 
 // =============================================================================
+
+    }
+}
 // 2FA METHOD SELECTION (LOGIN ONLY)
 // =============================================================================
+
+    }
+}
 
 function initialize2FAMethodSelection() {
     document.querySelectorAll('.method-card').forEach(card => {
@@ -315,8 +353,14 @@ function initialize2FAMethodSelection() {
 }
 
 // =============================================================================
+
+    }
+}
 // USERNAME VERIFICATION (REGISTER ONLY)
 // =============================================================================
+
+    }
+}
 
 function initializeUsernameVerification() {
     const usernameInput = document.getElementById('id_username');
@@ -457,8 +501,14 @@ function clearPasswordErrors() {
 }
 
 // =============================================================================
+
+    }
+}
 // PASSWORD VALIDATION (REGISTER ONLY)
 // =============================================================================
+
+    }
+}
 
 function initializePasswordValidation() {
     const password1 = document.getElementById('id_password1');
@@ -501,6 +551,17 @@ function initializePasswordValidation() {
 }
 
 function checkPasswordStrength(password) {
+
+// Function to get simple password display
+function getSimplePasswordDisplay(result) {
+    if (result.strength === 5) {
+        return `<small class="text-success fw-bold"><i class="fas fa-check-circle"></i> Strong password</small>`;
+    } else if (result.strength >= 3) {
+        return `<small class="text-${result.color}"><i class="fas fa-info-circle"></i> ${result.label}</small>`;
+    } else {
+        return `<small class="text-${result.color}"><i class="fas fa-exclamation-triangle"></i> ${result.label}</small>`;
+    }
+}
     let strength = 0;
     let requirements = {
         length: password.length >= 12,
@@ -575,8 +636,71 @@ function validatePassword() {
 }
 
 // =============================================================================
+
+    }
+}
+// PASSWORD VISIBILITY TOGGLE FUNCTIONALITY
+// =============================================================================
+
+    }
+}
+
+function initializePasswordVisibilityToggles() {
+    // Toggle for registration password fields
+    const togglePassword1 = document.getElementById('toggle-password1');
+    const togglePassword2 = document.getElementById('toggle-password2');
+    const password1 = document.getElementById('id_password1');
+    const password2 = document.getElementById('id_password2');
+    
+    // Toggle for login password field
+    const togglePassword = document.getElementById('toggle-password');
+    const password = document.getElementById('id_password');
+    
+    // Registration password 1 toggle
+    if (togglePassword1 && password1) {
+        togglePassword1.addEventListener('click', function() {
+            togglePasswordVisibility(password1, togglePassword1);
+        });
+    }
+    
+    // Registration password 2 toggle
+    if (togglePassword2 && password2) {
+        togglePassword2.addEventListener('click', function() {
+            togglePasswordVisibility(password2, togglePassword2);
+        });
+    }
+    
+    // Login password toggle
+    if (togglePassword && password) {
+        togglePassword.addEventListener('click', function() {
+            togglePasswordVisibility(password, togglePassword);
+        });
+    }
+}
+
+function togglePasswordVisibility(passwordInput, toggleIcon) {
+    const type = passwordInput.type === 'password' ? 'text' : 'password';
+    passwordInput.type = type;
+    
+    // Update icon and tooltip
+    if (type === 'text') {
+        toggleIcon.className = 'fas fa-eye-slash password-toggle-icon';
+        toggleIcon.title = 'Hide password';
+    } else {
+        toggleIcon.className = 'fas fa-eye password-toggle-icon';
+        toggleIcon.title = 'Show password';
+    }
+}
+
+// =============================================================================
+
+    }
+}
 // AUTO-FOCUS FUNCTIONALITY (UNIFIED)
 // =============================================================================
+
+    }
+}
 
 function initializeAutoFocus() {
     const firstInput = document.querySelector('.form-control');
@@ -589,9 +713,17 @@ function initializeAutoFocus() {
     }
 }
 
+
+
 // =============================================================================
+
+    }
+}
 // MAIN INITIALIZATION (UNIFIED)
 // =============================================================================
+
+    }
+}
 
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize form validation for all pages
@@ -605,6 +737,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Initialize common functionality
+    initializePasswordVisibilityToggles();
     initializeAutoFocus();
 });
 

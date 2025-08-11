@@ -9634,4 +9634,42 @@
   },
   "restored": false
 }
+,
+{
+  "log_id": "12965813-af6e-41ab-be88-303e867e1ca3",
+  "user": "admin",
+  "user_id": 1,
+  "action": "delete_user_account",
+  "timestamp": "2025-08-11T13:13:28.302371+00:00",
+  "ip_address": "127.0.0.1",
+  "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Safari/605.1.15",
+  "location": {
+    "city": null,
+    "region": null,
+    "country": null
+  },
+  "extra_info": {
+    "impacted_user_id": 24
+  },
+  "restored": false
+}
+,
+{
+  "log_id": "71cad4fc-6cc8-4a82-b8ca-341803ed53ce",
+  "user": "admin",
+  "user_id": 1,
+  "action": "delete_user_account",
+  "timestamp": "2025-08-11T20:27:31.940217+00:00",
+  "ip_address": "127.0.0.1",
+  "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Safari/605.1.15",
+  "location": {
+    "city": null,
+    "region": null,
+    "country": null
+  },
+  "extra_info": {
+    "impacted_user_id": 28
+  },
+  "restored": false
+}
 ]

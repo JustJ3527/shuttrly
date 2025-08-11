@@ -1,8 +1,9 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from users.models import CustomUser
-import re
+from .validators import UsernameValidator
 from django.core.exceptions import ValidationError
+from .validators import CustomPasswordValidator
 
 
 # ========= REGISTER FORMS =========
@@ -15,12 +16,6 @@ class RegisterStep1Form(forms.Form):
                 "placeholder": "Enter your email address",
                 "type": "email",
             }
-        ),
-    )
-    username = forms.CharField(
-        label="Username",
-        widget=forms.TextInput(
-            attrs={"class": "form-control", "placeholder": "Choose a username"}
         ),
     )
 
@@ -302,6 +297,14 @@ class CustomUserUpdateForm(forms.ModelForm):
             ),
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Add username validator to the username field
+        self.fields["username"].validators.append(UsernameValidator())
+        self.fields["username"].help_text = (
+            "3-30 characters, letters/numbers/underscores only. Cannot start with numbers/underscores or end with underscores."
+        )
+
 
 # class LoginForm(forms.Form):
 #     email = forms.CharField(
@@ -322,20 +325,6 @@ class CustomUserUpdateForm(forms.ModelForm):
 #             }
 #         ),
 #     )
-
-
-class RegisterStep1Form(forms.Form):
-    email = forms.EmailField(
-        label="E-Mail address",
-        widget=forms.EmailInput(
-            attrs={
-                "class": "form-control",
-                "placeholder": "your@email.com",
-                "type": "email",
-                "autocomplete": "email",
-            }
-        ),
-    )
 
 
 class RegisterStep2Form(forms.Form):
@@ -400,13 +389,14 @@ class RegisterStep4Form(forms.Form):
                 "id": "username-input",
             }
         ),
-        help_text="Only letters, numbers and underscores are allowed",
+        validators=[UsernameValidator()],
+        help_text="3-30 characters, letters/numbers/underscores only. Cannot start with numbers/underscores or end with underscores.",
     )
 
 
 class RegisterStep5Form(forms.Form):
     password1 = forms.CharField(
-        label="Mot de passe",
+        label="Password",
         widget=forms.PasswordInput(
             attrs={
                 "class": "form-control",
@@ -415,10 +405,10 @@ class RegisterStep5Form(forms.Form):
                 "id": "password1",
             }
         ),
-        help_text="Au moins 8 caractères",
+        help_text="At least 12 characters, with uppercase, lowercase, digits, and special characters",
     )
     password2 = forms.CharField(
-        label="Confirmer le mot de passe",
+        label="Confirm password",
         widget=forms.PasswordInput(
             attrs={
                 "class": "form-control",
@@ -437,5 +427,13 @@ class RegisterStep5Form(forms.Form):
         if password1 and password2:
             if password1 != password2:
                 raise forms.ValidationError("The passwords do not match.")
+
+            # Validate password strength using our custom validator
+
+            validator = CustomPasswordValidator()
+            try:
+                validator.validate(password1)
+            except ValidationError as e:
+                self.add_error("password1", str(e))
 
         return cleaned_data

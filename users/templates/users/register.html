@@ -33,15 +33,6 @@
                 </div>
 
             <div class="step-content fade-in">
-                {% if messages %}
-                    {% for message in messages %}
-                        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-                            <i class="fas {% if message.tags == 'success' %}fa-check-circle{% elif message.tags == 'error' %}fa-exclamation-triangle{% else %}fa-info-circle{% endif %}"></i>
-                            {{ message }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                        </div>
-                    {% endfor %}
-                {% endif %}
 
                 <form method="post" id="registration-form" enctype="multipart/form-data">
                     {% csrf_token %}
@@ -96,15 +87,20 @@
                             <small class="form-text text-muted">Enter the 6-digit code received by email</small>
                         </div>
 
-                        <div class="text-center" id="resend-button-container" {% if not can_resend and time_until_resend > 0 %}style="display: none;"{% endif %}>
-                            <button type="button" class="btn btn-link" onclick="resendCode()">
-                                <i class="fas fa-redo"></i> Resend code
-                            </button>
-                        </div>
-                        
-                        <div class="resend-timer" id="resend-timer-container" {% if can_resend or time_until_resend <= 0 %}style="display: none;"{% endif %}>
-                            <i class="fas fa-clock text-muted"></i>
-                            <span class="text-muted">You can request a new code in <strong id="countdown">{{ time_until_resend }}</strong> seconds</span>
+                        <!-- Resend code section -->
+                        <div class="resend-section text-center mb-3">
+                            <div id="resend-button-container" {% if not can_resend %}style="display: none;"{% endif %}>
+                                <button type="button" id="resend-code-btn" class="btn btn-outline-secondary btn-sm">
+                                    <i class="fas fa-paper-plane"></i> Resend code
+                                </button>
+                            </div>
+                            
+                            <div id="resend-timer-container" {% if can_resend %}style="display: none;"{% endif %}>
+                                <div class="resend-timer">
+                                    <i class="fas fa-clock text-muted"></i>
+                                    <span class="text-muted">You can request a new code in <strong id="countdown">{{ time_until_resend }}</strong> seconds</span>
+                                </div>
+                            </div>
                         </div>
 
                     {% elif step == "3" %}
@@ -185,7 +181,7 @@
                                     {% endfor %}
                                 </div>
                             {% endif %}
-                            <small class="form-text text-muted">Only letters, numbers and underscores are allowed</small>
+                            <small class="form-text text-muted">3-30 characters, letters/numbers/underscores only. Cannot start with numbers/underscores or end with underscores.</small>
                         </div>
 
                     {% elif step == "5" %}
@@ -199,9 +195,12 @@
                         
                         <div class="mb-3">
                             <label for="id_password1" class="form-label">Password</label>
-                            <input type="password" class="form-control" id="id_password1" name="password1" 
-                                    placeholder="Your password" 
-                                    autocomplete="new-password" required>
+                            <div class="password-input-wrapper">
+                                <input type="password" class="form-control password-field" id="id_password1" name="password1" 
+                                        placeholder="Your password" 
+                                        autocomplete="new-password" required>
+                                <i class="fas fa-eye password-toggle-icon" id="toggle-password1"></i>
+                            </div>
                             {% if form.password1.errors %}
                                 <div class="text-danger small mt-2">
                                     {% for error in form.password1.errors %}
@@ -209,15 +208,18 @@
                                     {% endfor %}
                                 </div>
                             {% endif %}
-                            <small class="form-text text-muted">At least 8 characters</small>
+                            <small class="form-text text-muted">At least 12 characters, with uppercase, lowercase, digits, and special characters</small>
                             <div id="password-strength" class="password-strength"></div>
                         </div>
                         
                         <div class="mb-4">
                             <label for="id_password2" class="form-label">Confirm password</label>
-                            <input type="password" class="form-control" id="id_password2" name="password2" 
-                                    placeholder="Confirm your password" 
-                                    autocomplete="new-password" required>
+                            <div class="password-input-wrapper">
+                                <input type="password" class="form-control password-field" id="id_password2" name="password2" 
+                                        placeholder="Confirm your password" 
+                                        autocomplete="new-password" required>
+                                <i class="fas fa-eye password-toggle-icon" id="toggle-password2"></i>
+                            </div>
                             {% if form.password2.errors %}
                                 <div class="text-danger small mt-2">
                                     {% for error in form.password2.errors %}
@@ -283,7 +285,7 @@
                         {% endif %}
 
                         {% if step != "1" %}
-                            <button type="submit" name="previous" class="btn btn-outline-secondary previous-btn" formnovalidate>
+                            <button type="button" class="btn btn-outline-secondary previous-btn" onclick="goToPreviousStep()">
                                 <i class="fas fa-arrow-left"></i> Previous
                             </button>
                         {% endif %}
@@ -315,15 +317,19 @@
       {% if step == "2" %}
       window.canResend = {{ can_resend|yesno:"true,false" }};
       window.timeUntilResend = {{ time_until_resend|default:0 }};
+      window.resendCodeUrl = '{% url "resend_verification_code" %}';
       {% endif %}
+      
+      // Global delay for email code resend (from Django constants)
+      window.emailCodeResendDelay = {{ EMAIL_CODE_RESEND_DELAY_SECONDS }};
       {% if step == "4" %}
       window.usernameCheckUrl = '{% url "check_username_availability" %}';
-      {% endif %}
-      {% if step == "2" %}
-      window.resendCodeUrl = '{% url "resend_verification_code" %}';
       {% endif %}
   </script>
   
   <!-- Include unified JavaScript file -->
   <script src="{% static 'js/auth.js' %}"></script>
+  
+  <!-- Include Previous button functionality -->
+  <script src="{% static 'js/previous-button.js' %}"></script>
 {% endblock %}

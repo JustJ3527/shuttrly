@@ -14,6 +14,7 @@ from PIL import Image
 import random
 from django.core.mail import send_mail
 from django.core.files.storage import default_storage
+from django.core.exceptions import ValidationError
 
 from .constants import EMAIL_CODE_EXPIRY_SECONDS
 
@@ -71,6 +72,9 @@ class CustomUserManager(BaseUserManager):
 
 class CustomUser(AbstractBaseUser, PermissionsMixin):
     def save(self, *args, **kwargs):
+        # Validate the model before saving
+        self.clean()
+
         # Keep track of the previous profile picture path for delayed deletion
         old_profile_picture_path = None
         try:
@@ -182,6 +186,20 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return self.username
+
+    def clean(self):
+        """Validate the model data before saving"""
+        from .validators import UsernameValidator
+
+        super().clean()
+
+        # Validate username using the same validator as forms
+        if self.username:
+            validator = UsernameValidator()
+            try:
+                validator.validate(self.username)
+            except ValidationError as e:
+                raise ValidationError({"username": e})
 
     def _remove_profile_picture_file(self):
         """Remove profile picture file immediately (for deletion/anonymization)"""

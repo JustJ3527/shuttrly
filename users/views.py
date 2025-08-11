@@ -898,7 +898,11 @@ def handle_login_step_1_credentials(request):
                     user.email_2fa_sent_at = timezone.now()
                     user.save()
 
-                    initialize_login_session_data(request, user, code)
+                    # Initialize session data and set the chosen 2FA method
+                    session_data = initialize_login_session_data(request, user, code)
+                    session_data["chosen_2fa_method"] = "email"
+                    request.session["login_data"] = session_data
+
                     success = send_2FA_email(user, code)
 
                     if success:
@@ -913,7 +917,11 @@ def handle_login_step_1_credentials(request):
 
                 # If only TOTP is enabled
                 elif user.totp_enabled:
-                    initialize_login_session_data(request, user)
+                    # Initialize session data and set the chosen 2FA method
+                    session_data = initialize_login_session_data(request, user)
+                    session_data["chosen_2fa_method"] = "totp"
+                    request.session["login_data"] = session_data
+
                     return HttpResponseRedirect(f"{reverse('login')}?step=totp_2fa")
 
             # No 2FA required, proceed to login
@@ -1050,6 +1058,8 @@ def handle_login_step_3_2fa_verification(request):
                 ),
                 "user": user,
                 "can_resend": can_resend_code(session_data),
+                "time_until_resend": _calculate_time_until_resend(session_data),
+                "email_code_resend_delay": EMAIL_CODE_RESEND_DELAY_SECONDS,
             },
         )
 
@@ -1080,6 +1090,8 @@ def handle_login_step_3_2fa_verification(request):
             ),
             "user": user,
             "can_resend": can_resend_code(session_data),
+            "time_until_resend": _calculate_time_until_resend(session_data),
+            "email_code_resend_delay": EMAIL_CODE_RESEND_DELAY_SECONDS,
         },
     )
 
@@ -1394,7 +1406,7 @@ def handle_enable_totp_2fa_action(request, user, context):
 
 def handle_verify_totp_2fa_action(request, user):
     """Handle TOTP 2FA verification action."""
-    code = request.POST.get("code")
+    code = request.POST.get("totp_code")  # Changed from "code" to "totp_code"
     success, error_message = handle_verify_totp_2fa(user, code)
 
     if success:
@@ -1439,9 +1451,7 @@ def handle_remove_trusted_device_action(request, user, current_device_token):
         return redirect("twofa_settings")
 
 
-# =============================================================================
-# AJAX VIEWS
-# =============================================================================
+# ========= AJAX VIEWS =========
 
 
 @csrf_exempt

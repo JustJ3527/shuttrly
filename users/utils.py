@@ -995,6 +995,10 @@ def _handle_totp_2fa_verification(request, user):
 
     submitted_code = form.cleaned_data["twofa_code"]
 
+    # Check if user has TOTP enabled and has a valid secret
+    if not user.totp_enabled or not user.twofa_totp_secret:
+        return False, user, "TOTP 2FA is not enabled for this account"
+
     # Verify TOTP code using user's secret key
     if verify_totp(user.twofa_totp_secret, submitted_code):
         # Clear session data after successful verification
@@ -1119,7 +1123,13 @@ def handle_resend_code_request(request, session_data, user, email_field="email")
     # Send email with new verification code
     email = session_data.get(email_field)
     if email:
-        success = send_verification_email(email, new_code)
+        if "user_id" in session_data:
+            # Login flow: use 2FA email template
+            success = send_2FA_email(user, new_code)
+        else:
+            # Registration flow: use verification email template
+            success = send_verification_email(email, new_code)
+
         if success:
             return True, "A new verification code has been sent to your email address."
         else:
@@ -1149,8 +1159,10 @@ def _calculate_time_until_resend(session_data):
         user = CustomUser.objects.get(id=user_id)
         if user.email_2fa_sent_at:
             time_since_sent = timezone.now() - user.email_2fa_sent_at
-            return max(
-                0, EMAIL_CODE_RESEND_DELAY_SECONDS - time_since_sent.total_seconds()
+            return int(
+                max(
+                    0, EMAIL_CODE_RESEND_DELAY_SECONDS - time_since_sent.total_seconds()
+                )
             )
         return 0
     except CustomUser.DoesNotExist:
@@ -1437,10 +1449,18 @@ def handle_verify_totp_2fa(user, code):
         tuple: (success, error_message)
     """
     if verify_totp(user.twofa_totp_secret, code):
-        user.totp_enabled = True
-        user.twofa_totp_secret = ""
-        user.save()
-        return True, None
+        # Check if this is for enabling or disabling TOTP
+        if not user.totp_enabled:
+            # This is for enabling TOTP
+            user.totp_enabled = True
+            # Don't clear the secret - it's needed for future login verifications
+            user.save()
+            return True, None
+        else:
+            # This is for disabling TOTP - clear the secret after verification
+            user.twofa_totp_secret = ""
+            user.save()
+            return True, None
     else:
         return False, "Invalid TOTP code."
 
@@ -1468,7 +1488,8 @@ def handle_disable_2fa_method(user, password, method):
         return True, "Email 2FA disabled successfully!"
     elif method == "totp":
         user.totp_enabled = False
-        user.twofa_totp_secret = ""
+        # Don't clear the secret immediately - it's needed for verification during disable
+        # The secret will be cleared after successful verification in handle_verify_totp_2fa
         user.save()
         return True, "TOTP 2FA disabled successfully!"
 

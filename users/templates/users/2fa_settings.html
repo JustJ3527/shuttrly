@@ -82,7 +82,7 @@
       {% csrf_token %}
       <input type="hidden" name="action" value="disable_totp">
       <input type="password" name="password" placeholder="Password" required>
-      <input type="text" name="totp_code" placeholder="TOTP Code" required>
+      <input type="text" name="disable_totp_code" placeholder="TOTP Code" required>
       <button type="submit">Disable</button>
     </form>
 

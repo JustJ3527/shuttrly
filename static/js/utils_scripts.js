@@ -9,40 +9,39 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
 
-    // Function to remove Django messages
-    function removeMessages() {
-        // Remove Django messages from all possible locations
-        const messageSelectors = [
-            '.messages',
-            '.alert',
-            '[class*="alert-"]',
+    // Function to remove only old/legacy Django messages (not the new system)
+    function removeOldMessages() {
+        // Only remove old message formats, not the new django-messages container
+        const oldMessageSelectors = [
+            '.messages:not(#django-messages)',
+            '.alert:not(.messages-container .alert)',
             '.message',
             '.notification'
         ];
         
-        messageSelectors.forEach(selector => {
+        oldMessageSelectors.forEach(selector => {
             const messages = document.querySelectorAll(selector);
             messages.forEach(message => {
-                if (message && message.parentNode) {
+                if (message && message.parentNode && !message.closest('#django-messages')) {
                     message.remove();
                 }
             });
         });
     }
 
-    // Remove messages on page load
-    removeMessages();
+    // Remove only old messages on page load
+    removeOldMessages();
 
-    // Remove messages when navigating with browser back/forward buttons
-    window.addEventListener('popstate', removeMessages);
+    // Remove old messages when navigating with browser back/forward buttons
+    window.addEventListener('popstate', removeOldMessages);
 
-    // Remove messages when using browser navigation
-    window.addEventListener('beforeunload', removeMessages);
+    // Remove old messages when using browser navigation
+    window.addEventListener('beforeunload', removeOldMessages);
 
-    // Remove messages when the page becomes visible again (e.g., from another tab)
+    // Remove old messages when the page becomes visible again (e.g., from another tab)
     document.addEventListener('visibilitychange', () => {
         if (!document.hidden) {
-            removeMessages();
+            removeOldMessages();
         }
     });
 
@@ -53,7 +52,7 @@ document.addEventListener("DOMContentLoaded", () => {
     setInterval(() => {
         if (currentUrl !== window.location.href) {
             currentUrl = window.location.href;
-            removeMessages();
+            removeOldMessages();
         }
     }, 100);
 
@@ -63,11 +62,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
     history.pushState = function(...args) {
         originalPushState.apply(this, args);
-        setTimeout(removeMessages, 50);
+        setTimeout(removeOldMessages, 50);
     };
 
     history.replaceState = function(...args) {
         originalReplaceState.apply(this, args);
-        setTimeout(removeMessages, 50);
+        setTimeout(removeOldMessages, 50);
     };
 });

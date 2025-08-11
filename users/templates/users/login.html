@@ -50,7 +50,7 @@
                 </div> {% endcomment %}
 
             <div class="step-content fade-in">
-                {% if messages %}
+                {% comment %} {% if messages %}
                     {% for message in messages %}
                         <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
                             <i class="fas {% if message.tags == 'success' %}fa-check-circle{% elif message.tags == 'error' %}fa-exclamation-triangle{% else %}fa-info-circle{% endif %}"></i>
@@ -58,7 +58,7 @@
                             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                         </div>
                     {% endfor %}
-                {% endif %}
+                {% endif %} {% endcomment %}
 
                 <form method="POST" id="login-form" enctype="multipart/form-data">
                     {% csrf_token %}
@@ -344,229 +344,18 @@
     {{ block.super}}
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
     
+    <!-- Pass Django variables to JavaScript -->
     <script>
-        // Countdown timer for code resend - Persistent countdown
+        // Global variables for JavaScript functionality
+        window.currentPage = 'login';
+        window.currentStep = '{{ step }}';
         {% if step == "email_2fa" %}
-        const canResendInitial = {{ can_resend|yesno:"true,false" }};
-        const timeUntilResend = {{ time_until_resend|default:0 }};
-        
-        if (!canResendInitial && timeUntilResend > 0) {
-            let timeLeft = timeUntilResend;
-            const countdown = document.getElementById('countdown');
-            const timerContainer = document.getElementById('resend-timer-container');
-            const buttonContainer = document.getElementById('resend-button-container');
-            
-            const timer = setInterval(() => {
-                timeLeft--;
-                if (countdown) {
-                    countdown.textContent = timeLeft;
-                }
-                
-                if (timeLeft <= 0) {
-                    clearInterval(timer);
-                    if (timerContainer) timerContainer.style.display = 'none';
-                    if (buttonContainer) buttonContainer.style.display = 'block';
-                }
-            }, 1000);
-        }
-
-        // Handle resend code button
-        document.addEventListener('DOMContentLoaded', () => {
-            const resendBtn = document.getElementById('resend-code-btn');
-            if (resendBtn) {
-                resendBtn.addEventListener('click', () => {
-                    const form = document.getElementById('login-form');
-                    if (!form) return;
-
-                    const formData = new FormData();
-                    formData.append('step', 'email_2fa');
-                    formData.append('resend_code', '1');
-                    formData.append('csrfmiddlewaretoken', form.querySelector('[name=csrfmiddlewaretoken]').value);
-
-                    fetch(form.action || window.location.href, {
-                        method: 'POST',
-                        body: formData,
-                        headers: {
-                            'X-Requested-With': 'XMLHttpRequest',
-                        },
-                        credentials: 'same-origin',
-                    })
-                    .then(response => {
-                        if (response.ok) {
-                            // Show success message
-                            const successMessage = document.createElement('div');
-                            successMessage.className = 'alert alert-success alert-dismissible fade show';
-                            successMessage.innerHTML = `
-                                <i class="fas fa-check-circle"></i>
-                                A new verification code has been sent to your email address.
-                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                            `;
-                            
-                            // Insert message at the top of the form
-                            const formContainer = form.closest('.step-content');
-                            if (formContainer) {
-                                const existingMessages = formContainer.querySelector('.alert');
-                                if (existingMessages) {
-                                    existingMessages.remove();
-                                }
-                                formContainer.insertBefore(successMessage, formContainer.firstChild);
-                            }
-                            
-                            // Update the resend button state
-                            const buttonContainer = document.getElementById('resend-button-container');
-                            const timerContainer = document.getElementById('resend-timer-container');
-                            if (buttonContainer && timerContainer) {
-                                buttonContainer.style.display = 'none';
-                                timerContainer.style.display = 'block';
-                                
-                                // Start countdown - Use persistent timing
-                                let timeLeft = 120; // 2 minutes (same as EMAIL_CODE_RESEND_DELAY_SECONDS)
-                                const countdown = document.getElementById('countdown');
-                                const timer = setInterval(() => {
-                                    timeLeft--;
-                                    if (countdown) {
-                                        countdown.textContent = timeLeft;
-                                    }
-                                    
-                                    if (timeLeft <= 0) {
-                                        clearInterval(timer);
-                                        timerContainer.style.display = 'none';
-                                        buttonContainer.style.display = 'block';
-                                    }
-                                }, 1000);
-                            }
-                        } else {
-                            // Show error message
-                            const errorMessage = document.createElement('div');
-                            errorMessage.className = 'alert alert-danger alert-dismissible fade show';
-                            errorMessage.innerHTML = `
-                                <i class="fas fa-exclamation-triangle"></i>
-                                Error sending verification code. Please try again.
-                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                            `;
-                            
-                            const formContainer = form.closest('.step-content');
-                            if (formContainer) {
-                                const existingMessages = formContainer.querySelector('.alert');
-                                if (existingMessages) {
-                                    existingMessages.remove();
-                                }
-                                formContainer.insertBefore(errorMessage, formContainer.firstChild);
-                            }
-                        }
-                    })
-                    .catch(() => {
-                        // Show error message
-                        const errorMessage = document.createElement('div');
-                        errorMessage.className = 'alert alert-danger alert-dismissible fade show';
-                        errorMessage.innerHTML = `
-                            <i class="fas fa-exclamation-triangle"></i>
-                            Error requesting new code. Please try again.
-                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                        `;
-                        
-                        const formContainer = form.closest('.step-content');
-                        if (formContainer) {
-                            const existingMessages = formContainer.querySelector('.alert');
-                            if (existingMessages) {
-                                existingMessages.remove();
-                            }
-                            formContainer.insertBefore(errorMessage, formContainer.firstChild);
-                        }
-                    });
-                });
-            }
-        });
+        window.canResendInitial = {{ can_resend|yesno:"true,false" }};
+        window.timeUntilResend = {{ time_until_resend|default:0 }};
+        window.emailCodeResendDelay = {{ email_code_resend_delay|default:20 }};
         {% endif %}
-
-        // Auto-focus and formatting for verification code
-        {% if step == "email_2fa" or step == "totp_2fa" %}
-        const codeInput = document.querySelector('#id_twofa_code');
-        if (codeInput) {
-            codeInput.focus();
-            
-            codeInput.addEventListener('input', function() {
-                // Allow only numbers
-                this.value = this.value.replace(/[^0-9]/g, '');
-                
-                {% comment %} 
-                // Auto-submit if 6 numbers are entered
-                if (this.value.length === 6) {
-                    setTimeout(() => {
-                        document.getElementById('login-form').submit();
-                    }, 500);
-                } {% endcomment %}
-            });
-        }
-        {% endif %}
-
-        // Handle 2FA method selection
-        {% if step == "choose_2fa" %}
-        document.querySelectorAll('.method-card').forEach(card => {
-            card.addEventListener('click', function() {
-                // Remove selected class from all cards
-                document.querySelectorAll('.method-card').forEach(c => c.classList.remove('selected'));
-                
-                // Add selected class to clicked card
-                this.classList.add('selected');
-                
-                // Check the corresponding radio button
-                const radio = this.querySelector('input[type="radio"]');
-                if (radio) {
-                    radio.checked = true;
-                }
-            });
-        });
-
-        // Auto-select if a method is already checked
-        document.querySelectorAll('input[name="twofa_method"]:checked').forEach(radio => {
-            radio.closest('.method-card').classList.add('selected');
-        });
-        {% endif %}
-
-        // Auto-focus on first field
-        document.addEventListener('DOMContentLoaded', function() {
-            const firstInput = document.querySelector('.form-control');
-            if (firstInput && '{{ step }}' !== 'email_2fa' && '{{ step }}' !== 'totp_2fa') {
-                firstInput.focus();
-            }
-        });
-
-        // Required fields
-        document.addEventListener("DOMContentLoaded", () => {
-            const form = document.getElementById("login-form");
-        
-            if (form) {
-                // Disable native validation to take control
-                form.setAttribute("novalidate", true);
-        
-                form.addEventListener("submit", (e) => {
-                    let isValid = true;
-                    let firstInvalid = null;
-        
-                    // Select only fields with "required"
-                    form.querySelectorAll("[required]").forEach(input => {
-                        const errorContainer = input.closest(".mb-4")?.querySelector(".custom-error");
-                        if (errorContainer) errorContainer.remove(); // remove old messages
-        
-                        if (!input.value.trim()) {
-                            isValid = false;
-                            if (!firstInvalid) firstInvalid = input;
-        
-                            // Ajout message d’erreur personnalisé
-                            const errorMsg = document.createElement("div");
-                            errorMsg.className = "custom-error text-danger small mt-2";
-                            errorMsg.innerHTML = `<i class="fas fa-exclamation-circle"></i> This field is required`;
-                            input.closest(".mb-4")?.appendChild(errorMsg);
-                        }
-                    });
-        
-                    if (!isValid) {
-                        e.preventDefault();
-                        if (firstInvalid) firstInvalid.focus();
-                    }
-                });
-            }
-        });
     </script>
+    
+    <!-- Include unified JavaScript file -->
+    <script src="{% static 'js/auth.js' %}"></script>
 {% endblock %}

@@ -1,0 +1,339 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Edit Profile - Shuttrly{% endblock %}
+{% block head %}
+    {{ block.super}}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Profile - Step {{ step }}/5</title>
+
+    <!--Local CSS files-->
+    <link rel="stylesheet" href="{% static 'css/users.css' %}">
+
+{% endblock %}
+
+{% block content %}
+    <div class="container-bc">
+        <div class="container-fluid" style="height: 100%;position: absolute;">
+            <div class="registration-container">
+                <!-- Progress Indicator -->
+                <div class="progress-indicator">
+                    <div class="progress-line">
+                        <div class="progress-fill" style="width: {{ progress|default:20 }}%;"></div>
+                    </div>
+                    {% for i in "12345" %}
+                        <div class="progress-step {% if step|add:0 > i|add:0 %}completed{% elif step == i %}active{% endif %}">
+                            {% if step|add:0 > i|add:0 %}
+                                <i class="fas fa-check"></i>
+                            {% else %}
+                                {{ i }}
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+
+            <div class="step-content fade-in">
+
+                <form method="post" id="edit-profile-form" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <input type="hidden" name="step" value="{{ step }}">
+
+                    {% if step == "1" %}
+                        <h3 class="step-title">
+                            <i class="fas fa-envelope text-primary"></i>
+                            New Email Address
+                        </h3>
+                        <p class="step-description">
+                            We will send a verification code to your new email address
+                        </p>
+                        
+                        <div class="mb-4">
+                            <label for="id_email" class="form-label">New email address <span class="text-danger">*</span></label>
+                            <input type="email" class="form-control" id="id_email" name="email" 
+                                    placeholder="your@newemail.com" 
+                                    value="{{ form.email.value|default:'' }}"
+                                    autocomplete="email" required>
+                            {% if form.email.errors %}
+                                <div class="text-danger small mt-2">
+                                    {% for error in form.email.errors %}
+                                        <i class="fas fa-exclamation-circle"></i> {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <small class="form-text text-muted">Current email: <strong>{{ current_user.email }}</strong></small>
+                        </div>
+
+                    {% elif step == "2" %}
+                        <h3 class="step-title">
+                            <i class="fas fa-shield-alt text-primary"></i>
+                            Email Verification
+                        </h3>
+                        <p class="step-description">
+                            Enter the code received at: <strong>{{ new_email }}</strong>
+                        </p>
+                        
+                        <div class="mb-4">
+                            <label for="id_verification_code" class="form-label">Verification code</label>
+                            <input type="text" class="form-control verification-code-input" 
+                                    id="id_verification_code" name="verification_code" 
+                                    maxlength="6" pattern="[0-9]{6}"
+                                    placeholder="000000" autocomplete="one-time-code" required>
+                            {% if form.verification_code.errors %}
+                                <div class="text-danger small mt-2">
+                                    {% for error in form.verification_code.errors %}
+                                        <i class="fas fa-exclamation-circle"></i> {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <small class="form-text text-muted">Enter the 6-digit code received by email</small>
+                        </div>
+
+                        <!-- Resend code section -->
+                        <div class="resend-section text-center mb-3">
+                            <div id="resend-button-container" {% if not can_resend %}style="display: none;"{% endif %}>
+                                <button type="button" id="resend-code-btn" class="btn btn-outline-secondary btn-sm">
+                                    <i class="fas fa-paper-plane"></i> Resend code
+                                </button>
+                            </div>
+                            
+                            <div id="resend-timer-container" {% if can_resend %}style="display: none;"{% endif %}>
+                                <div class="resend-timer">
+                                    <i class="fas fa-clock text-muted"></i>
+                                    <span class="text-muted">You can request a new code in <strong id="countdown">{{ time_until_resend }}</strong> seconds</span>
+                                </div>
+                            </div>
+                        </div>
+
+                    {% elif step == "3" %}
+                        <h3 class="step-title">
+                            <i class="fas fa-user text-primary"></i>
+                            Personal Information
+                        </h3>
+                        <p class="step-description">
+                            Update your personal information
+                        </p>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="id_first_name" class="form-label">First name</label>
+                                <input type="text" class="form-control" id="id_first_name" name="first_name" 
+                                        placeholder="Your first name" 
+                                        value="{{ form.first_name.value|default:current_user.first_name }}"
+                                        maxlength="30" autocomplete="given-name" required>
+                                {% if form.first_name.errors %}
+                                    <div class="text-danger small mt-1">
+                                        {% for error in form.first_name.errors %}
+                                            <i class="fas fa-exclamation-circle"></i> {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="id_last_name" class="form-label">Last name</label>
+                                <input type="text" class="form-control" id="id_last_name" name="last_name" 
+                                        placeholder="Your last name" 
+                                        value="{{ form.last_name.value|default:current_user.last_name }}"
+                                        maxlength="30" autocomplete="family-name" required>
+                                {% if form.last_name.errors %}
+                                    <div class="text-danger small mt-1">
+                                        {% for error in form.last_name.errors %}
+                                            <i class="fas fa-exclamation-circle"></i> {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="id_date_of_birth" class="form-label">Date of birth</label>
+                            <input type="date" class="form-control" id="id_date_of_birth" name="date_of_birth" 
+                                    value="{{ form.date_of_birth.value|default:current_user.date_of_birth|date:'Y-m-d' }}"
+                                    autocomplete="bday" required>
+                            {% if form.date_of_birth.errors %}
+                                <div class="text-danger small mt-2">
+                                    {% for error in form.date_of_birth.errors %}
+                                        <i class="fas fa-exclamation-circle"></i> {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <small class="form-text text-muted">You must be at least 16 years old</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="id_bio" class="form-label">Biography</label>
+                            <textarea class="form-control" id="id_bio" name="bio" rows="4" 
+                                    placeholder="Tell us a bit about yourself...">{{ form.bio.value|default:current_user.bio }}</textarea>
+                            {% if form.bio.errors %}
+                                <div class="text-danger small mt-2">
+                                    {% for error in form.bio.errors %}
+                                        <i class="fas fa-exclamation-circle"></i> {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" id="id_is_private" name="is_private" 
+                                       {% if form.is_private.value|default:current_user.is_private %}checked{% endif %}>
+                                <label class="form-check-label" for="id_is_private">
+                                    Private account
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="id_profile_picture" class="form-label">Profile picture</label>
+                            <input type="file" class="form-control" id="id_profile_picture" name="profile_picture" accept="image/*">
+                            {% if current_user.profile_picture %}
+                                <small class="form-text text-muted">Current: {{ current_user.profile_picture.name|slice:"7:" }}</small>
+                            {% endif %}
+                        </div>
+
+                    {% elif step == "4" %}
+                        <h3 class="step-title">
+                            <i class="fas fa-at text-primary"></i>
+                            Username
+                        </h3>
+                        <p class="step-description">
+                            Choose a new unique username (optional)
+                        </p>
+                        
+                        <div class="mb-4">
+                            <label for="id_username" class="form-label">New username</label>
+                            <input type="text" class="form-control" id="id_username" name="username" 
+                                    placeholder="new_username" 
+                                    value="{{ form.username.value|default:current_user.username }}"
+                                    maxlength="50" autocomplete="username">
+                            <div id="username-feedback" class="username-feedback"></div>
+                            {% if form.username.errors %}
+                                <div class="text-danger small mt-1">
+                                    {% for error in form.username.errors %}
+                                        <i class="fas fa-exclamation-circle"></i> {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <small class="form-text text-muted">Current: <strong>{{ current_user.username }}</strong>. Leave unchanged if you don't want to change it.</small>
+                        </div>
+
+                    {% elif step == "5" %}
+                        <h3 class="step-title">
+                            <i class="fas fa-lock text-primary"></i>
+                            Password & Confirmation
+                        </h3>
+                        <p class="step-description">
+                            Confirm your current password and optionally set a new one
+                        </p>
+                        
+                        <div class="mb-3">
+                            <label for="id_current_password" class="form-label">Current password <span class="text-danger">*</span></label>
+                            <input type="password" class="form-control" id="id_current_password" name="current_password" 
+                                    placeholder="Enter your current password" 
+                                    autocomplete="current-password" required>
+                            {% if form.current_password.errors %}
+                                <div class="text-danger small mt-2">
+                                    {% for error in form.current_password.errors %}
+                                        <i class="fas fa-exclamation-circle"></i> {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <small class="form-text text-muted">Required to confirm your changes</small>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="id_password1" class="form-label">New password (optional)</label>
+                            <div class="password-input-wrapper">
+                                <input type="password" class="form-control password-field" id="id_password1" name="password1" 
+                                        placeholder="Enter new password (optional)" 
+                                        autocomplete="new-password">
+                                <i class="fas fa-eye password-toggle-icon" id="toggle-password1"></i>
+                            </div>
+                            {% if form.password1.errors %}
+                                <div class="text-danger small mt-2">
+                                    {% for error in form.password1.errors %}
+                                        <i class="fas fa-exclamation-circle"></i> {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <small class="form-text text-muted">Leave blank if you don't want to change your password. At least 12 characters, with uppercase, lowercase, digits, and special characters</small>
+                            <div id="password-strength" class="password-strength"></div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label for="id_password2" class="form-label">Confirm new password</label>
+                            <div class="password-input-wrapper">
+                                <input type="password" class="form-control password-field" id="id_password2" name="password2" 
+                                        placeholder="Confirm new password" 
+                                        autocomplete="new-password">
+                                <i class="fas fa-eye password-toggle-icon" id="toggle-password2"></i>
+                            </div>
+                            {% if form.password2.errors %}
+                                <div class="text-danger small mt-2">
+                                    {% for error in form.password2.errors %}
+                                        <i class="fas fa-exclamation-circle"></i> {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <div id="password-match" class="password-match"></div>
+                        </div>
+
+                    {% endif %}
+
+                    <div class="btn-navigation">
+                        {% if step == "5" %}
+                            <button type="submit" class="btn btn-success btn-lg" >
+                                <i class="fas fa-save" style="color: #fff !important;"></i> Save Changes
+                            </button>
+                        {% else %}
+                            <button type="submit" class="btn btn-primary">
+                                Next <i class="fas fa-arrow-right" style="color: #fff !important;"></i>
+                            </button>
+                        {% endif %}
+
+                        {% if step != "1" %}
+                            <button type="button" class="btn btn-outline-secondary previous-btn" onclick="goToPreviousStep()">
+                                <i class="fas fa-arrow-left"></i> Previous
+                            </button>
+                        {% endif %}
+                    </div>
+                </form>
+
+                <div class="text-center mt-4">
+                    <a href="{% url 'profile' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to Profile
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  {{ block.super}}
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+  
+  <!-- Pass Django variables to JavaScript -->
+  <script>
+      // Global variables for JavaScript functionality
+      window.currentPage = 'edit_profile';
+      window.currentStep = '{{ step }}';
+      {% if step == "2" %}
+      window.canResend = {{ can_resend|yesno:"true,false" }};
+      window.timeUntilResend = {{ time_until_resend|default:0 }};
+      window.resendCodeUrl = '{% url "resend_profile_verification_code" %}';
+      {% endif %}
+      
+      // Global delay for email code resend (from Django constants)
+      window.emailCodeResendDelay = {{ EMAIL_CODE_RESEND_DELAY_SECONDS }};
+      {% if step == "4" %}
+      window.usernameCheckUrl = '{% url "check_username_availability" %}';
+      {% endif %}
+  </script>
+  
+  <!-- Include unified JavaScript file -->
+  <script src="{% static 'js/auth.js' %}"></script>
+  
+  <!-- Include Previous button functionality -->
+  <script src="{% static 'js/previous-button.js' %}"></script>
+{% endblock %}

@@ -43,6 +43,14 @@ from .forms import (
     Choose2FAMethodForm,
     Email2FAForm,
     TOTP2FAForm,
+    EditProfileStep1Form,
+    EditProfileStep2Form,
+    EditProfileStep3Form,
+    EditProfileStep4Form,
+    EditProfileStep5Form,
+    SimpleProfileEditForm,
+    PersonalSettingsForm,
+    PublicProfileForm,
 )
 
 # === Project Utils ===
@@ -1567,3 +1575,831 @@ def resend_2fa_code_view(request):
         return JsonResponse(
             {"success": False, "message": "Error sending code."}, status=500
         )
+
+
+# =============================================================================
+# PROFILE EDITING VIEWS
+# =============================================================================
+
+
+@redirect_not_authenticated_user
+def edit_profile_view(request):
+    """
+    Main view for the 5-step profile editing process.
+
+    This view dispatches to the appropriate step handler based on the current step.
+    Steps:
+    1. New email verification (if email changed)
+    2. Email code verification
+    3. Personal information update
+    4. Username change (optional)
+    5. Password change (optional) and confirmation
+    """
+    user = request.user
+
+    # Get current step from POST or GET
+    if request.method == "POST":
+        step = request.POST.get("step", "1")
+
+        # Handle previous button
+        if "previous" in request.POST:
+            prev_step = str(max(1, int(step) - 1))
+            return handle_edit_profile_previous_step(request, prev_step)
+    else:
+        step = request.GET.get("step", "1")
+
+    # Dispatch to appropriate step handler
+    step_handlers = {
+        "1": handle_edit_profile_step_1_email,
+        "2": handle_edit_profile_step_2_verification,
+        "3": handle_edit_profile_step_3_personal_info,
+        "4": handle_edit_profile_step_4_username,
+        "5": handle_edit_profile_step_5_password,
+    }
+
+    handler = step_handlers.get(step, handle_edit_profile_step_1_email)
+    return handler(request)
+
+
+@redirect_not_authenticated_user
+def handle_edit_profile_previous_step(request, step):
+    """
+    Handle navigation to previous step in profile editing process.
+
+    Args:
+        request: HTTP request object
+        step: Target step number
+
+    Returns:
+        Rendered template for the previous step
+    """
+    session_data = request.session.get("edit_profile_data", {})
+    user = request.user
+
+    form_classes = {
+        "1": EditProfileStep1Form,
+        "2": EditProfileStep2Form,
+        "3": EditProfileStep3Form,
+        "4": EditProfileStep4Form,
+        "5": EditProfileStep5Form,
+    }
+
+    FormClass = form_classes.get(step, EditProfileStep1Form)
+
+    # Pre-populate form with current user data
+    if step == "1":
+        form = FormClass(initial={"email": session_data.get("new_email", user.email)})
+    elif step == "3":
+        form = FormClass(
+            initial={
+                "first_name": session_data.get("first_name", user.first_name),
+                "last_name": session_data.get("last_name", user.last_name),
+                "date_of_birth": session_data.get("date_of_birth", user.date_of_birth),
+                "bio": session_data.get("bio", user.bio),
+                "is_private": session_data.get("is_private", user.is_private),
+            }
+        )
+    elif step == "4":
+        form = FormClass(
+            initial={"username": session_data.get("username", user.username)}
+        )
+    else:
+        form = FormClass()
+
+    return render(
+        request,
+        "users/edit_profile.html",
+        {
+            "form": form,
+            "step": step,
+            "progress": int(step) * 20,
+            "current_user": user,
+            "new_email": session_data.get("new_email"),
+            "EMAIL_CODE_RESEND_DELAY_SECONDS": EMAIL_CODE_RESEND_DELAY_SECONDS,
+        },
+    )
+
+
+@redirect_not_authenticated_user
+def handle_edit_profile_step_1_email(request):
+    """
+    Step 1: New email verification.
+
+    User enters new email address and receives verification code.
+    """
+    user = request.user
+    session_data = request.session.get("edit_profile_data", {})
+
+    if request.method == "POST":
+        form = EditProfileStep1Form(request.POST)
+        if form.is_valid():
+            new_email = form.cleaned_data["email"]
+
+            # Check if email is the same as current
+            if new_email.lower() == user.email.lower():
+                # No email change, skip to step 3
+                session_data["new_email"] = new_email
+                session_data["email_verified"] = True
+                request.session["edit_profile_data"] = session_data
+                return HttpResponseRedirect(f"{reverse('edit_profile')}?step=3")
+
+            # Check if email is already registered by another user
+            if (
+                CustomUser.objects.filter(email=new_email, is_active=True)
+                .exclude(pk=user.pk)
+                .exists()
+            ):
+                form.add_error("email", "An account with this email already exists.")
+            else:
+                # Generate and send verification code
+                verification_code = generate_email_code()
+
+                # Store data temporarily
+                session_data.update(
+                    {
+                        "new_email": new_email,
+                        "verification_code": verification_code,
+                        "code_sent_at": timezone.now().isoformat(),
+                        "code_attempts": 0,
+                    }
+                )
+                request.session["edit_profile_data"] = session_data
+
+                # Send verification email
+                success = send_verification_email(new_email, verification_code)
+
+                if success:
+                    messages.success(
+                        request,
+                        f"✅ Verification code sent to {new_email}. Please check your inbox and enter the 6-digit code on the next step.",
+                    )
+                    return HttpResponseRedirect(f"{reverse('edit_profile')}?step=2")
+                else:
+                    form.add_error("email", "Error sending email.")
+    else:
+        form = EditProfileStep1Form(initial={"email": user.email})
+
+    return render(
+        request,
+        "users/edit_profile.html",
+        {
+            "form": form,
+            "step": "1",
+            "progress": 20,
+            "current_user": user,
+            "EMAIL_CODE_RESEND_DELAY_SECONDS": EMAIL_CODE_RESEND_DELAY_SECONDS,
+        },
+    )
+
+
+@redirect_not_authenticated_user
+def handle_edit_profile_step_2_verification(request):
+    """
+    Step 2: Email code verification.
+
+    User enters the verification code received by email.
+    """
+    user = request.user
+    session_data = request.session.get("edit_profile_data", {})
+
+    if not session_data.get("new_email"):
+        messages.error(request, "Session expired. Please try again.")
+        return redirect("edit_profile")
+
+    if request.method == "POST":
+        form = EditProfileStep2Form(request.POST)
+        if form.is_valid():
+            submitted_code = form.cleaned_data["verification_code"]
+            stored_code = session_data.get("verification_code")
+            code_sent_at = session_data.get("code_sent_at")
+            attempts = session_data.get("code_attempts", 0)
+
+            # Check attempts limit
+            if attempts >= 3:
+                form.add_error(
+                    "verification_code",
+                    "Too many attempts. Request a new code.",
+                )
+            else:
+                # Check code expiration (10 minutes)
+                if code_sent_at:
+                    sent_time = datetime.fromisoformat(
+                        code_sent_at.replace("Z", "+00:00")
+                        if code_sent_at.endswith("Z")
+                        else code_sent_at
+                    )
+                    if timezone.is_naive(sent_time):
+                        sent_time = timezone.make_aware(sent_time)
+
+                    if (
+                        timezone.now() - sent_time
+                    ).total_seconds() > EMAIL_CODE_EXPIRY_SECONDS:
+                        form.add_error(
+                            "verification_code",
+                            "The code has expired. Request a new code.",
+                        )
+                    elif submitted_code == stored_code:
+                        # Code verified successfully
+                        session_data["email_verified"] = True
+                        request.session["edit_profile_data"] = session_data
+                        return HttpResponseRedirect(f"{reverse('edit_profile')}?step=3")
+                    else:
+                        attempts += 1
+                        session_data["code_attempts"] = attempts
+                        request.session["edit_profile_data"] = session_data
+                        form.add_error(
+                            "verification_code",
+                            f"Incorrect code. {3-attempts} remaining attempt(s).",
+                        )
+                else:
+                    form.add_error(
+                        "verification_code", "Session error. Please try again."
+                    )
+    else:
+        form = EditProfileStep2Form()
+
+    # Calculate remaining time for resend
+    can_resend = True
+    time_until_resend = 0
+
+    if session_data.get("code_sent_at"):
+        sent_time = datetime.fromisoformat(
+            session_data["code_sent_at"].replace("Z", "+00:00")
+            if session_data["code_sent_at"].endswith("Z")
+            else session_data["code_sent_at"]
+        )
+        if timezone.is_naive(sent_time):
+            sent_time = timezone.make_aware(sent_time)
+
+        delta = timezone.now() - sent_time
+        if delta.total_seconds() < EMAIL_CODE_RESEND_DELAY_SECONDS:
+            time_until_resend = int(
+                EMAIL_CODE_RESEND_DELAY_SECONDS - delta.total_seconds()
+            )
+            can_resend = False
+        else:
+            can_resend = True
+
+    return render(
+        request,
+        "users/edit_profile.html",
+        {
+            "form": form,
+            "step": "2",
+            "progress": 40,
+            "current_user": user,
+            "new_email": session_data.get("new_email"),
+            "can_resend": can_resend,
+            "time_until_resend": int(time_until_resend),
+            "EMAIL_CODE_RESEND_DELAY_SECONDS": EMAIL_CODE_RESEND_DELAY_SECONDS,
+        },
+    )
+
+
+@redirect_not_authenticated_user
+def handle_edit_profile_step_3_personal_info(request):
+    """
+    Step 3: Personal information update.
+
+    User updates first name, last name, date of birth, bio, privacy settings, and profile picture.
+    """
+    user = request.user
+    session_data = request.session.get("edit_profile_data", {})
+
+    if not session_data.get("email_verified"):
+        messages.error(request, "Please verify your email first.")
+        return HttpResponseRedirect(f"{reverse('edit_profile')}?step=1")
+
+    if request.method == "POST":
+        form = EditProfileStep3Form(request.POST, request.FILES)
+        if form.is_valid():
+            # Check minimum age requirement
+            birth_date = form.cleaned_data["date_of_birth"]
+            age = calculate_age(birth_date)
+            MINIMUM_AGE = 16
+
+            if age < MINIMUM_AGE:
+                form.add_error(
+                    "date_of_birth",
+                    f"You must be at least {MINIMUM_AGE} years old.",
+                )
+            else:
+                session_data.update(
+                    {
+                        "first_name": form.cleaned_data["first_name"],
+                        "last_name": form.cleaned_data["last_name"],
+                        "date_of_birth": birth_date.isoformat(),
+                        "bio": form.cleaned_data["bio"],
+                        "is_private": form.cleaned_data["is_private"],
+                    }
+                )
+
+                # Handle profile picture
+                if form.cleaned_data.get("profile_picture"):
+                    session_data["profile_picture"] = form.cleaned_data[
+                        "profile_picture"
+                    ]
+
+                request.session["edit_profile_data"] = session_data
+                return HttpResponseRedirect(f"{reverse('edit_profile')}?step=4")
+    else:
+        form = EditProfileStep3Form(
+            initial={
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+                "date_of_birth": user.date_of_birth,
+                "bio": user.bio,
+                "is_private": user.is_private,
+            }
+        )
+
+    return render(
+        request,
+        "users/edit_profile.html",
+        {
+            "form": form,
+            "step": "3",
+            "progress": 60,
+            "current_user": user,
+            "EMAIL_CODE_RESEND_DELAY_SECONDS": EMAIL_CODE_RESEND_DELAY_SECONDS,
+        },
+    )
+
+
+@redirect_not_authenticated_user
+def handle_edit_profile_step_4_username(request):
+    """
+    Step 4: Username change (optional).
+
+    User can choose to change their username or keep the current one.
+    """
+    user = request.user
+    session_data = request.session.get("edit_profile_data", {})
+
+    if not session_data.get("first_name"):
+        messages.error(request, "Please complete the previous steps.")
+        return HttpResponseRedirect(f"{reverse('edit_profile')}?step=3")
+
+    if request.method == "POST":
+        if request.POST.get("check_username"):
+            # AJAX username verification
+            username = request.POST.get("username", "").strip()
+            is_available = (
+                not CustomUser.objects.filter(username=username)
+                .exclude(pk=user.pk)
+                .exists()
+            )
+            return JsonResponse({"available": is_available})
+
+        form = EditProfileStep4Form(request.POST)
+        if form.is_valid():
+            username = form.cleaned_data["username"]
+            # Convert to lowercase for consistency
+            username = username.lower()
+
+            # Check if username is the same as current
+            if username == user.username.lower():
+                # No username change
+                session_data["username"] = user.username
+            else:
+                # Check if new username is available
+                if (
+                    CustomUser.objects.filter(username=username)
+                    .exclude(pk=user.pk)
+                    .exists()
+                ):
+                    form.add_error("username", "This username is already taken.")
+                else:
+                    session_data["username"] = username
+
+            if not form.errors:
+                request.session["edit_profile_data"] = session_data
+                return HttpResponseRedirect(f"{reverse('edit_profile')}?step=5")
+    else:
+        form = EditProfileStep4Form(initial={"username": user.username})
+
+    return render(
+        request,
+        "users/edit_profile.html",
+        {
+            "form": form,
+            "step": "4",
+            "progress": 80,
+            "current_user": user,
+            "EMAIL_CODE_RESEND_DELAY_SECONDS": EMAIL_CODE_RESEND_DELAY_SECONDS,
+        },
+    )
+
+
+@redirect_not_authenticated_user
+def handle_edit_profile_step_5_password(request):
+    """
+    Step 5: Password change (optional) and confirmation.
+
+    User confirms current password and optionally sets a new one.
+    """
+    user = request.user
+    session_data = request.session.get("edit_profile_data", {})
+
+    if not session_data.get("username"):
+        messages.error(request, "Please complete the previous steps.")
+        return HttpResponseRedirect(f"{reverse('edit_profile')}?step=4")
+
+    if request.method == "POST":
+        form = EditProfileStep5Form(request.POST)
+        if form.is_valid():
+            current_password = form.cleaned_data["current_password"]
+            new_password = form.cleaned_data.get("password1")
+
+            # Verify current password
+            if not user.check_password(current_password):
+                form.add_error("current_password", "Incorrect current password.")
+            else:
+                # Store password change if provided
+                if new_password:
+                    session_data["new_password"] = new_password
+
+                # Save all changes to the user
+                try:
+                    # Update email if changed
+                    if session_data.get("new_email") and session_data.get(
+                        "email_verified"
+                    ):
+                        user.email = session_data["new_email"]
+                        user.is_email_verified = True
+
+                    # Update other fields
+                    user.first_name = session_data["first_name"]
+                    user.last_name = session_data["last_name"]
+                    user.date_of_birth = date.fromisoformat(
+                        session_data["date_of_birth"]
+                    )
+                    user.bio = session_data.get("bio", "")
+                    user.is_private = session_data.get("is_private", False)
+                    user.username = session_data["username"]
+
+                    # Update password if changed
+                    if session_data.get("new_password"):
+                        user.set_password(session_data["new_password"])
+
+                    # Handle profile picture
+                    if session_data.get("profile_picture"):
+                        # Delete old profile picture if it exists
+                        if user.profile_picture:
+                            schedule_profile_picture_deletion(user.profile_picture.path)
+                        user.profile_picture = session_data["profile_picture"]
+
+                    user.save()
+
+                    # Log profile update
+                    ip = get_client_ip(request)
+                    user_agent = get_user_agent(request)
+                    location = get_location_from_ip(ip)
+
+                    log_user_action_json(
+                        user=user,
+                        action="profile_update",
+                        request=request,
+                        ip_address=ip,
+                        extra_info={
+                            "impacted_user_id": user.id,
+                            "changes": "Profile updated through multi-step form",
+                        },
+                    )
+
+                    # Clean session data
+                    request.session.pop("edit_profile_data", None)
+
+                    messages.success(request, "Profile updated successfully!")
+                    return redirect("profile")
+
+                except Exception as e:
+                    messages.error(request, f"Error updating profile: {str(e)}")
+                    return HttpResponseRedirect(f"{reverse('edit_profile')}?step=5")
+    else:
+        form = EditProfileStep5Form()
+
+    return render(
+        request,
+        "users/edit_profile.html",
+        {
+            "form": form,
+            "step": "5",
+            "progress": 100,
+            "current_user": user,
+            "EMAIL_CODE_RESEND_DELAY_SECONDS": EMAIL_CODE_RESEND_DELAY_SECONDS,
+        },
+    )
+
+
+@redirect_not_authenticated_user
+def resend_profile_verification_code_view(request):
+    """
+    View to resend verification code for profile editing.
+
+    Handles POST requests to resend verification codes with proper timing controls.
+    """
+    if request.method != "POST":
+        return redirect(f"{reverse('edit_profile')}?step=2")
+
+    user = request.user
+    session_data = request.session.get("edit_profile_data", {})
+    new_email = session_data.get("new_email")
+
+    if not new_email:
+        messages.error(request, "Session expired.")
+        return redirect("edit_profile")
+
+    # Check timing
+    can_resend = True
+    if session_data.get("code_sent_at"):
+        sent_time = datetime.fromisoformat(
+            session_data["code_sent_at"].replace("Z", "+00:00")
+            if session_data["code_sent_at"].endswith("Z")
+            else session_data["code_sent_at"]
+        )
+        if timezone.is_naive(sent_time):
+            sent_time = timezone.make_aware(sent_time)
+
+        delta = timezone.now() - sent_time
+        if delta.total_seconds() < EMAIL_CODE_RESEND_DELAY_SECONDS:
+            remaining_time = int(
+                EMAIL_CODE_RESEND_DELAY_SECONDS - delta.total_seconds()
+            )
+            messages.warning(
+                request,
+                f"⏳ Please wait {remaining_time} seconds before requesting a new code. This helps prevent spam.",
+            )
+            return redirect(f"{reverse('edit_profile')}?step=2")
+
+    # Generate and send new code
+    new_code = generate_email_code()
+
+    # Update session data
+    session_data.update(
+        {
+            "verification_code": new_code,
+            "code_sent_at": timezone.now().isoformat(),
+            "code_attempts": 0,
+        }
+    )
+    request.session["edit_profile_data"] = session_data
+
+    if send_verification_email(new_email, new_code):
+        messages.success(
+            request,
+            f"✅ New verification code sent to {new_email}. Please check your inbox and spam folder.",
+        )
+        return redirect(f"{reverse('edit_profile')}?step=2")
+    else:
+        messages.error(request, "❌ Error sending verification code. Please try again.")
+        return redirect(f"{reverse('edit_profile')}?step=2")
+
+
+# =============================================================================
+# SIMPLE PROFILE EDITING VIEW
+# =============================================================================
+
+
+@redirect_not_authenticated_user
+def edit_profile_simple_view(request):
+    """
+    Simple profile editing view - all fields in one page.
+
+    Similar to Instagram's approach: simple, intuitive, with real-time validation.
+    """
+    user = request.user
+
+    if request.method == "POST":
+        form = SimpleProfileEditForm(request.POST, request.FILES, instance=user)
+        if form.is_valid():
+            try:
+                # Check if email changed and needs verification
+                old_email = user.email
+                new_email = form.cleaned_data["email"]
+                email_changed = new_email.lower() != old_email.lower()
+
+                # Check if password is being changed
+                current_password = form.cleaned_data.get("current_password")
+                new_password = form.cleaned_data.get("password1")
+                password_changed = bool(new_password)
+
+                # Verify current password if changing password
+                if password_changed and not user.check_password(current_password):
+                    form.add_error("current_password", "Incorrect current password.")
+                    return render(
+                        request, "users/edit_profile_simple.html", {"form": form}
+                    )
+
+                # Handle email change
+                if email_changed:
+                    # For now, we'll allow email change without verification
+                    # In production, you might want to implement email verification here
+                    user.email = new_email
+                    user.is_email_verified = True
+                    messages.success(request, f"Email updated to {new_email}")
+
+                # Handle password change
+                if password_changed:
+                    user.set_password(new_password)
+                    messages.success(request, "Password updated successfully")
+
+                # Handle profile picture change
+                if form.cleaned_data.get("profile_picture"):
+                    # Delete old profile picture if it exists
+                    if user.profile_picture:
+                        schedule_profile_picture_deletion(user.profile_picture.path)
+                    user.profile_picture = form.cleaned_data["profile_picture"]
+
+                # Update other fields
+                user.first_name = form.cleaned_data["first_name"]
+                user.last_name = form.cleaned_data["last_name"]
+                user.date_of_birth = form.cleaned_data["date_of_birth"]
+                user.bio = form.cleaned_data.get("bio", "")
+                user.is_private = form.cleaned_data.get("is_private", False)
+                user.username = form.cleaned_data["username"]
+
+                user.save()
+
+                # Log profile update
+                ip = get_client_ip(request)
+                user_agent = get_user_agent(request)
+                location = get_location_from_ip(ip)
+
+                log_user_action_json(
+                    user=user,
+                    action="profile_update_simple",
+                    request=request,
+                    ip_address=ip,
+                    extra_info={
+                        "impacted_user_id": user.id,
+                        "changes": {
+                            "email_changed": email_changed,
+                            "password_changed": password_changed,
+                            "profile_picture_changed": bool(
+                                form.cleaned_data.get("profile_picture")
+                            ),
+                        },
+                    },
+                )
+
+                messages.success(request, "Profile updated successfully!")
+                return redirect("profile")
+
+            except Exception as e:
+                messages.error(request, f"Error updating profile: {str(e)}")
+                return render(request, "users/edit_profile_simple.html", {"form": form})
+    else:
+        form = SimpleProfileEditForm(instance=user)
+
+    return render(request, "users/edit_profile_simple.html", {"form": form})
+
+
+# =============================================================================
+# SEPARATED PROFILE VIEWS
+# =============================================================================
+
+
+@redirect_not_authenticated_user
+def personal_settings_view(request):
+    """
+    View for personal/private settings.
+
+    Handles email, password, date of birth, and privacy settings.
+    """
+    user = request.user
+
+    if request.method == "POST":
+        form = PersonalSettingsForm(request.POST, instance=user)
+        if form.is_valid():
+            try:
+                # Check if email changed
+                old_email = user.email
+                new_email = form.cleaned_data["email"]
+                email_changed = new_email.lower() != old_email.lower()
+
+                # Check if password is being changed
+                current_password = form.cleaned_data.get("current_password")
+                new_password = form.cleaned_data.get("password1")
+                password_changed = bool(new_password)
+
+                # Verify current password if changing password
+                if password_changed and not user.check_password(current_password):
+                    form.add_error("current_password", "Incorrect current password.")
+                    return render(
+                        request, "users/personal_settings.html", {"form": form}
+                    )
+
+                # Handle email change
+                if email_changed:
+                    # For now, we'll allow email change without verification
+                    # In production, you might want to implement email verification here
+                    user.email = new_email
+                    user.is_email_verified = True
+                    messages.success(request, f"Email updated to {new_email}")
+
+                # Handle password change
+                if password_changed:
+                    user.set_password(new_password)
+                    messages.success(request, "Password updated successfully")
+
+                # Update other fields
+                user.date_of_birth = form.cleaned_data["date_of_birth"]
+                user.is_private = form.cleaned_data.get("is_private", False)
+
+                user.save()
+
+                # Log settings update
+                ip = get_client_ip(request)
+                user_agent = get_user_agent(request)
+                location = get_location_from_ip(ip)
+
+                log_user_action_json(
+                    user=user,
+                    action="personal_settings_update",
+                    request=request,
+                    ip_address=ip,
+                    extra_info={
+                        "impacted_user_id": user.id,
+                        "changes": {
+                            "email_changed": email_changed,
+                            "password_changed": password_changed,
+                            "date_of_birth_changed": True,
+                            "privacy_changed": True,
+                        },
+                    },
+                )
+
+                messages.success(request, "Personal settings updated successfully!")
+                return redirect("profile")
+
+            except Exception as e:
+                messages.error(request, f"Error updating personal settings: {str(e)}")
+                return render(request, "users/personal_settings.html", {"form": form})
+    else:
+        form = PersonalSettingsForm(instance=user)
+
+    return render(request, "users/personal_settings.html", {"form": form})
+
+
+@redirect_not_authenticated_user
+def public_profile_view(request):
+    """
+    View for public profile information.
+
+    Handles name, username, bio, and profile picture.
+    """
+    user = request.user
+
+    if request.method == "POST":
+        form = PublicProfileForm(request.POST, request.FILES, instance=user)
+        if form.is_valid():
+            try:
+                # Handle profile picture change
+                if form.cleaned_data.get("profile_picture"):
+                    # Delete old profile picture if it exists
+                    if user.profile_picture:
+                        schedule_profile_picture_deletion(user.profile_picture.path)
+                    user.profile_picture = form.cleaned_data["profile_picture"]
+
+                # Update other fields
+                user.first_name = form.cleaned_data["first_name"]
+                user.last_name = form.cleaned_data["last_name"]
+                user.username = form.cleaned_data["username"]
+                user.bio = form.cleaned_data.get("bio", "")
+
+                user.save()
+
+                # Log profile update
+                ip = get_client_ip(request)
+                user_agent = get_user_agent(request)
+                location = get_location_from_ip(ip)
+
+                log_user_action_json(
+                    user=user,
+                    action="public_profile_update",
+                    request=request,
+                    ip_address=ip,
+                    extra_info={
+                        "impacted_user_id": user.id,
+                        "changes": {
+                            "name_changed": True,
+                            "username_changed": True,
+                            "bio_changed": True,
+                            "profile_picture_changed": bool(
+                                form.cleaned_data.get("profile_picture")
+                            ),
+                        },
+                    },
+                )
+
+                messages.success(request, "Public profile updated successfully!")
+                return redirect("profile")
+
+            except Exception as e:
+                messages.error(request, f"Error updating public profile: {str(e)}")
+                return render(request, "users/public_profile.html", {"form": form})
+    else:
+        form = PublicProfileForm(instance=user)
+
+    return render(request, "users/public_profile.html", {"form": form})

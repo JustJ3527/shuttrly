@@ -1,0 +1,222 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Personal Settings - Shuttrly{% endblock %}
+{% block head %}
+    {{ block.super }}
+    <link rel="stylesheet" href="{% static 'css/users.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="container-bc">
+    <div class="container-fluid">
+        <div class="settings-container">
+            <!-- Header -->
+            <div class="settings-header">
+                <h1><i class="fas fa-user-shield"></i> Personal Settings</h1>
+                <p class="text-muted">Manage your private account information</p>
+            </div>
+
+            <!-- Settings Form -->
+            <div class="settings-form">
+                <form method="post" id="personal-settings-form">
+                    {% csrf_token %}
+                    
+                    <!-- Account Information Section -->
+                    <div class="form-section">
+                        <h3><i class="fas fa-envelope"></i> Email & Account</h3>
+                        
+                        <div class="form-group">
+                            <label for="id_email">Email Address *</label>
+                            <input type="email" class="form-control" id="id_email" name="email" 
+                                   value="{{ form.email.value|default:user.email }}" required>
+                            {% if form.email.errors %}
+                                <div class="error-message">{{ form.email.errors.0 }}</div>
+                            {% endif %}
+                            <small class="form-text text-muted">
+                                <i class="fas fa-info-circle"></i> 
+                                We'll send a verification code if you change this email address
+                            </small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="id_date_of_birth">Date of Birth *</label>
+                            <input type="date" class="form-control" id="id_date_of_birth" name="date_of_birth" 
+                                   value="{{ form.date_of_birth.value|default:user.date_of_birth|date:'Y-m-d' }}" required>
+                            {% if form.date_of_birth.errors %}
+                                <div class="error-message">{{ form.date_of_birth.errors.0 }}</div>
+                            {% endif %}
+                            <small class="form-text text-muted">
+                                <i class="fas fa-calendar"></i> 
+                                You must be at least 16 years old. This information is private.
+                            </small>
+                        </div>
+                    </div>
+
+                    <!-- Password Section -->
+                    <div class="form-section">
+                        <h3><i class="fas fa-lock"></i> Change Password</h3>
+                        
+                        <div class="form-group">
+                            <label for="id_current_password">Current Password</label>
+                            <input type="password" class="form-control" id="id_current_password" name="current_password" 
+                                   placeholder="Enter your current password to change password">
+                            {% if form.current_password.errors %}
+                                <div class="error-message">{{ form.current_password.errors.0 }}</div>
+                            {% endif %}
+                            <small class="form-text text-muted">
+                                <i class="fas fa-shield-alt"></i> 
+                                Required only if you want to change your password
+                            </small>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="id_password1">New Password</label>
+                                    <div class="password-input-wrapper">
+                                        <input type="password" class="form-control" id="id_password1" name="password1" 
+                                               placeholder="Enter new password">
+                                        <i class="fas fa-eye password-toggle-icon" id="toggle-password1"></i>
+                                    </div>
+                                    {% if form.password1.errors %}
+                                        <div class="error-message">{{ form.password1.errors.0 }}</div>
+                                    {% endif %}
+                                    <small class="form-text text-muted">
+                                        <i class="fas fa-key"></i> 
+                                        At least 12 characters with mixed case, numbers, and symbols
+                                    </small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="id_password2">Confirm New Password</label>
+                                    <div class="password-input-wrapper">
+                                        <input type="password" class="form-control" id="id_password2" name="password2" 
+                                               placeholder="Confirm new password">
+                                        <i class="fas fa-eye password-toggle-icon" id="toggle-password2"></i>
+                                    </div>
+                                    {% if form.password2.errors %}
+                                        <div class="error-message">{{ form.password2.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Privacy Section -->
+                    <div class="form-section">
+                        <h3><i class="fas fa-eye-slash"></i> Privacy Settings</h3>
+                        
+                        <div class="form-group">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" id="id_is_private" name="is_private" 
+                                       {% if form.is_private.value|default:user.is_private %}checked{% endif %}>
+                                <label class="form-check-label" for="id_is_private">
+                                    Private Account
+                                </label>
+                            </div>
+                            <small class="form-text text-muted">
+                                <i class="fas fa-users"></i> 
+                                Private accounts are only visible to approved followers
+                            </small>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="fas fa-save"></i> Save Personal Settings
+                        </button>
+                        <a href="{% url 'profile' %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-times"></i> Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Email Verification Modal -->
+<div class="modal fade" id="emailVerificationModal" tabindex="-1" aria-labelledby="emailVerificationModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="emailVerificationModalLabel">Verify New Email</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>We've sent a verification code to <strong id="newEmailDisplay"></strong></p>
+                <p>Please enter the 6-digit code to verify your new email address.</p>
+                
+                <div class="form-group">
+                    <label for="verificationCode">Verification Code</label>
+                    <input type="text" class="form-control" id="verificationCode" 
+                           placeholder="000000" maxlength="6" pattern="[0-9]{6}">
+                    <div id="verificationError" class="error-message" style="display: none;"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="verifyEmailBtn">
+                    <i class="fas fa-check"></i> Verify Email
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+    {{ block.super }}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // Global variables
+        window.currentEmail = '{{ user.email }}';
+        
+        // Password toggle functionality
+        document.querySelectorAll('.password-toggle-icon').forEach(icon => {
+            icon.addEventListener('click', function() {
+                const input = this.previousElementSibling;
+                const type = input.type === 'password' ? 'text' : 'password';
+                input.type = type;
+                this.classList.toggle('fa-eye');
+                this.classList.toggle('fa-eye-slash');
+            });
+        });
+        
+        // Form submission with email verification if needed
+        document.getElementById('personal-settings-form').addEventListener('submit', function(e) {
+            const newEmail = document.getElementById('id_email').value;
+            const currentEmail = window.currentEmail;
+            
+            if (newEmail.toLowerCase() !== currentEmail.toLowerCase()) {
+                e.preventDefault();
+                showEmailVerificationModal(newEmail);
+            }
+        });
+        
+        function showEmailVerificationModal(newEmail) {
+            document.getElementById('newEmailDisplay').textContent = newEmail;
+            const modal = new bootstrap.Modal(document.getElementById('emailVerificationModal'));
+            modal.show();
+        }
+        
+        // Email verification
+        document.getElementById('verifyEmailBtn').addEventListener('click', function() {
+            const code = document.getElementById('verificationCode').value;
+            
+            if (!code || code.length !== 6) {
+                document.getElementById('verificationError').textContent = 'Please enter a valid 6-digit code';
+                document.getElementById('verificationError').style.display = 'block';
+                return;
+            }
+            
+            // Here you would typically send the verification code to your backend
+            // For now, we'll simulate success and submit the form
+            document.getElementById('emailVerificationModal').querySelector('.btn-close').click();
+            document.getElementById('personal-settings-form').submit();
+        });
+    </script>
+{% endblock %}

@@ -1,53 +1,203 @@
 {% extends 'base.html' %}
-{% block title %}Profil - Shuttrly{% endblock %}
+{% load static %}
+{% block title %}Profile - Shuttrly{% endblock %}
+{% block head %}
+    {{ block.super }}
+    <link rel="stylesheet" href="{% static 'css/users.css' %}">
+{% endblock %}
+
 {% block content %}
+<div class="container-bc">
+    <div class="container-fluid">
+        <div class="profile-container">
+            <!-- Profile Header -->
+            <div class="profile-header">
+                <div class="profile-avatar">
+                    {% if user.profile_picture %}
+                        <img src="{{ user.profile_picture.url }}" alt="Profile Picture" class="profile-picture">
+                    {% else %}
+                        <div class="profile-picture-placeholder">
+                            <i class="fas fa-user"></i>
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <div class="profile-info">
+                    <h1 class="profile-name">{{ user.first_name }} {{ user.last_name }}</h1>
+                    <p class="profile-username">@{{ user.username }}</p>
+                    <p class="profile-email">{{ user.email }}</p>
+                    
+                    <!-- Online Status -->
+                    <div class="online-status">
+                        {% if user.is_online %}
+                            <span class="status-indicator online">
+                                <i class="fas fa-circle"></i> Online
+                            </span>
+                        {% else %}
+                            <span class="status-indicator offline">
+                                <i class="fas fa-circle"></i> Offline
+                            </span>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                                           <div class="profile-actions">
+                               <div class="btn-group" role="group">
+                                   <a href="{% url 'public_profile' %}" class="btn btn-primary">
+                                       <i class="fas fa-user-circle"></i> Public Profile
+                                   </a>
+                                   <a href="{% url 'personal_settings' %}" class="btn btn-outline-primary">
+                                       <i class="fas fa-user-shield"></i> Personal Settings
+                                   </a>
+                               </div>
+                           </div>
+            </div>
 
-{% if user.is_authenticated %}
-    <div class="user-info">
-        <h1>Welcome, {{ user.username }}!</H1>
+            <!-- Profile Details -->
+            <div class="profile-details">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="detail-card">
+                            <h3><i class="fas fa-user text-primary"></i> Personal Information</h3>
+                            <div class="detail-item">
+                                <span class="detail-label">First Name:</span>
+                                <span class="detail-value">{{ user.first_name|default:"Not provided" }}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Last Name:</span>
+                                <span class="detail-value">{{ user.last_name|default:"Not provided" }}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Date of Birth:</span>
+                                <span class="detail-value">{{ user.date_of_birth|date:"F j, Y"|default:"Not provided" }}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Age:</span>
+                                <span class="detail-value">
+                                    {% if user.date_of_birth %}
+                                        {% load math_filters %}
+                                        {% with age=user.date_of_birth|calculate_age %}
+                                            {% if age %}
+                                                {{ age }} years old
+                                            {% else %}
+                                                Invalid date
+                                            {% endif %}
+                                        {% endwith %}
+                                    {% else %}
+                                        Not provided
+                                    {% endif %}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="detail-card">
+                            <h3><i class="fas fa-shield-alt text-primary"></i> Security & Privacy</h3>
+                            <div class="detail-item">
+                                <span class="detail-label">2FA Status:</span>
+                                <span class="detail-value">
+                                    {% if user.email_2fa_enabled or user.totp_enabled %}
+                                        <span class="text-success">✅ Active</span>
+                                    {% else %}
+                                        <span class="text-danger">❌ Inactive</span>
+                                    {% endif %}
+                                </span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Account Privacy:</span>
+                                <span class="detail-value">
+                                    {% if user.is_private %}
+                                        <span class="text-warning">🔒 Private</span>
+                                    {% else %}
+                                        <span class="text-info">🌐 Public</span>
+                                    {% endif %}
+                                </span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Email Verified:</span>
+                                <span class="detail-value">
+                                    {% if user.is_email_verified %}
+                                        <span class="text-success">✅ Verified</span>
+                                    {% else %}
+                                        <span class="text-danger">❌ Not verified</span>
+                                    {% endif %}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                {% if user.bio %}
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <div class="detail-card">
+                            <h3><i class="fas fa-quote-left text-primary"></i> Biography</h3>
+                            <p class="bio-text">{{ user.bio }}</p>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                
+                <!-- Account Actions -->
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <div class="detail-card">
+                            <h3><i class="fas fa-cog text-primary"></i> Account Actions</h3>
+                            <div class="action-buttons">
+                                <a href="{% url 'twofa_settings' %}" class="btn btn-outline-primary">
+                                    <i class="fas fa-shield-alt"></i> Manage 2FA
+                                </a>
+                                <form action="{% url 'logout' %}" method="post" style="display:inline;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-outline-secondary">
+                                        <i class="fas fa-sign-out-alt"></i> Log out
+                                    </button>
+                                </form>
+                                <button type="button" class="btn btn-outline-danger" onclick="showDeleteConfirm()">
+                                    <i class="fas fa-trash"></i> Delete Account
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-{% endif %}
-<h2>Here you can edit your profile information.</h2>
+</div>
 
-<form method="post" enctype="multipart/form-data">
-    {% csrf_token %}
-    {{ form.as_p }}
+<!-- Delete Account Confirmation Modal -->
+<div class="modal fade" id="deleteAccountModal" tabindex="-1" aria-labelledby="deleteAccountModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteAccountModalLabel">Delete Account</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-danger">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <strong>Warning:</strong> This action cannot be undone. All your data will be permanently deleted.
+                </p>
+                <p>Are you sure you want to delete your account?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <a href="{% url 'delete_account' %}" class="btn btn-danger">Delete Account</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
 
-    <button type="submit">Save</button>
-</form>
-
-<h2>My profile picture</h2>
-{% if user.profile_picture %}
-    <img src="{{ user.profile_picture.url }}" alt="Profile Picture" style="max-width: 200px; max-height: 200px;">
-{% else %}
-    <p>No profile picture uploaded.</p>
-{% endif %}
-
-{% if user.is_online %}
-    <span class="text-green-600">● Online</span>
-{% else %}
-    <span class="text-gray-400">● offline</span>
-{% endif %}
-<br>
-<p>Authentification 2FA :
-  {% if user.email_2fa_enabled or user.totp_enabled %}
-    ✅ Active
-  {% else %}
-    ❌ Inactive
-  {% endif %}
-  — <a href="{% url 'twofa_settings' %}">Gérer</a>
-</p>
-<br>
-<form action="{% url 'logout' %}" method="post" style="display:inline;">
-  {% csrf_token %}
-  <button type="submit">Log out</button>
-</form>
-<br>
-<hr>
-<hr>
-<form action="{% url 'delete_account' %}" method="get" style="margin-top:1rem;">
-  <button type="submit" style="background:#b91c1c;color:white;padding:0.5rem 1rem;">
-    Delete my account
-  </button>
-</form>
+{% block scripts %}
+    {{ block.super }}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        function showDeleteConfirm() {
+            var deleteModal = new bootstrap.Modal(document.getElementById('deleteAccountModal'));
+            deleteModal.show();
+        }
+    </script>
 {% endblock %}

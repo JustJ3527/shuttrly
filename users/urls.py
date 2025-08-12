@@ -36,6 +36,34 @@ urlpatterns = [
         profile_view,
         name="profile",
     ),
+    # Profile editing - separated approach
+    path(
+        "profile/personal-settings/",
+        personal_settings_view,
+        name="personal_settings",
+    ),
+    path(
+        "profile/public-profile/",
+        public_profile_view,
+        name="public_profile",
+    ),
+    # Profile editing - simple approach
+    path(
+        "profile/edit-simple/",
+        edit_profile_simple_view,
+        name="edit_profile_simple",
+    ),
+    # Profile editing in 5 steps (legacy)
+    path(
+        "profile/edit/",
+        edit_profile_view,
+        name="edit_profile",
+    ),
+    path(
+        "profile/resend-verification-code/",
+        resend_profile_verification_code_view,
+        name="resend_profile_verification_code",
+    ),
     path(
         "logout/",
         logout_view,

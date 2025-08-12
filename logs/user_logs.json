@@ -9672,4 +9672,74 @@
   },
   "restored": false
 }
+,
+{
+  "log_id": "dca19900-2d80-4b27-b6b8-7eb17d844156",
+  "user": "JPA",
+  "user_id": 4,
+  "action": "login",
+  "timestamp": "2025-08-12T16:34:29.723775+00:00",
+  "ip_address": "127.0.0.1",
+  "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36",
+  "location": {
+    "city": null,
+    "region": null,
+    "country": null
+  },
+  "extra_info": {
+    "twofa_method": null,
+    "remember_device": false,
+    "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36",
+    "location": {
+      "city": null,
+      "region": null,
+      "country": null
+    }
+  },
+  "restored": false
+}
+,
+{
+  "log_id": "e3e728b8-8b6b-4706-8686-ed8d58a17168",
+  "user": "admin",
+  "user_id": 1,
+  "action": "delete_user_account",
+  "timestamp": "2025-08-12T16:44:12.837469+00:00",
+  "ip_address": "127.0.0.1",
+  "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Safari/605.1.15",
+  "location": {
+    "city": null,
+    "region": null,
+    "country": null
+  },
+  "extra_info": {
+    "impacted_user_id": 68
+  },
+  "restored": false
+}
+,
+{
+  "log_id": "6bcf125f-ada5-4235-95cd-bf136e18f8e4",
+  "user": "JPA",
+  "user_id": 4,
+  "action": "personal_settings_update",
+  "timestamp": "2025-08-12T17:05:07.316339+00:00",
+  "ip_address": "127.0.0.1",
+  "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36",
+  "location": {
+    "city": null,
+    "region": null,
+    "country": null
+  },
+  "extra_info": {
+    "impacted_user_id": 4,
+    "changes": {
+      "email_changed": false,
+      "password_changed": false,
+      "date_of_birth_changed": true,
+      "privacy_changed": true
+    }
+  },
+  "restored": false
+}
 ]

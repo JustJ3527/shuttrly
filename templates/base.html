@@ -66,6 +66,19 @@
     <p>&copy; 2025 Shuttrly. All rights reserved.</p>
 </footer>
 {% block scripts %}
+<!-- Global Configuration -->
+<script src="{% static 'js/config.js' %}"></script>
+
+<!-- Core UI and Utility Systems -->
+<script src="{% static 'js/ui-utils.js' %}"></script>
+<script src="{% static 'js/form-validation.js' %}"></script>
+<script src="{% static 'js/countdown.js' %}"></script>
+<script src="{% static 'js/2fa.js' %}"></script>
+
+<!-- Modern Authentication System -->
+<script src="{% static 'js/auth-modern.js' %}"></script>
+
+<!-- Legacy and Additional Scripts -->
 <script src="{% static 'js/utils_scripts.js' %}"></script>
 <script src="{% static 'js/message_manager.js' %}"></script>
 <script src="{% static 'js/navbar.js' %}"></script>

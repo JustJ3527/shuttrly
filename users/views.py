@@ -1469,7 +1469,7 @@ def handle_enable_email_2fa_action(request, user):
 
     if not success:
         messages.error(request, error_message)
-        return redirect("twofa_settings")
+        return redirect("personal_settings")
 
     return redirect(redirect_url)
 
@@ -1481,10 +1481,10 @@ def handle_verify_email_2fa_action(request, user):
 
     if success:
         messages.success(request, "Email 2FA enabled successfully!")
-        return redirect(reverse("twofa_settings") + "?step=initial")
+        return redirect(reverse("personal_settings") + "?step=initial")
     else:
         messages.error(request, error_message)
-        return redirect(reverse("twofa_settings") + "?step=verify_email_code")
+        return redirect(reverse("personal_settings") + "?step=verify_email_code")
 
 
 def handle_resend_email_2fa_action(request, user):
@@ -1498,7 +1498,7 @@ def handle_resend_email_2fa_action(request, user):
     else:
         messages.error(request, error_message)
 
-    url = reverse("twofa_settings") + "?" + urlencode({"step": "verify_email_code"})
+    url = reverse("personal_settings") + "?" + urlencode({"step": "verify_email_code"})
     return redirect(url)
 
 
@@ -1509,11 +1509,11 @@ def handle_enable_totp_2fa_action(request, user, context):
 
     if not success:
         messages.error(request, error_message)
-        return redirect("twofa_settings")
+        return redirect("personal_settings")
 
     # Update context with TOTP data
     context.update(context_data)
-    return render(request, "users/2fa_settings.html", context)
+    return render(request, "users/personal_settings.html", context)
 
 
 def handle_verify_totp_2fa_action(request, user):
@@ -1523,10 +1523,10 @@ def handle_verify_totp_2fa_action(request, user):
 
     if success:
         messages.success(request, "TOTP 2FA enabled successfully!")
-        return redirect(reverse("twofa_settings") + "?step=initial")
+        return redirect(reverse("personal_settings") + "?step=initial")
     else:
         messages.error(request, error_message)
-        return redirect(reverse("twofa_settings") + "?step=verify_totp")
+        return redirect(reverse("personal_settings") + "?step=verify_totp")
 
 
 def handle_disable_2fa_action(request, user, method):
@@ -1539,7 +1539,7 @@ def handle_disable_2fa_action(request, user, method):
     else:
         messages.error(request, message)
 
-    return redirect("twofa_settings")
+    return redirect("personal_settings")
 
 
 def handle_remove_trusted_device_action(request, user, current_device_token):
@@ -1551,16 +1551,16 @@ def handle_remove_trusted_device_action(request, user, current_device_token):
 
     if not success:
         messages.error(request, error_message)
-        return redirect("twofa_settings")
+        return redirect("personal_settings")
 
     if is_current_device:
-        response = redirect("twofa_settings")
+        response = redirect("personal_settings")
         response.delete_cookie(f"trusted_device_{user.pk}")
         messages.success(request, "Current trusted device removed successfully!")
         return response
     else:
         messages.success(request, "Trusted device removed successfully!")
-        return redirect("twofa_settings")
+        return redirect("personal_settings")
 
 
 # ========= AJAX VIEWS =========
@@ -2291,83 +2291,150 @@ def edit_profile_simple_view(request):
 @redirect_not_authenticated_user
 def personal_settings_view(request):
     """
-    View for personal/private settings.
+    View for personal/private settings and 2FA management.
 
-    Handles email, password, date of birth, and privacy settings.
+    Handles email, password, date of birth, privacy settings, and all 2FA operations.
     """
     user = request.user
+    trusted_devices = TrustedDevice.objects.filter(user=user).order_by("-created_at")
+    step = request.GET.get("step", "initial")
+
+    # Get current device token and enhance device information
+    current_device_token = get_current_device_token(request, user)
+    for device in trusted_devices:
+        enhance_trusted_device_info(device, current_device_token)
+
+    # Get base context for 2FA
+    context = get_2fa_settings_context(user, trusted_devices, step)
 
     if request.method == "POST":
-        form = PersonalSettingsForm(request.POST, instance=user)
-        if form.is_valid():
-            try:
-                # Check if email changed
-                old_email = user.email
-                new_email = form.cleaned_data["email"]
-                email_changed = new_email.lower() != old_email.lower()
+        action = request.POST.get("action")
 
-                # Check if password is being changed
-                current_password = form.cleaned_data.get("current_password")
-                new_password = form.cleaned_data.get("password1")
-                password_changed = bool(new_password)
+        # Handle 2FA actions first
+        if action in [
+            "enable_email",
+            "disable_email",
+            "verify_email_code",
+            "resend_email_code",
+            "enable_totp",
+            "verify_totp",
+            "disable_totp",
+            "cancel",
+            "remove_trusted_device",
+            "revoke_device",
+        ]:
 
-                # Verify current password if changing password
-                if password_changed and not user.check_password(current_password):
-                    form.add_error("current_password", "Incorrect current password.")
-                    return render(
-                        request, "users/personal_settings.html", {"form": form}
-                    )
+            # Handle different 2FA actions
+            if action == "cancel":
+                return handle_2fa_cancel_operation(user, step)
 
-                # Handle email change
-                if email_changed:
-                    # For now, we'll allow email change without verification
-                    # In production, you might want to implement email verification here
-                    user.email = new_email
-                    user.is_email_verified = True
-                    messages.success(request, f"Email updated to {new_email}")
+            elif action == "enable_email":
+                return handle_enable_email_2fa_action(request, user)
 
-                # Handle password change
-                if password_changed:
-                    user.set_password(new_password)
-                    messages.success(request, "Password updated successfully")
+            elif action == "verify_email_code":
+                return handle_verify_email_2fa_action(request, user)
 
-                # Update other fields
-                user.date_of_birth = form.cleaned_data["date_of_birth"]
-                user.is_private = form.cleaned_data.get("is_private", False)
+            elif action == "resend_email_code":
+                return handle_resend_email_2fa_action(request, user)
 
-                user.save()
+            elif action == "enable_totp":
+                return handle_enable_totp_2fa_action(request, user, context)
 
-                # Log settings update
-                ip = get_client_ip(request)
-                user_agent = get_user_agent(request)
-                location = get_location_from_ip(ip)
+            elif action == "verify_totp":
+                return handle_verify_totp_2fa_action(request, user)
 
-                log_user_action_json(
-                    user=user,
-                    action="personal_settings_update",
-                    request=request,
-                    ip_address=ip,
-                    extra_info={
-                        "impacted_user_id": user.id,
-                        "changes": {
-                            "email_changed": email_changed,
-                            "password_changed": password_changed,
-                            "date_of_birth_changed": True,
-                            "privacy_changed": True,
-                        },
-                    },
+            elif action == "disable_email":
+                return handle_disable_2fa_action(request, user, "email")
+
+            elif action == "disable_totp":
+                return handle_disable_2fa_action(request, user, "totp")
+
+            elif action in ["remove_trusted_device", "revoke_device"]:
+                return handle_remove_trusted_device_action(
+                    request, user, current_device_token
                 )
 
-                messages.success(request, "Personal settings updated successfully!")
-                return redirect("profile")
+        # Handle personal settings form submission
+        else:
+            form = PersonalSettingsForm(request.POST, instance=user)
+            if form.is_valid():
+                try:
+                    # Check if email changed
+                    old_email = user.email
+                    new_email = form.cleaned_data["email"]
+                    email_changed = new_email.lower() != old_email.lower()
 
-            except Exception as e:
-                messages.error(request, f"Error updating personal settings: {str(e)}")
-                return render(request, "users/personal_settings.html", {"form": form})
+                    # Check if password is being changed
+                    current_password = form.cleaned_data.get("current_password")
+                    new_password = form.cleaned_data.get("password1")
+                    password_changed = bool(new_password)
+
+                    # Verify current password if changing password
+                    if password_changed and not user.check_password(current_password):
+                        form.add_error(
+                            "current_password", "Incorrect current password."
+                        )
+                        context["form"] = form
+                        return render(request, "users/personal_settings.html", context)
+
+                    # Handle email change
+                    if email_changed:
+                        # For now, we'll allow email change without verification
+                        # In production, you might want to implement email verification here
+                        user.email = new_email
+                        user.is_email_verified = True
+                        messages.success(request, f"Email updated to {new_email}")
+
+                    # Handle password change
+                    if password_changed:
+                        user.set_password(new_password)
+                        messages.success(request, "Password updated successfully")
+
+                    # Update other fields
+                    user.date_of_birth = form.cleaned_data["date_of_birth"]
+                    user.is_private = form.cleaned_data.get("is_private", False)
+
+                    user.save()
+
+                    # Log settings update
+                    ip = get_client_ip(request)
+                    user_agent = get_user_agent(request)
+                    location = get_location_from_ip(ip)
+
+                    log_user_action_json(
+                        user=user,
+                        action="personal_settings_update",
+                        request=request,
+                        ip_address=ip,
+                        extra_info={
+                            "impacted_user_id": user.id,
+                            "changes": {
+                                "email_changed": email_changed,
+                                "password_changed": password_changed,
+                                "date_of_birth_changed": True,
+                                "privacy_changed": True,
+                            },
+                        },
+                    )
+
+                    messages.success(request, "Personal settings updated successfully!")
+                    return redirect("personal_settings")
+
+                except Exception as e:
+                    messages.error(
+                        request, f"Error updating personal settings: {str(e)}"
+                    )
+                    context["form"] = form
+                    return render(request, "users/personal_settings.html", context)
+            else:
+                context["form"] = form
+                return render(request, "users/personal_settings.html", context)
     else:
+        # GET request - initialize form
         form = PersonalSettingsForm(instance=user)
+        context["form"] = form
 
-    return render(request, "users/personal_settings.html", {"form": form})
+    return render(request, "users/personal_settings.html", context)
 
 
 @redirect_not_authenticated_user

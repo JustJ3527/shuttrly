@@ -1361,7 +1361,7 @@ def handle_2fa_cancel_operation(user, step):
         user.twofa_totp_secret = ""
         user.save()
 
-    response = HttpResponseRedirect(reverse("twofa_settings") + "?step=initial")
+    response = HttpResponseRedirect(reverse("personal_settings") + "?step=initial")
     response.delete_cookie("remember_device")
     return response
 
@@ -1386,7 +1386,7 @@ def handle_enable_email_2fa(user, password):
     user.save()
     send_2FA_email(user, code)
 
-    url = reverse("twofa_settings") + "?" + urlencode({"step": "verify_email_code"})
+    url = reverse("personal_settings") + "?" + urlencode({"step": "verify_email_code"})
     return True, url, None
 
 

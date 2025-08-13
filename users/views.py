@@ -23,10 +23,11 @@ from django.contrib.auth import get_backends, login, logout
 from django.contrib.auth.forms import PasswordResetForm, SetPasswordForm
 from django.contrib.auth.tokens import default_token_generator
 from django.contrib.sites.shortcuts import get_current_site
-from django.core.mail import send_mail
+from django.core.mail import send_mail, EmailMultiAlternatives
 from django.db.models import Q
 from django.http import HttpResponseRedirect, JsonResponse
 from django.shortcuts import redirect, render
+from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.encoding import force_bytes, force_str
@@ -2461,9 +2462,24 @@ def custom_password_reset_view(request):
                     )
                 )
 
-                # Send email manually
+                # Send email manually using HTML template
                 subject = "Reset Your Shuttrly Password"
-                message = f"""
+
+                # Prepare context for the email template
+                context = {
+                    "protocol": request.scheme,
+                    "domain": request.get_host(),
+                    "uid": uid,
+                    "token": token,
+                }
+
+                # Render the HTML email template
+                html_message = render_to_string(
+                    "emails/password_reset_email.html", context
+                )
+
+                # Create plain text version as fallback
+                plain_message = f"""
 Hello,
 
 You're receiving this email because you requested a password reset for your Shuttrly account.
@@ -2480,13 +2496,15 @@ Best regards,
 The Shuttrly Team
                 """
 
-                send_mail(
+                # Send email with both HTML and plain text versions
+                email = EmailMultiAlternatives(
                     subject=subject,
-                    message=message,
+                    body=plain_message,
                     from_email=settings.DEFAULT_FROM_EMAIL,
-                    recipient_list=[email],
-                    fail_silently=False,
+                    to=[email],
                 )
+                email.attach_alternative(html_message, "text/html")
+                email.send(fail_silently=False)
 
                 return redirect("password_reset_done")
 

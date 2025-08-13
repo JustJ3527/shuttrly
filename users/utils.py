@@ -38,12 +38,18 @@ from django.urls import reverse
 from django.utils import timezone
 from django.utils.html import strip_tags
 from django.utils.http import http_date
-from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_POST
 
 # === Local Imports ===
 from logs.utils import log_user_action_json
 from .models import CustomUser, PendingFileDeletion, TrustedDevice
+from .forms import LoginForm, Email2FAForm, TOTP2FAForm, Choose2FAMethodForm
+
+# === Constants ===
+from .constants import (
+    EMAIL_CODE_RESEND_DELAY_SECONDS,
+    EMAIL_CODE_EXPIRY_SECONDS,
+    MAX_2FA_ATTEMPTS,
+)
 
 # === Logger Setup ===
 import logging
@@ -352,14 +358,6 @@ def calculate_age(birth_date):
     )
 
 
-# Import constants from centralized configuration
-from .constants import (
-    EMAIL_CODE_RESEND_DELAY_SECONDS,
-    EMAIL_CODE_EXPIRY_SECONDS,
-    MAX_2FA_ATTEMPTS,
-)
-
-
 def can_resend_code(session_data):
     """Check if a code can be resent."""
     code_sent_at = session_data.get("code_sent_at")
@@ -620,6 +618,7 @@ def login_success(
     # Clean up session data to prevent memory leaks
     request.session.pop("login_data", None)
     request.session.pop("pre_2fa_user_id", None)
+    request.session.pop("current_login_step", None)  # Clean up current step
 
     return response
 
@@ -791,7 +790,6 @@ def handle_login_step_1_credentials(request):
     Returns:
         tuple: (success: bool, user: CustomUser or None, error_message: str or None)
     """
-    from .forms import LoginForm
 
     form = LoginForm(request.POST)
     if not form.is_valid():
@@ -804,18 +802,54 @@ def handle_login_step_1_credentials(request):
     # Store remember_device preference in session for later use
     request.session["remember_device"] = remember_device
 
+    # Determine if input is email or username (more robust detection)
+    # Check for @ symbol and basic email structure
+    is_email = (
+        "@" in identifier
+        and "." in identifier.split("@")[-1]
+        and len(identifier.split("@")[-1]) > 1
+    )
+
     # Find user by email or username (flexible login)
     user_qs = CustomUser.objects.filter(Q(email=identifier) | Q(username=identifier))
 
     if not user_qs.exists():
-        return False, None, "No account found with this email/username"
+        if is_email:
+            # Format email for better display (only after submission)
+            formatted_email = identifier.lower().strip()
+            return (
+                False,
+                None,
+                f"No account found with the email address: {formatted_email}",
+            )
+        else:
+            # Format username for better display
+            formatted_username = identifier.lower().strip()
+            return (
+                False,
+                None,
+                f"No account found with the username: {formatted_username}",
+            )
 
     user = user_qs.first()
 
     # Authenticate user with Django's built-in authentication
     authenticated_user = authenticate(request, username=identifier, password=password)
     if authenticated_user is None:
-        return False, None, "Incorrect email/username or password"
+        if is_email:
+            formatted_email = identifier.lower().strip()
+            return (
+                False,
+                None,
+                f"Incorrect password for the email address: {formatted_email}",
+            )
+        else:
+            formatted_username = identifier.lower().strip()
+            return (
+                False,
+                None,
+                f"Incorrect password for the username: {formatted_username}",
+            )
 
     # Check if email is verified (security requirement)
     if not user.is_email_verified:
@@ -837,7 +871,6 @@ def handle_login_step_2_2fa_choice(request):
     Returns:
         tuple: (success: bool, user: CustomUser or None, error_message: str or None)
     """
-    from .forms import Choose2FAMethodForm
 
     session_data = request.session.get("login_data", {})
     user_id = session_data.get("user_id")
@@ -883,7 +916,6 @@ def handle_login_step_3_2fa_verification_logic(request):
     Returns:
         tuple: (success: bool, user: CustomUser or None, error_message: str or None)
     """
-    from .forms import Email2FAForm, TOTP2FAForm
 
     session_data = request.session.get("login_data", {})
     user_id = session_data.get("user_id")
@@ -924,7 +956,6 @@ def _handle_email_2fa_verification(request, session_data, user):
     Returns:
         tuple: (success: bool, user: CustomUser or None, error_message: str or None)
     """
-    from .forms import Email2FAForm
 
     form = Email2FAForm(request.POST)
     if not form.is_valid():
@@ -987,7 +1018,6 @@ def _handle_totp_2fa_verification(request, user):
     Returns:
         tuple: (success: bool, user: CustomUser or None, error_message: str or None)
     """
-    from .forms import TOTP2FAForm
 
     form = TOTP2FAForm(request.POST)
     if not form.is_valid():

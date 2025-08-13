@@ -1,8 +1,18 @@
+# === Django Imports ===
 from django import forms
-from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
-from users.models import CustomUser
-from .validators import UsernameValidator
+from django.contrib.auth.forms import (
+    UserCreationForm,
+    UserChangeForm,
+    PasswordResetForm as DjangoPasswordResetForm,
+    SetPasswordForm as DjangoSetPasswordForm,
+)
+from django.contrib.auth import authenticate
 from django.core.exceptions import ValidationError
+from django.utils.translation import gettext_lazy as _
+
+# === Project Models ===
+from .models import CustomUser
+from .validators import UsernameValidator
 from .validators import CustomPasswordValidator
 
 
@@ -750,7 +760,7 @@ class SimpleProfileEditForm(forms.ModelForm):
 
 
 class PersonalSettingsForm(forms.ModelForm):
-    """Form for personal/private settings (email, password, date of birth, privacy)."""
+    """Form for personal/private settings (email, password, date of birth, privacy, 2FA)."""
 
     current_password = forms.CharField(
         label="Current Password",
@@ -920,3 +930,63 @@ class PublicProfileForm(forms.ModelForm):
             ):
                 raise forms.ValidationError("This username is already taken.")
         return username
+
+
+# =============================================================================
+# CUSTOM PASSWORD RESET FORMS
+# =============================================================================
+
+
+class CustomPasswordResetForm(DjangoPasswordResetForm):
+    """
+    Custom password reset form that uses our email field.
+    """
+
+    def clean_email(self):
+        email = self.cleaned_data["email"]
+        if not CustomUser.objects.filter(email=email).exists():
+            # Don't reveal if email exists or not (security)
+            pass
+        return email
+
+
+class CustomSetPasswordForm(DjangoSetPasswordForm):
+    """
+    Custom set password form that validates password strength and ensures
+    the new password is different from the old one.
+    """
+
+    def __init__(self, user, *args, **kwargs):
+        super().__init__(user, *args, **kwargs)
+        # Store the user for validation
+        self.user = user
+
+    def clean_new_password1(self):
+        password1 = self.cleaned_data.get("new_password1")
+
+        if password1:
+            # Check if new password is different from old password
+            if self.user.check_password(password1):
+                raise forms.ValidationError(
+                    "Your new password must be different from your current password."
+                )
+
+            # Validate password strength using our custom validator
+            validator = CustomPasswordValidator()
+            try:
+                validator.validate(password1)
+            except ValidationError as e:
+                raise forms.ValidationError(str(e))
+
+        return password1
+
+    def clean(self):
+        cleaned_data = super().clean()
+        password1 = cleaned_data.get("new_password1")
+        password2 = cleaned_data.get("new_password2")
+
+        if password1 and password2:
+            if password1 != password2:
+                raise forms.ValidationError("The two password fields didn't match.")
+
+        return cleaned_data

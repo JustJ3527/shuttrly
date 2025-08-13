@@ -28,7 +28,7 @@
 
   {% if email_2fa_enabled %}
     <p>Email-based 2FA is enabled.</p>
-    <form method="post">
+    <form method="POST">
       {% csrf_token %}
       <input type="hidden" name="action" value="disable_email">
       <input type="password" name="password" placeholder="Password" required>
@@ -37,14 +37,14 @@
 
   {% elif step == "verify_email_code" %}
     <p>A code has been sent to your email address. Please enter it below.</p>
-    <form method="post">
+    <form method="POST">
       {% csrf_token %}
       <input type="hidden" name="action" value="verify_email_code" />
       <input type="text" name="email_code" placeholder="Enter the received code" required />
       <button type="submit">Verify</button>
     </form>
 
-    <form method="post" style="display: inline;">
+    <form method="POST" style="display: inline;">
       {% csrf_token %}
       <button type="submit" name="action" value="cancel">Cancel</button>
     </form>
@@ -55,7 +55,7 @@
       {% endif %}
     </div>
 
-    <form method="post" id="resend-form" {% if not can_resend %}style="display:none;"{% endif %}>
+    <form method="POST" id="resend-form" {% if not can_resend %}style="display:none;"{% endif %}>
       {% csrf_token %}
       <input type="hidden" name="action" value="resend_email_code" />
       <button type="submit">Resend Code</button>
@@ -63,7 +63,7 @@
 
   {% else %}
     <p>Email-based 2FA is disabled.</p>
-    <form method="post">
+    <form method="POST">
       {% csrf_token %}
       <input type="password" name="password" placeholder="Password" required>
       <input type="hidden" name="action" value="enable_email">
@@ -78,7 +78,7 @@
 
   {% if totp_enabled %}
     <p>TOTP-based 2FA is enabled.</p>
-    <form method="post">
+    <form method="POST">
       {% csrf_token %}
       <input type="hidden" name="action" value="disable_totp">
       <input type="password" name="password" placeholder="Password" required>
@@ -100,20 +100,20 @@
       </div>
     {% endif %}
 
-    <form method="post">
+    <form method="POST">
       {% csrf_token %}
       <input type="text" name="totp_code" placeholder="6-digit code" required>
       <button type="submit" name="action" value="verify_totp">Verify</button>
     </form>
 
-    <form method="post" style="margin-top: 1em;">
+    <form method="POST" style="margin-top: 1em;">
       {% csrf_token %}
       <button type="submit" name="action" value="cancel">Cancel</button>
     </form>
 
   {% else %}
     <p>TOTP-based 2FA is disabled.</p>
-    <form method="post">
+    <form method="POST">
       {% csrf_token %}
       <input type="hidden" name="action" value="enable_totp">
       <input type="password" name="password" placeholder="Password" required>

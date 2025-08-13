@@ -11,19 +11,26 @@ This module contains all user-related views including:
 """
 
 # === Python Standard Library ===
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from urllib.parse import urlencode
-import re
+import uuid
+
 
 # === Django Imports ===
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import get_backends, login, logout
+from django.contrib.auth.forms import PasswordResetForm, SetPasswordForm
+from django.contrib.auth.tokens import default_token_generator
+from django.contrib.sites.shortcuts import get_current_site
+from django.core.mail import send_mail
 from django.db.models import Q
 from django.http import HttpResponseRedirect, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.encoding import force_bytes, force_str
+from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods, require_POST
 from django.core.exceptions import ValidationError
@@ -51,28 +58,23 @@ from .forms import (
     SimpleProfileEditForm,
     PersonalSettingsForm,
     PublicProfileForm,
+    CustomPasswordResetForm,
+    CustomSetPasswordForm,
 )
 
 # === Project Utils ===
 from .utils import (
-    analyze_user_agent,
     calculate_age,
     can_resend_code,
     generate_email_code,
-    generate_qr_code_base64,
-    generate_totp_secret,
     get_location_from_ip,
-    get_totp_uri,
-    is_email_code_valid,
     is_trusted_device,
     login_success,
     schedule_profile_picture_deletion,
     send_verification_email,
-    verify_totp,
     get_changes_dict,
     get_user_agent,
     get_client_ip,
-    hash_token,
     get_user_from_session,
     send_2FA_email,
     initialize_login_session_data,
@@ -80,7 +82,6 @@ from .utils import (
     handle_resend_code_request,
     _calculate_time_until_resend,
     # 2FA Settings utility functions
-    get_2fa_resend_status,
     get_current_device_token,
     enhance_trusted_device_info,
     handle_2fa_cancel_operation,
@@ -98,7 +99,6 @@ from .utils import (
     handle_login_step_1_credentials as utils_handle_step_1,
     handle_login_step_2_2fa_choice as utils_handle_step_2,
     handle_login_step_3_2fa_verification_logic,
-    handle_resend_code_request,
 )
 
 
@@ -106,8 +106,12 @@ from .utils import (
 from .constants import (
     EMAIL_CODE_RESEND_DELAY_SECONDS,
     EMAIL_CODE_EXPIRY_SECONDS,
-    MAX_2FA_ATTEMPTS,
 )
+
+
+# === Project Validators ===
+from .validators import UsernameValidator
+
 
 # === Project Logs ===
 from logs.utils import log_user_action_json
@@ -266,7 +270,6 @@ def handle_step_1_email(request):
                 verification_code = generate_email_code()
 
                 # Generate a unique temporary username
-                import uuid
 
                 temp_username = f"temp_{uuid.uuid4().hex[:8]}"
 
@@ -312,10 +315,6 @@ def handle_step_1_email(request):
 
         # Add informational message about the verification process only on first visit
         if not session_data.get("info_message_shown"):
-            messages.info(
-                request,
-                "📧 We'll send a verification code to your email address. This helps us verify your identity and prevent spam accounts.",
-            )
             # Mark that the message has been shown
             session_data["info_message_shown"] = True
             request.session["register_data"] = session_data
@@ -828,8 +827,6 @@ def check_username_availability(request):
 
     Returns JSON response with availability status and message.
     """
-    from .validators import UsernameValidator
-
     username = request.POST.get("username", "").strip()
     validator = UsernameValidator()
 
@@ -873,7 +870,7 @@ def login_view(request):
     if request.user.is_authenticated:
         return redirect("profile")
 
-    # Get current step from POST or GET
+    # Get current step from POST, session, or default to login
     if request.method == "POST":
         step = request.POST.get("step", "login")
 
@@ -882,7 +879,10 @@ def login_view(request):
             prev_step = get_previous_login_step(step)
             return handle_previous_login_step(request, prev_step)
     else:
-        step = request.GET.get("step", "login")
+        # Check session first, then fallback to GET parameter for backward compatibility
+        step = request.session.get(
+            "current_login_step", request.GET.get("step", "login")
+        )
 
     # Dispatch to appropriate step handler
     step_handlers = {
@@ -910,6 +910,9 @@ def handle_previous_login_step(request, step):
     """
     session_data = request.session.get("login_data", {})
 
+    # Update session with the previous step
+    request.session["current_login_step"] = step
+
     form_classes = {
         "login": LoginForm,
         "choose_2fa": Choose2FAMethodForm,
@@ -920,7 +923,7 @@ def handle_previous_login_step(request, step):
     FormClass = form_classes.get(step, LoginForm)
     form = FormClass(initial=session_data)
 
-    return render(
+    response = render(
         request,
         "users/login.html",
         {
@@ -940,6 +943,13 @@ def handle_previous_login_step(request, step):
             ),
         },
     )
+
+    # Add headers to prevent caching and avoid reload warnings
+    response["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response["Pragma"] = "no-cache"
+    response["Expires"] = "0"
+
+    return response
 
 
 @redirect_authenticated_user
@@ -966,7 +976,9 @@ def handle_login_step_1_credentials(request):
 
                 # If both methods are enabled, go to choice step
                 if user.email_2fa_enabled and user.totp_enabled:
-                    return HttpResponseRedirect(f"{reverse('login')}?step=choose_2fa")
+                    # Store step in session instead of URL parameter
+                    request.session["current_login_step"] = "choose_2fa"
+                    return redirect("login")
 
                 # If only email 2FA is enabled
                 elif user.email_2fa_enabled:
@@ -980,6 +992,9 @@ def handle_login_step_1_credentials(request):
                     session_data["chosen_2fa_method"] = "email"
                     request.session["login_data"] = session_data
 
+                    # Store step in session instead of URL parameter
+                    request.session["current_login_step"] = "email_2fa"
+
                     success = send_2FA_email(user, code)
 
                     if success:
@@ -990,7 +1005,7 @@ def handle_login_step_1_credentials(request):
                     else:
                         messages.error(request, "Error sending verification code.")
 
-                    return HttpResponseRedirect(f"{reverse('login')}?step=email_2fa")
+                    return redirect("login")
 
                 # If only TOTP is enabled
                 elif user.totp_enabled:
@@ -999,22 +1014,34 @@ def handle_login_step_1_credentials(request):
                     session_data["chosen_2fa_method"] = "totp"
                     request.session["login_data"] = session_data
 
-                    return HttpResponseRedirect(f"{reverse('login')}?step=totp_2fa")
+                    # Store step in session instead of URL parameter
+                    request.session["current_login_step"] = "totp_2fa"
+
+                    return redirect("login")
 
             # No 2FA required, proceed to login
             return handle_login_success(request, user)
         else:
             form = LoginForm(request.POST)
+            # Add error to the email field for proper display
             form.add_error("email", error_message)
+            # Also add a general error message for better visibility
             messages.error(request, error_message)
     else:
         form = LoginForm()
 
-    return render(
+    response = render(
         request,
         "users/login.html",
         {"form": form, "step": "login", "progress": get_login_step_progress("login")},
     )
+
+    # Add headers to prevent caching and avoid reload warnings
+    response["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response["Pragma"] = "no-cache"
+    response["Expires"] = "0"
+
+    return response
 
 
 @redirect_authenticated_user
@@ -2403,3 +2430,189 @@ def public_profile_view(request):
         form = PublicProfileForm(instance=user)
 
     return render(request, "users/public_profile.html", {"form": form})
+
+
+# =============================================================================
+# CUSTOM PASSWORD RESET VIEWS (Bypass Sites framework issues)
+# =============================================================================
+
+
+def custom_password_reset_view(request):
+    """
+    Custom password reset view that bypasses Sites framework issues.
+    """
+    if request.method == "POST":
+        form = CustomPasswordResetForm(request.POST)
+        if form.is_valid():
+            email = form.cleaned_data["email"]
+            try:
+                # Find user by email
+                user = CustomUser.objects.get(email=email)
+
+                # Generate token and UID
+                uid = urlsafe_base64_encode(force_bytes(user.pk))
+                token = default_token_generator.make_token(user)
+
+                # Build reset URL manually (bypass Sites framework)
+                reset_url = request.build_absolute_uri(
+                    reverse(
+                        "password_reset_confirm",
+                        kwargs={"uidb64": uid, "token": token},
+                    )
+                )
+
+                # Send email manually
+                subject = "Reset Your Shuttrly Password"
+                message = f"""
+Hello,
+
+You're receiving this email because you requested a password reset for your Shuttrly account.
+
+Please click the link below to reset your password:
+
+{reset_url}
+
+This link will expire in 24 hours for security reasons.
+
+If you didn't request this password reset, please ignore this email.
+
+Best regards,
+The Shuttrly Team
+                """
+
+                send_mail(
+                    subject=subject,
+                    message=message,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[email],
+                    fail_silently=False,
+                )
+
+                return redirect("password_reset_done")
+
+            except CustomUser.DoesNotExist:
+                # Don't reveal if email exists or not (security)
+                pass
+
+            # Always redirect to done page for security
+            return redirect("password_reset_done")
+    else:
+        form = CustomPasswordResetForm()
+
+    return render(request, "reset-password/password_reset.html", {"form": form})
+
+
+def custom_password_reset_done_view(request):
+    """
+    Custom password reset done view.
+    """
+    return render(request, "reset-password/password_reset_done.html")
+
+
+def custom_password_reset_confirm_view(request, uidb64, token):
+    """
+    Custom password reset confirm view.
+    """
+    try:
+        uid = force_str(urlsafe_base64_decode(uidb64))
+        user = CustomUser.objects.get(pk=uid)
+    except (TypeError, ValueError, OverflowError, CustomUser.DoesNotExist):
+        user = None
+
+    if user is not None and default_token_generator.check_token(user, token):
+        if request.method == "POST":
+            form = CustomSetPasswordForm(user, request.POST)
+            if form.is_valid():
+                form.save()
+                return redirect("password_reset_complete")
+        else:
+            form = CustomSetPasswordForm(user)
+
+        return render(
+            request,
+            "reset-password/password_reset_confirm.html",
+            {"form": form, "validlink": True},
+        )
+    else:
+        return render(
+            request, "reset-password/password_reset_confirm.html", {"validlink": False}
+        )
+
+
+def custom_password_reset_complete_view(request):
+    """
+    Custom password reset complete view.
+    """
+    return render(request, "reset-password/password_reset_complete.html")
+
+
+def public_user_profile_view(request, username):
+    """
+    Display public profile of a user by username.
+
+    This view shows public information about a user including:
+    - Username
+    - Profile picture
+    - Bio (if public)
+    - Join date
+    - Online status (if public)
+
+    Args:
+        request: HTTP request object
+        username: Username of the user whose profile to display
+
+    Returns:
+        Rendered template with user profile data or 404 if user not found
+    """
+    try:
+        # Get user by username, excluding anonymized users
+        user = CustomUser.objects.get(
+            username=username, is_anonymized=False, is_active=True
+        )
+
+        # Check if user profile is private
+        is_private_profile = user.is_private
+        can_see_full_profile = (
+            hasattr(request, "user")
+            and request.user
+            and request.user.is_authenticated
+            and request.user == user
+        )
+
+        # For private profiles, only show limited info unless it's the owner
+        if is_private_profile and not can_see_full_profile:
+            # Show limited profile info for private profiles
+            context = {
+                "profile_user": user,
+                "is_private": True,
+                "username": username,
+                "can_edit": False,
+                "show_limited_info": True,
+            }
+            return render(request, "users/public_profile.html", context)
+
+        # Prepare context data
+        context = {
+            "profile_user": user,
+            "is_private": False,
+            "username": username,
+            "can_edit": hasattr(request, "user")
+            and request.user
+            and request.user.is_authenticated
+            and request.user == user,
+        }
+
+        return render(request, "users/public_profile.html", context)
+
+    except CustomUser.DoesNotExist:
+        # Return 404 if user doesn't exist
+        return render(
+            request,
+            "users/public_profile.html",
+            {
+                "profile_user": None,
+                "is_private": False,
+                "username": username,
+                "user_not_found": True,
+            },
+        )

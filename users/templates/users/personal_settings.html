@@ -18,7 +18,7 @@
 
             <!-- Settings Form -->
             <div class="settings-form">
-                <form method="post" id="personal-settings-form">
+                <form method="POST" id="personal-settings-form">
                     {% csrf_token %}
                     
                     <!-- Account Information Section -->
@@ -122,6 +122,81 @@
                         </div>
                     </div>
 
+                    <!-- Two-Factor Authentication Section -->
+                    <div class="form-section">
+                        <h3><i class="fas fa-shield-alt"></i> Two-Factor Authentication</h3>
+                        
+                        <div class="twofa-status">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="twofa-method">
+                                        <h4><i class="fas fa-envelope"></i> Email 2FA</h4>
+                                        <div class="twofa-status-indicator">
+                                            {% if user.email_2fa_enabled %}
+                                                <span class="status-badge enabled">
+                                                    <i class="fas fa-check-circle"></i> Enabled
+                                                </span>
+                                            {% else %}
+                                                <span class="status-badge disabled">
+                                                    <i class="fas fa-times-circle"></i> Disabled
+                                                </span>
+                                            {% endif %}
+                                        </div>
+                                        <p class="twofa-description">
+                                            Receive verification codes via email when logging in from new devices.
+                                        </p>
+                                        {% if user.email_2fa_enabled %}
+                                            <button type="button" class="btn btn-outline-danger btn-sm" onclick="disableEmail2FA()">
+                                                <i class="fas fa-times"></i> Disable Email 2FA
+                                            </button>
+                                        {% else %}
+                                            <button type="button" class="btn btn-outline-success btn-sm" onclick="enableEmail2FA()">
+                                                <i class="fas fa-plus"></i> Enable Email 2FA
+                                            </button>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <div class="twofa-method">
+                                        <h4><i class="fas fa-mobile-alt"></i> TOTP 2FA</h4>
+                                        <div class="twofa-status-indicator">
+                                            {% if user.totp_enabled %}
+                                                <span class="status-badge enabled">
+                                                    <i class="fas fa-check-circle"></i> Enabled
+                                                </span>
+                                            {% else %}
+                                                <span class="status-badge disabled">
+                                                    <i class="fas fa-times-circle"></i> Disabled
+                                                </span>
+                                            {% endif %}
+                                        </div>
+                                        <p class="twofa-description">
+                                            Use authenticator apps like Google Authenticator or Authy.
+                                        </p>
+                                        {% if user.totp_enabled %}
+                                            <button type="button" class="btn btn-outline-danger btn-sm" onclick="disableTOTP2FA()">
+                                                <i class="fas fa-times"></i> Disable TOTP 2FA
+                                            </button>
+                                        {% else %}
+                                            <a href="{% url 'twofa_settings' %}" class="btn btn-outline-success btn-sm">
+                                                <i class="fas fa-plus"></i> Setup TOTP 2FA
+                                            </a>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="twofa-info">
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle"></i>
+                                <strong>Security Tip:</strong> Two-factor authentication adds an extra layer of security to your account. 
+                                We recommend enabling at least one method.
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Action Buttons -->
                     <div class="form-actions">
                         <button type="submit" class="btn btn-primary btn-lg">
@@ -218,5 +293,30 @@
             document.getElementById('emailVerificationModal').querySelector('.btn-close').click();
             document.getElementById('personal-settings-form').submit();
         });
+
+        // 2FA Management Functions
+        function enableEmail2FA() {
+            if (confirm('Are you sure you want to enable Email 2FA? You will receive verification codes via email when logging in from new devices.')) {
+                // Here you would typically make an AJAX call to enable email 2FA
+                // For now, we'll redirect to the 2FA settings page
+                window.location.href = '{% url "twofa_settings" %}';
+            }
+        }
+
+        function disableEmail2FA() {
+            if (confirm('Are you sure you want to disable Email 2FA? This will reduce the security of your account.')) {
+                // Here you would typically make an AJAX call to disable email 2FA
+                // For now, we'll redirect to the 2FA settings page
+                window.location.href = '{% url "twofa_settings" %}';
+            }
+        }
+
+        function disableTOTP2FA() {
+            if (confirm('Are you sure you want to disable TOTP 2FA? This will reduce the security of your account.')) {
+                // Here you would typically make an AJAX call to disable TOTP 2FA
+                // For now, we'll redirect to the 2FA settings page
+                window.location.href = '{% url "twofa_settings" %}';
+            }
+        }
     </script>
 {% endblock %}

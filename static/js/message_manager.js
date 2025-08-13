@@ -188,7 +188,6 @@ class MessageManager {
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('MessageManager: Initializing...');
     new MessageManager();
 });
 

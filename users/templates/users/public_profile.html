@@ -1,6 +1,15 @@
 {% extends 'base.html' %}
 {% load static %}
-{% block title %}Public Profile - Shuttrly{% endblock %}
+{% load datetime_tags %}
+
+{% block title %}
+    {% if profile_user %}
+        {{ profile_user.username }}'s Profile - Shuttrly
+    {% else %}
+        User Profile - Shuttrly
+    {% endif %}
+{% endblock %}
+
 {% block head %}
     {{ block.super }}
     <link rel="stylesheet" href="{% static 'css/users.css' %}">
@@ -9,125 +18,280 @@
 {% block content %}
 <div class="container-bc">
     <div class="container-fluid">
-        <div class="profile-edit-container">
-            <!-- Header -->
-            <div class="profile-edit-header">
-                <h1><i class="fas fa-user-circle"></i> Public Profile</h1>
-                <p class="text-muted">Customize how others see your profile</p>
+        {% if user_not_found %}
+            <!-- User not found -->
+            <div class="profile-container-fluid">
+                <div class="profile-not-found-fluid text-center">
+                    <div class="profile-avatar-fluid">
+                        <div class="profile-picture-placeholder-fluid">
+                            <i class="fas fa-user-slash fa-3x"></i>
+                        </div>
+                    </div>
+                    <div class="profile-info-fluid">
+                        <h1 class="profile-name-fluid">User Not Found</h1>
+                        <p class="profile-username-fluid">@{{ username }}</p>
+                        <p class="profile-email-fluid">The user "{{ username }}" could not be found or may have been deleted.</p>
+                        <div class="profile-actions-fluid">
+                            <a href="{% url 'home' %}" class="btn btn-primary">
+                                <i class="fas fa-home"></i> Go Home
+                            </a>
+                        </div>
+                    </div>
+                </div>
             </div>
-
-            <!-- Profile Form -->
-            <div class="profile-edit-form">
-                <form method="post" enctype="multipart/form-data" id="public-profile-form">
-                    {% csrf_token %}
+        {% elif is_private and show_limited_info %}
+            <!-- Private profile - Limited info display -->
+            <div class="profile-container-fluid">
+                <div class="profile-header-fluid">
+                    <div class="profile-avatar-fluid">
+                        {% if profile_user.profile_picture %}
+                            <img src="{{ profile_user.profile_picture.url }}" 
+                                 alt="{{ profile_user.username }}'s profile picture" 
+                                 class="profile-picture-fluid">
+                        {% else %}
+                            <div class="profile-picture-placeholder-fluid">
+                                <i class="fas fa-user"></i>
+                            </div>
+                        {% endif %}
+                    </div>
                     
-                    <!-- Profile Picture Section -->
-                    <div class="form-section">
-                        <h3><i class="fas fa-camera"></i> Profile Picture</h3>
-                        
-                        <div class="profile-picture-section">
-                            <div class="current-picture">
-                                {% if user.profile_picture %}
-                                    <img src="{{ user.profile_picture.url }}" alt="Current Profile Picture" class="profile-picture-preview">
+                    <div class="profile-info-fluid">
+                        <div class="profile-name-section">
+                            <h1 class="profile-name-fluid">
+                                {% if profile_user.first_name and profile_user.last_name %}
+                                    {{ profile_user.first_name }} {{ profile_user.last_name }}
                                 {% else %}
-                                    <div class="profile-picture-placeholder">
-                                        <i class="fas fa-user"></i>
+                                    {{ profile_user.username }}
+                                {% endif %}
+                            </h1>
+                            <p class="profile-username-fluid">@{{ profile_user.username }}</p>
+                            
+                        </div>
+                        
+                        <div class="profile-bio-fluid">
+                            <p><i class="fas fa-lock text-warning"></i> This profile is private. Only basic information is visible.</p>
+                        </div>
+                        
+                        <!-- Social Actions for Private Profiles -->
+                        {% if request.user.is_authenticated and request.user != profile_user %}
+                            <div class="profile-social-actions-fluid">
+                                <button class="btn btn-primary btn-sm follow-btn" data-username="{{ profile_user.username }}">
+                                    <i class="fas fa-user-plus"></i> Follow
+                                </button>
+                                <button class="btn btn-outline-primary btn-sm message-btn" data-username="{{ profile_user.username }}">
+                                    <i class="fas fa-envelope"></i> Message
+                                </button>
+                            </div>
+                        {% elif not request.user.is_authenticated %}
+                            <div class="profile-social-actions-fluid">
+                                <a href="{% url 'login' %}" class="btn btn-primary btn-sm">
+                                    <i class="fas fa-user-plus"></i> Follow
+                                </a>
+                                <a href="{% url 'login' %}" class="btn btn-outline-primary btn-sm">
+                                    <i class="fas fa-envelope"></i> Message
+                                </a>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        {% elif is_private %}
+            <!-- Private profile - No access -->
+            <div class="profile-container-fluid">
+                <div class="profile-private-fluid text-center">
+                    <div class="profile-avatar-fluid">
+                        <div class="profile-picture-placeholder-fluid">
+                            <i class="fas fa-lock fa-3x"></i>
+                        </div>
+                    </div>
+                    <div class="profile-info-fluid">
+                        <h1 class="profile-name-fluid">Profile is Private</h1>
+                        <p class="profile-username-fluid">@{{ username }}</p>
+                        <p class="profile-email-fluid">The profile of "{{ username }}" is set to private and cannot be viewed.</p>
+                        <div class="profile-actions-fluid">
+                            <a href="{% url 'home' %}" class="btn btn-primary">
+                                <i class="fas fa-home"></i> Go Home
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% elif profile_user %}
+            <!-- Public profile display - Modern fluid style -->
+            <div class="profile-container-fluid">
+                <!-- Profile Header - Fluid design -->
+                <div class="profile-header-fluid">
+                    <div class="profile-avatar-fluid">
+                        {% if profile_user.profile_picture %}
+                            <img src="{{ profile_user.profile_picture.url }}" 
+                                 alt="{{ profile_user.username }}'s profile picture" 
+                                 class="profile-picture-fluid">
+                        {% else %}
+                            <div class="profile-picture-placeholder-fluid">
+                                <i class="fas fa-user"></i>
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="profile-info-fluid">
+                        <div class="profile-name-section">
+                            <h1 class="profile-name-fluid">
+                                {% if profile_user.first_name and profile_user.last_name %}
+                                    {{ profile_user.first_name }} {{ profile_user.last_name }}
+                                {% else %}
+                                    {{ profile_user.username }}
+                                {% endif %}
+                            </h1>
+                            <div>
+                                <p class="profile-username-fluid">@{{ profile_user.username }}</p>
+                                <span class="stat-number-fluid">
+                                    {% if profile_user.is_online %}
+                                        <span class="status-indicator online">
+                                            <i class="fas fa-circle"></i> Online
+                                        </span>
+                                    {% else %}
+                                        <span class="status-indicator offline">
+                                            <i class="fas fa-circle"></i> Offline
+                                        </span>
+                                    {% endif %}
+                                </span>
+                            </div>
+                        </div>
+                    
+                        
+                        {% if profile_user.bio %}
+                            <div class="profile-bio-fluid">
+                                <p>{{ profile_user.bio }}</p>
+                            </div>
+                        {% endif %}
+                        
+                        <!-- Profile Stats - Fluid layout -->
+                        <div class="profile-stats-fluid">
+                            <div class="stat-item-fluid">
+                                <span class="stat-number-fluid">{{ profile_user.date_joined|date:"Y" }}</span>
+                                <span class="stat-label-fluid">Joined</span>
+                            </div>
+                            <div class="stat-item-fluid">
+                                <span class="stat-number-fluid">
+                                    {% if profile_user.is_private %}
+                                        <i class="fas fa-lock"></i>
+                                    {% else %}
+                                        <i class="fas fa-globe"></i>
+                                    {% endif %}
+                                </span>
+                                <span class="stat-label-fluid">
+                                    {% if profile_user.is_private %}Private{% else %}Public{% endif %}
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <!-- Social Actions - Follow and Message buttons -->
+                        {% if not can_edit and request.user.is_authenticated %}
+                            <div class="profile-social-actions-fluid">
+                                <button class="btn btn-primary btn-sm follow-btn" data-username="{{ profile_user.username }}">
+                                    <i class="fas fa-user-plus"></i> Follow
+                                </button>
+                                <button class="btn btn-outline-primary btn-sm message-btn" data-username="{{ profile_user.username }}">
+                                    <i class="fas fa-envelope"></i> Message
+                                </button>
+                            </div>
+                        {% elif not can_edit and not request.user.is_authenticated %}
+                            <div class="profile-social-actions-fluid">
+                                <a href="{% url 'login' %}" class="btn btn-primary btn-sm">
+                                    <i class="fas fa-user-plus"></i> Follow
+                                </a>
+                                <a href="{% url 'login' %}" class="btn btn-outline-primary btn-sm">
+                                    <i class="fas fa-envelope"></i> Message
+                                </a>
+                            </div>
+                        {% endif %}
+                        
+                        {% if can_edit %}
+                            <div class="profile-actions-fluid">
+                                <a href="{% url 'public_profile' %}" class="btn btn-outline-primary btn-sm">
+                                    <i class="fas fa-edit"></i> Edit Profile
+                                </a>
+                                <a href="{% url 'profile' %}" class="btn btn-outline-secondary btn-sm">
+                                    <i class="fas fa-cog"></i> Settings
+                                </a>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Additional Info - Fluid cards -->
+                <div class="profile-info-cards-fluid">
+                    {% if profile_user.first_name or profile_user.last_name or profile_user.last_login_date %}
+                        <div class="info-card-fluid">
+                            <div class="info-content-fluid">
+                                {% if profile_user.first_name or profile_user.last_name %}
+                                    <div class="info-item-fluid">
+                                        <i class="fas fa-user-circle"></i>
+                                        <span class="info-text-fluid">
+                                            {% if profile_user.first_name and profile_user.last_name %}
+                                                {{ profile_user.first_name }} {{ profile_user.last_name }}
+                                            {% elif profile_user.first_name %}
+                                                {{ profile_user.first_name }}
+                                            {% elif profile_user.last_name %}
+                                                {{ profile_user.last_name }}
+                                            {% endif %}
+                                        </span>
                                     </div>
                                 {% endif %}
-                            </div>
-                            <div class="picture-upload">
-                                <label for="id_profile_picture" class="btn btn-outline-primary">
-                                    <i class="fas fa-camera"></i> Change Photo
-                                </label>
-                                <input type="file" id="id_profile_picture" name="profile_picture" accept="image/*" style="display: none;">
-                                <small class="form-text text-muted">
-                                    <i class="fas fa-info-circle"></i> 
-                                    JPG, PNG or GIF. Max 5MB. This will be visible to everyone.
-                                </small>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Personal Information Section -->
-                    <div class="form-section">
-                        <h3><i class="fas fa-user"></i> Personal Information</h3>
-                        
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label for="id_first_name">First Name *</label>
-                                    <input type="text" class="form-control" id="id_first_name" name="first_name" 
-                                           value="{{ form.first_name.value|default:user.first_name }}" required>
-                                    {% if form.first_name.errors %}
-                                        <div class="error-message">{{ form.first_name.errors.0 }}</div>
-                                    {% endif %}
-                                    <small class="form-text text-muted">
-                                        <i class="fas fa-eye"></i> 
-                                        This will be visible to other users
-                                    </small>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label for="id_last_name">Last Name *</label>
-                                    <input type="text" class="form-control" id="id_last_name" name="last_name" 
-                                           value="{{ form.last_name.value|default:user.last_name }}" required>
-                                    {% if form.last_name.errors %}
-                                        <div class="error-message">{{ form.last_name.errors.0 }}</div>
-                                    {% endif %}
-                                    <small class="form-text text-muted">
-                                        <i class="fas fa-eye"></i> 
-                                        This will be visible to other users
-                                    </small>
+                                
+                                {% if profile_user.last_login_date %}
+                                    <div class="info-item-fluid">
+                                        <i class="fas fa-clock"></i>
+                                        <span class="info-text-fluid">Last seen {{ profile_user.last_login_date|format_date }}</span>
+                                    </div>
+                                {% endif %}
+                                
+                                <div class="info-item-fluid">
+                                    <i class="fas fa-calendar-alt"></i>
+                                    <span class="info-text-fluid">Member since {{ profile_user.date_joined|format_date }}</span>
                                 </div>
                             </div>
                         </div>
+                    {% endif %}
+                </div>
 
-                        <div class="form-group">
-                            <label for="id_username">Username *</label>
-                            <input type="text" class="form-control" id="id_username" name="username" 
-                                   value="{{ form.username.value|default:user.username }}" required>
-                            <div id="username-feedback" class="username-feedback"></div>
-                            {% if form.username.errors %}
-                                <div class="error-message">{{ form.username.errors.0 }}</div>
-                            {% endif %}
-                            <small class="form-text text-muted">
-                                <i class="fas fa-at"></i> 
-                                3-30 characters, letters/numbers/underscores only. This is your public identifier.
-                            </small>
+                <!-- Future: Posts Section (Placeholder) -->
+                <div class="posts-section-fluid">
+                    <div class="section-header-fluid">
+                        <h3 class="section-title-fluid">
+                            <i class="fas fa-images"></i> Posts
+                        </h3>
+                        <p class="section-subtitle-fluid">Coming soon - Photo sharing functionality</p>
+                    </div>
+                    <div class="posts-grid-fluid">
+                        <div class="post-placeholder-fluid">
+                            <i class="fas fa-image"></i>
+                            <span>Future</span>
+                        </div>
+                        <div class="post-placeholder-fluid">
+                            <i class="fas fa-image"></i>
+                            <span>Feature</span>
+                        </div>
+                        <div class="post-placeholder-fluid">
+                            <i class="fas fa-image"></i>
+                            <span>Coming</span>
+                        </div>
+                        <div class="post-placeholder-fluid">
+                            <i class="fas fa-image"></i>
+                            <span>Soon</span>
+                        </div>
+                        <div class="post-placeholder-fluid">
+                            <i class="fas fa-image"></i>
+                            <span>Soon</span>
+                        </div>
+                        <div class="post-placeholder-fluid">
+                            <i class="fas fa-image"></i>
+                            <span>Soon</span>
                         </div>
                     </div>
-
-                    <!-- Bio Section -->
-                    <div class="form-section">
-                        <h3><i class="fas fa-quote-left"></i> Biography</h3>
-                        
-                        <div class="form-group">
-                            <label for="id_bio">Tell us about yourself</label>
-                            <textarea class="form-control" id="id_bio" name="bio" rows="4" 
-                                      placeholder="Share something about yourself, your interests, or what you're working on...">{{ form.bio.value|default:user.bio }}</textarea>
-                            {% if form.bio.errors %}
-                                <div class="error-message">{{ form.bio.errors.0 }}</div>
-                            {% endif %}
-                            <small class="form-text text-muted">
-                                <i class="fas fa-users"></i> 
-                                This will be visible on your public profile. Keep it friendly and appropriate.
-                            </small>
-                        </div>
-                    </div>
-
-                    <!-- Action Buttons -->
-                    <div class="form-actions">
-                        <button type="submit" class="btn btn-primary btn-lg">
-                            <i class="fas fa-save"></i> Save Public Profile
-                        </button>
-                        <a href="{% url 'profile' %}" class="btn btn-outline-secondary">
-                            <i class="fas fa-times"></i> Cancel
-                        </a>
-                    </div>
-                </form>
+                </div>
             </div>
-        </div>
+        {% endif %}
     </div>
 </div>
 {% endblock %}
@@ -135,67 +299,4 @@
 {% block scripts %}
     {{ block.super }}
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
-    
-    <script>
-        // Global variables
-        window.usernameCheckUrl = '{% url "check_username_availability" %}';
-        window.currentUsername = '{{ user.username }}';
-        
-        // Username availability check
-        let usernameTimeout;
-        document.getElementById('id_username').addEventListener('input', function() {
-            clearTimeout(usernameTimeout);
-            const username = this.value.trim();
-            const feedback = document.getElementById('username-feedback');
-            
-            if (username === window.currentUsername) {
-                feedback.innerHTML = '';
-                return;
-            }
-            
-            if (username.length < 3) {
-                feedback.innerHTML = '<span class="text-warning">Username too short</span>';
-                return;
-            }
-            
-            usernameTimeout = setTimeout(() => {
-                fetch(window.usernameCheckUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-                    },
-                    body: `username=${encodeURIComponent(username)}`
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.available) {
-                        feedback.innerHTML = '<span class="text-success">✓ Username available</span>';
-                    } else {
-                        feedback.innerHTML = '<span class="text-danger">✗ Username taken</span>';
-                    }
-                })
-                .catch(error => {
-                    feedback.innerHTML = '<span class="text-warning">Error checking username</span>';
-                });
-            }, 500);
-        });
-        
-        // Profile picture preview
-        document.getElementById('id_profile_picture').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const preview = document.querySelector('.profile-picture-preview, .profile-picture-placeholder');
-                    if (preview.classList.contains('profile-picture-placeholder')) {
-                        preview.innerHTML = `<img src="${e.target.result}" alt="Preview" class="profile-picture-preview">`;
-                    } else {
-                        preview.src = e.target.result;
-                    }
-                };
-                reader.readAsDataURL(file);
-            }
-        });
-    </script>
 {% endblock %}

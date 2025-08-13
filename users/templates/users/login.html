@@ -5,10 +5,14 @@
     {{ block.super}}
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- Add these meta tags to prevent caching and avoid reload warnings -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
 
     <!--Local CSS files-->
     <link rel="stylesheet" href="{% static 'css/users.css' %}">
-
 {% endblock %}
 
 {% block content %}
@@ -60,7 +64,19 @@
                     {% endfor %}
                 {% endif %} {% endcomment %}
 
-                <form method="POST" id="login-form" enctype="multipart/form-data">
+                <!-- Enhanced error display for login step -->
+                {% if step == "login" and form.email.errors %}
+                    <div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong>Login Error:</strong>
+                        {% for error in form.email.errors %}
+                            {{ error }}
+                        {% endfor %}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endif %}
+
+                <form method="POST" id="login-form" class="login-form" enctype="multipart/form-data">
                     {% csrf_token %}
                     <input type="hidden" name="step" value="{{ step }}">
 
@@ -256,7 +272,7 @@
                             <a href="{% url 'register' %}" class="text-decoration-none link">Register</a>
                         </p>
                         <p class="text-muted">
-                            <a href="#" class="text-decoration-none link">Forgot your password?</a>
+                            <a href="{% url 'password_reset' %}" class="text-decoration-none link">Forgot your password?</a>
                         </p>
                     </div>
                 {% endif %}
@@ -265,82 +281,7 @@
     </div>
 </div>
 
-<style>
-    .method-card {
-        border: 2px solid #e9ecef;
-        border-radius: 12px;
-        padding: 1.5rem;
-        margin-bottom: 1rem;
-        transition: all 0.3s ease;
-        cursor: pointer;
-    }
-    
-    .method-card:hover {
-        border-color: #007bff;
-        background: #f8f9ff;
-        transform: translateY(-1px);
-    }
-    
-    .method-card.selected {
-        border-color: #007bff;
-        background: #f8f9ff;
-        box-shadow: 0 4px 12px rgba(0, 123, 255, 0.15);
-    }
-    
-    .method-icon {
-        font-size: 2rem;
-        color: #007bff;
-    }
-    
-    .method-title {
-        font-weight: 600;
-        margin-bottom: 0.25rem;
-        color: #2c3e50;
-    }
-    
-    .method-description {
-        font-size: 0.875rem;
-        color: #6c757d;
-        margin-bottom: 0;
-    }
 
-    .verification-code-input {
-        text-align: center;
-        font-size: 1.5rem;
-        letter-spacing: 0.3em;
-        font-weight: bold;
-    }
-
-    .resend-section {
-        padding: 1rem 0;
-    }
-
-    .resend-timer {
-        padding: 0.5rem;
-        background: #f8f9fa;
-        border-radius: 8px;
-        display: inline-block;
-    }
-
-    .progress-step {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        text-align: center;
-    }
-
-    .progress-step span {
-        font-size: 0.75rem;
-        margin-top: 0.25rem;
-        color: #6c757d;
-    }
-
-    .progress-step.active span,
-    .progress-step.completed span {
-        color: #007bff;
-        font-weight: 600;
-    }
-</style>
 {% endblock %}
 
 {% block scripts %}

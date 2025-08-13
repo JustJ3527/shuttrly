@@ -33,7 +33,7 @@
           {% endif %}
 
           <!-- Formulaire de vérification -->
-          <form method="post" id="verificationForm">
+          <form method="POST" id="verificationForm">
             {% csrf_token %}
             <div class="mb-3">
               <label for="verification_code" class="form-label">Verification code</label>
@@ -63,7 +63,7 @@
             <p class="text-muted mb-2">Didn't receive the code?</p>
 
             {% if can_resend %}
-              <form method="post" action="{% url 'resend_verification_code_view' %}">
+              <form method="POST" action="{% url 'resend_verification_code_view' %}">
                 {% csrf_token %}
                 <button type="submit" class="btn btn-outline-primary">Renvoyer le code</button>
               </form>

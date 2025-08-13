@@ -163,7 +163,7 @@
 
         <td>
           {% if log.action == 'update_profile' or log.action == 'admin_edit_user' and not log.restored %}
-            <form method="post" action="{% url 'adminpanel:restore_log_action' %}" style="display:inline;">
+            <form method="POST" action="{% url 'adminpanel:restore_log_action' %}" style="display:inline;">
               {% csrf_token %}
               <input type="hidden" name="log_index" value="{{ forloop.counter0 }}">
               <button type="submit" class="btn btn-sm btn-warning" onclick="return confirm('Are you sure you want to restore this log?');">

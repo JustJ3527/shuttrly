@@ -40,17 +40,17 @@
                         {% endif %}
                     </div>
                 </div>
-                
-                                           <div class="profile-actions">
-                               <div class="btn-group" role="group">
-                                   <a href="{% url 'public_profile' %}" class="btn btn-primary">
-                                       <i class="fas fa-user-circle"></i> Public Profile
-                                   </a>
-                                   <a href="{% url 'personal_settings' %}" class="btn btn-outline-primary">
-                                       <i class="fas fa-user-shield"></i> Personal Settings
-                                   </a>
-                               </div>
-                           </div>
+
+                <div class="profile-actions">
+                    <div class="btn-group" role="group">
+                        <a href="{% url 'public_profile' %}" class="btn btn-primary">
+                            <i class="fas fa-user-circle"></i> Public Profile
+                        </a>
+                        <a href="{% url 'personal_settings' %}" class="btn btn-outline-primary">
+                            <i class="fas fa-user-shield"></i> Personal Settings
+                        </a>
+                    </div>
+                </div>
             </div>
 
             <!-- Profile Details -->
@@ -144,20 +144,17 @@
                     <div class="col-12">
                         <div class="detail-card">
                             <h3><i class="fas fa-cog text-primary"></i> Account Actions</h3>
-                            <div class="action-buttons">
-                                <a href="{% url 'twofa_settings' %}" class="btn btn-outline-primary">
-                                    <i class="fas fa-shield-alt"></i> Manage 2FA
-                                </a>
-                                <form action="{% url 'logout' %}" method="post" style="display:inline;">
-                                    {% csrf_token %}
-                                    <button type="submit" class="btn btn-outline-secondary">
-                                        <i class="fas fa-sign-out-alt"></i> Log out
-                                    </button>
-                                </form>
-                                <button type="button" class="btn btn-outline-danger" onclick="showDeleteConfirm()">
-                                    <i class="fas fa-trash"></i> Delete Account
-                                </button>
-                            </div>
+                                                                   <div class="action-buttons">
+                                           <form action="{% url 'logout' %}" method="POST" style="display:inline;">
+                                               {% csrf_token %}
+                                               <button type="submit" class="btn btn-outline-secondary">
+                                                   <i class="fas fa-sign-out-alt"></i> Log out
+                                               </button>
+                                           </form>
+                                           <button type="button" class="btn btn-outline-danger" onclick="showDeleteConfirm()">
+                                               <i class="fas fa-trash"></i> Delete Account
+                                           </button>
+                                       </div>
                         </div>
                     </div>
                 </div>

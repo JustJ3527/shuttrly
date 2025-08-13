@@ -69,6 +69,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "users.middleware.OnlineStatusMiddleware",  # Custom middleware for online status
+    "users.middleware.LoginCachePreventionMiddleware",  # Prevent caching on login pages
 ]
 
 AUTHENTICATION_BACKENDS = [

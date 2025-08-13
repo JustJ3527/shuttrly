@@ -38,7 +38,7 @@
       <td>{{ user.date_joined|date:"Y-m-d H:i" }}</td>
       <td>
         <a href="{% url 'adminpanel:edit_user' user.id %}" class="btn btn-sm btn-outline-primary">Edit</a>
-        <form method="post" action="{% url 'adminpanel:delete_user' user.id %}" style="display:inline;">
+        <form method="POST" action="{% url 'adminpanel:delete_user' user.id %}" style="display:inline;">
           {% csrf_token %}
           <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
         </form>

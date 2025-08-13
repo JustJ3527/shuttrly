@@ -34,7 +34,7 @@
 
             <div class="step-content fade-in">
 
-                <form method="post" id="registration-form" enctype="multipart/form-data">
+                <form method="POST" id="registration-form" enctype="multipart/form-data">
                     {% csrf_token %}
                     <input type="hidden" name="step" value="{{ step }}">
 

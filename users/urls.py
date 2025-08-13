@@ -1,7 +1,5 @@
-from django.contrib import admin
-from django.urls import path, include
+from django.urls import path
 from .views import *
-from . import views
 
 urlpatterns = [
     # Registration in 6 steps
@@ -83,5 +81,32 @@ urlpatterns = [
         "2fa/",
         twofa_settings_view,
         name="twofa_settings",
+    ),
+    # Custom password reset functionality (bypasses Sites framework issues)
+    path(
+        "password-reset/",
+        custom_password_reset_view,
+        name="password_reset",
+    ),
+    path(
+        "password-reset/done/",
+        custom_password_reset_done_view,
+        name="password_reset_done",
+    ),
+    path(
+        "password-reset/confirm/<uidb64>/<token>/",
+        custom_password_reset_confirm_view,
+        name="password_reset_confirm",
+    ),
+    path(
+        "password-reset/complete/",
+        custom_password_reset_complete_view,
+        name="password_reset_complete",
+    ),
+    # Public user profile
+    path(
+        "user/<str:username>/",
+        public_user_profile_view,
+        name="public_user_profile",
     ),
 ]

@@ -12,6 +12,98 @@ let timeLeft;
 // This ensures consistency across the application
 
 // =============================================================================
+// PAGE CONFIGURATION SYSTEM (UNIFIED)
+// =============================================================================
+
+// Configuration for different pages and their required functionality
+const PAGE_CONFIGS = {
+    'login': {
+        'login': {
+            formFields: {
+                autoFocus: true,
+                passwordToggles: true
+            }
+        },
+        'email_2fa': {
+            countdownTimer: {
+                canResend: 'canResendInitial',
+                timeUntilResend: 'timeUntilResend',
+                timerContainerId: 'resend-timer-container',
+                buttonContainerId: 'resend-button-container'
+            },
+            resendCode: {
+                resendBtnId: 'resend-code-btn',
+                pageType: 'login',
+                step: 'email_2fa'
+            },
+            verificationCode: true,
+            formFields: {
+                autoFocus: false,
+                excludeSteps: ['email_2fa', 'totp_2fa']
+            }
+        },
+        'choose_2fa': {
+            twofaMethods: true,
+            formFields: {
+                autoFocus: true
+            }
+        },
+        'totp_2fa': {
+            verificationCode: true,
+            formFields: {
+                autoFocus: false,
+                excludeSteps: ['email_2fa', 'totp_2fa']
+            }
+        }
+    },
+    'register': {
+        '2': {
+            countdownTimer: {
+                canResend: 'canResend',
+                timeUntilResend: 'timeUntilResend',
+                timerContainerId: 'resend-timer-container',
+                buttonContainerId: 'resend-button-container',
+                delay: 'emailCodeResendDelay'
+            },
+            resendCode: {
+                resendBtnId: 'resend-code-btn',
+                pageType: 'register',
+                step: '2'
+            },
+            verificationCode: true,
+            formFields: {
+                autoFocus: false,
+                excludeSteps: ['2']
+            }
+        },
+        '4': {
+            usernameVerification: true,
+            formFields: {
+                autoFocus: true
+            }
+        },
+        '5': {
+            passwordValidation: true,
+            passwordToggles: true,
+            formFields: {
+                autoFocus: true,
+                passwordToggles: true
+            }
+        }
+    },
+    'password_reset_confirm': {
+        'form': {
+            passwordValidation: true,
+            passwordToggles: true,
+            formFields: {
+                autoFocus: true,
+                passwordToggles: true
+            }
+        }
+    }
+};
+
+// =============================================================================
 // FORM VALIDATION SYSTEM (UNIFIED)
 // =============================================================================
 
@@ -21,6 +113,25 @@ function initializeFormValidation() {
     if (form) {
         // Disable native validation to take control
         form.setAttribute("novalidate", true);
+        
+        // Handle form submission errors and restore button state
+        form.addEventListener('error', (e) => {
+            const submitButton = form.querySelector('button[type="submit"]');
+            if (submitButton) {
+                restoreSubmitButton(submitButton);
+            }
+        });
+        
+        // Handle form submission failures (network errors, timeouts, etc.)
+        form.addEventListener('submit', (e) => {
+            // Add a global error handler for the form
+            window.addEventListener('error', () => {
+                const submitButton = form.querySelector('button[type="submit"]');
+                if (submitButton) {
+                    restoreSubmitButton(submitButton);
+                }
+            });
+        }, { once: true });
     
         form.addEventListener("submit", (e) => {
             const submitButton = e.submitter;
@@ -56,10 +167,33 @@ function initializeFormValidation() {
                 return;
             }
             
+            // Prevent multiple form submissions
+            let originalText = '';
+            if (submitButton && !submitButton.disabled) {
+                submitButton.disabled = true;
+                originalText = submitButton.innerHTML;
+                submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+                
+                // Store button state for potential restoration
+                submitButton.dataset.originalText = originalText;
+                submitButton.dataset.isProcessing = 'true';
+                
+                // Re-enable button after 5 seconds as fallback
+                setTimeout(() => {
+                    if (submitButton.disabled && submitButton.dataset.isProcessing === 'true') {
+                        submitButton.disabled = false;
+                        submitButton.innerHTML = originalText;
+                        submitButton.dataset.isProcessing = 'false';
+                    }
+                }, 5000);
+            }
+            
             // Page-specific validations
             if (window.currentPage === 'register') {
                 if (window.currentStep === "4" && !validateUsername()) {
                     e.preventDefault();
+                    // Re-enable button if validation fails
+                    restoreSubmitButton(submitButton);
                     return;
                 }
                 
@@ -67,10 +201,25 @@ function initializeFormValidation() {
                     const passwordValidation = validatePassword();
                     if (!passwordValidation.isValid) {
                         // Show password error message
-                        showPasswordError(passwordValidation.message);
+                        showFieldError('id_password1', passwordValidation.message, 'error');
                         e.preventDefault();
+                        // Re-enable button if validation fails
+                        restoreSubmitButton(submitButton);
                         return;
                     }
+                }
+            }
+            
+            // Password reset confirm page validation
+            if (window.currentPage === 'password_reset_confirm') {
+                const passwordValidation = validatePassword();
+                if (!passwordValidation.isValid) {
+                    // Show password error message
+                    showFieldError('id_password1', passwordValidation.message, 'error');
+                    e.preventDefault();
+                    // Re-enable button if validation fails
+                    restoreSubmitButton(submitButton);
+                    return;
                 }
             }
         });
@@ -81,30 +230,126 @@ function initializeFormValidation() {
 // COUNTDOWN TIMER SYSTEM (UNIFIED)
 // =============================================================================
 
-function initializeCountdownTimer() {
-    // For login page
-    if (window.currentPage === 'login' && window.currentStep === 'email_2fa') {
-        if (!window.canResendInitial && window.timeUntilResend > 0) {
-            startCountdown(window.timeUntilResend, 'resend-timer-container', 'resend-button-container');
-        }
+// Function to clean browser history and prevent form resubmission
+function cleanBrowserHistory() {
+    // Replace current history entry to prevent back button issues
+    if (window.history && window.history.replaceState) {
+        window.history.replaceState(null, '', window.location.href);
     }
     
-    // For register page
-    if (window.currentPage === 'register' && window.currentStep === "2") {
-        if (!window.canResend && window.timeUntilResend > 0) {
-            // Use the delay from Django template if available, otherwise use the session time
-            const delay = window.emailCodeResendDelay || window.timeUntilResend;
-            startCountdown(delay, 'resend-timer-container', 'resend-button-container');
+    // Clear any form data from browser cache
+    if (window.performance && window.performance.navigation) {
+        // This helps prevent form resubmission warnings
+        if (window.performance.navigation.type === window.performance.navigation.TYPE_BACK_FORWARD) {
+            window.location.reload();
         }
     }
 }
 
-function startCountdown(initialTime, timerContainerId, buttonContainerId) {
-    // Use the delay from Django template if available, otherwise use the initial time
-    timeLeft = window.emailCodeResendDelay || initialTime;
-    const countdown = document.getElementById('countdown');
+// =============================================================================
+// GENERIC ERROR MANAGEMENT SYSTEM (UNIFIED)
+// =============================================================================
+
+// Function to restore submit button to its original state
+function restoreSubmitButton(submitButton) {
+    if (submitButton && submitButton.disabled) {
+        submitButton.disabled = false;
+        submitButton.innerHTML = submitButton.dataset.originalText || 'Submit';
+        submitButton.dataset.isProcessing = 'false';
+    }
+}
+
+// Generic function to show error messages for any field type
+function showFieldError(fieldId, message, errorType = 'error') {
+    const field = document.getElementById(fieldId);
+    if (field) {
+        // Remove any existing error messages
+        clearFieldErrors(fieldId);
+        
+        // Create error message element
+        const errorDiv = document.createElement('div');
+        errorDiv.className = `text-${errorType === 'error' ? 'danger' : 'warning'} small mt-2 field-error-message`;
+        errorDiv.innerHTML = `<i class="fas fa-${errorType === 'error' ? 'exclamation-circle' : 'exclamation-triangle'}"></i> ${message}`;
+        
+        // Insert after the field container
+        const fieldContainer = field.closest('.mb-4, .mb-3');
+        if (fieldContainer) {
+            fieldContainer.appendChild(errorDiv);
+        }
+    }
+}
+
+// Generic function to clear error messages for any field
+function clearFieldErrors(fieldId) {
+    const field = document.getElementById(fieldId);
+    if (field) {
+        const fieldContainer = field.closest('.mb-4, .mb-3');
+        if (fieldContainer) {
+            const existingErrors = fieldContainer.querySelectorAll('.field-error-message');
+            existingErrors.forEach(error => error.remove());
+        }
+    }
+}
+
+// Generic function to clear all error messages
+function clearAllFieldErrors() {
+    const existingErrors = document.querySelectorAll('.field-error-message');
+    existingErrors.forEach(error => error.remove());
+}
+
+// =============================================================================
+// GENERIC PASSWORD TOGGLE FUNCTIONALITY (REUSABLE)
+// =============================================================================
+
+function initializePasswordToggles(containerSelector = 'body') {
+    const container = document.querySelector(containerSelector);
+    if (!container) return;
+    
+    // Find all password toggle buttons in the container
+    const toggleButtons = container.querySelectorAll('.password-toggle-icon');
+    
+    toggleButtons.forEach(toggleBtn => {
+        const passwordField = toggleBtn.previousElementSibling;
+        if (passwordField && passwordField.type === 'password') {
+            toggleBtn.addEventListener('click', function() {
+                const type = passwordField.getAttribute('type') === 'password' ? 'text' : 'password';
+                passwordField.setAttribute('type', type);
+                
+                // Toggle icon
+                this.classList.toggle('fa-eye');
+                this.classList.toggle('fa-eye-slash');
+            });
+        }
+    });
+}
+
+// =============================================================================
+// GENERIC TIMER MANAGEMENT SYSTEM (UNIFIED)
+// =============================================================================
+
+function initializeCountdownTimer(config) {
+    const { 
+        canResend, 
+        timeUntilResend, 
+        timerContainerId, 
+        buttonContainerId, 
+        countdownId = 'countdown',
+        delay = null 
+    } = config;
+    
+    if (!canResend && timeUntilResend > 0) {
+        const actualDelay = delay || timeUntilResend;
+        startCountdown(actualDelay, timerContainerId, buttonContainerId, countdownId);
+    }
+}
+
+function startCountdown(initialTime, timerContainerId, buttonContainerId, countdownId = 'countdown') {
+    let timeLeft = initialTime;
+    const countdown = document.getElementById(countdownId);
     const timerContainer = document.getElementById(timerContainerId);
     const buttonContainer = document.getElementById(buttonContainerId);
+    
+    if (!timerContainer || !buttonContainer) return;
     
     const timer = setInterval(() => {
         timeLeft--;
@@ -114,16 +359,23 @@ function startCountdown(initialTime, timerContainerId, buttonContainerId) {
         
         if (timeLeft <= 0) {
             clearInterval(timer);
-            if (timerContainer) timerContainer.style.display = 'none';
-            if (buttonContainer) buttonContainer.style.display = 'block';
+            timerContainer.style.display = 'none';
+            buttonContainer.style.display = 'block';
         }
     }, 1000);
 }
 
-function updateResendButtonState() {
-    const buttonContainer = document.getElementById('resend-button-container');
-    const timerContainer = document.getElementById('resend-timer-container');
-    const resendBtn = document.getElementById('resend-code-btn');
+function updateResendButtonState(config) {
+    const { 
+        buttonContainerId, 
+        timerContainerId, 
+        resendBtnId = 'resend-code-btn',
+        delay = 120 
+    } = config;
+    
+    const buttonContainer = document.getElementById(buttonContainerId);
+    const timerContainer = document.getElementById(timerContainerId);
+    const resendBtn = document.getElementById(resendBtnId);
     
     if (buttonContainer && timerContainer) {
         // Restore button to original state
@@ -135,12 +387,9 @@ function updateResendButtonState() {
         buttonContainer.style.display = 'none';
         timerContainer.style.display = 'block';
         
-        // Start countdown - Use the delay from Django template
-        const delay = window.emailCodeResendDelay || 120; // Default to 2 minutes if not set
+        // Start countdown with precise timing
         let timeLeft = delay;
         const countdown = document.getElementById('countdown');
-        
-        // Use more precise timing for resend countdown
         const startTime = Date.now();
         const endTime = startTime + (timeLeft * 1000);
         
@@ -157,25 +406,57 @@ function updateResendButtonState() {
                 timerContainer.style.display = 'none';
                 buttonContainer.style.display = 'block';
             }
-        }, 100); // Update more frequently for smoother countdown
+        }, 100);
     }
 }
 
 // =============================================================================
-// RESEND CODE FUNCTIONALITY (UNIFIED)
+// GENERIC FORM FIELD INITIALIZATION (UNIFIED)
 // =============================================================================
 
-function initializeResendCodeButton() {
-    const resendBtn = document.getElementById('resend-code-btn');
+function initializeFormFields(config) {
+    const { 
+        autoFocus = true, 
+        passwordToggles = false, 
+        containerSelector = 'body',
+        excludeSteps = [] 
+    } = config;
+    
+    // Auto-focus on first input (if enabled and not in excluded steps)
+    if (autoFocus && !excludeSteps.includes(window.currentStep)) {
+        const firstInput = document.querySelector('.form-control');
+        if (firstInput) {
+            firstInput.focus();
+        }
+    }
+    
+    // Initialize password toggles if requested
+    if (passwordToggles) {
+        initializePasswordToggles(containerSelector);
+    }
+}
+
+// =============================================================================
+// GENERIC RESEND CODE FUNCTIONALITY (UNIFIED)
+// =============================================================================
+
+function initializeResendCodeButton(config) {
+    const { 
+        resendBtnId = 'resend-code-btn',
+        pageType, 
+        step 
+    } = config;
+    
+    const resendBtn = document.getElementById(resendBtnId);
     if (resendBtn) {
-        resendBtn.addEventListener('click', handleResendCode);
+        resendBtn.addEventListener('click', () => handleResendCode(pageType, step));
     }
 }
 
-function handleResendCode() {
-    if (window.currentPage === 'login') {
+function handleResendCode(pageType, step) {
+    if (pageType === 'login') {
         handleLoginResendCode();
-    } else if (window.currentPage === 'register') {
+    } else if (pageType === 'register') {
         handleRegisterResendCode();
     }
 }
@@ -430,32 +711,6 @@ function hideUsernameErrors() {
     }
 }
 
-// Function to show password error messages
-function showPasswordError(message) {
-    const password1 = document.getElementById('id_password1');
-    if (password1) {
-        // Remove any existing error messages
-        clearPasswordErrors();
-        
-        // Create error message element
-        const errorDiv = document.createElement('div');
-        errorDiv.className = 'text-danger small mt-2 password-error-message';
-        errorDiv.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${message}`;
-        
-        // Insert after the password field
-        const passwordContainer = password1.closest('.mb-3');
-        if (passwordContainer) {
-            passwordContainer.appendChild(errorDiv);
-        }
-    }
-}
-
-// Function to clear password error messages
-function clearPasswordErrors() {
-    const existingErrors = document.querySelectorAll('.password-error-message');
-    existingErrors.forEach(error => error.remove());
-}
-
 // =============================================================================
 // PASSWORD VALIDATION (REGISTER ONLY)
 // =============================================================================
@@ -469,7 +724,7 @@ function initializePasswordValidation() {
     if (password1 && password2 && strengthDiv && matchDiv) {
         password1.addEventListener('input', function() {
             // Clear any existing password error messages when user starts typing
-            clearPasswordErrors();
+            clearFieldErrors('id_password1');
             
             const result = checkPasswordStrength(this.value);
             
@@ -494,7 +749,7 @@ function initializePasswordValidation() {
         
         password2.addEventListener('input', function() {
             // Clear any existing password error messages when user starts typing
-            clearPasswordErrors();
+            clearFieldErrors('id_password2');
             checkPasswordMatch();
         });
     }
@@ -575,21 +830,6 @@ function validatePassword() {
 }
 
 // =============================================================================
-// AUTO-FOCUS FUNCTIONALITY (UNIFIED)
-// =============================================================================
-
-function initializeAutoFocus() {
-    const firstInput = document.querySelector('.form-control');
-    if (firstInput) {
-        // No auto-focus for verification code steps
-        const noFocusSteps = ['email_2fa', 'totp_2fa', '2'];
-        if (!noFocusSteps.includes(window.currentStep)) {
-            firstInput.focus();
-        }
-    }
-}
-
-// =============================================================================
 // MAIN INITIALIZATION (UNIFIED)
 // =============================================================================
 
@@ -597,45 +837,63 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize form validation for all pages
     initializeFormValidation();
     
-    // Initialize page-specific functionality
-    if (window.currentPage === 'login') {
-        initializeLoginFunctionality();
-    } else if (window.currentPage === 'register') {
-        initializeRegisterFunctionality();
-    }
+    // Initialize page-specific functionality using configuration
+    initializePageFunctionality();
     
-    // Initialize common functionality
-    initializeAutoFocus();
+    // Clean browser history to prevent form resubmission warnings
+    cleanBrowserHistory();
 });
 
-function initializeLoginFunctionality() {
-    if (window.currentStep === 'email_2fa') {
-        initializeCountdownTimer();
-        initializeResendCodeButton();
+function initializePageFunctionality() {
+    const pageConfig = PAGE_CONFIGS[window.currentPage];
+    if (!pageConfig) return;
+    
+    const stepConfig = pageConfig[window.currentStep];
+    if (!stepConfig) return;
+    
+    // Initialize countdown timer if configured
+    if (stepConfig.countdownTimer) {
+        const config = stepConfig.countdownTimer;
+        const canResend = window[config.canResend];
+        const timeUntilResend = window[config.timeUntilResend];
+        const delay = config.delay ? window[config.delay] : null;
+        
+        initializeCountdownTimer({
+            canResend,
+            timeUntilResend,
+            timerContainerId: config.timerContainerId,
+            buttonContainerId: config.buttonContainerId,
+            delay
+        });
+    }
+    
+    // Initialize resend code button if configured
+    if (stepConfig.resendCode) {
+        initializeResendCodeButton(stepConfig.resendCode);
+    }
+    
+    // Initialize verification code input if configured
+    if (stepConfig.verificationCode) {
         initializeVerificationCodeInput();
     }
     
-    if (window.currentStep === 'choose_2fa') {
+    // Initialize 2FA method selection if configured
+    if (stepConfig.twofaMethods) {
         initialize2FAMethodSelection();
     }
     
-    if (window.currentStep === 'totp_2fa') {
-        initializeVerificationCodeInput();
-    }
-}
-
-function initializeRegisterFunctionality() {
-    if (window.currentStep === "2") {
-        initializeCountdownTimer();
-        initializeResendCodeButton();
-        initializeVerificationCodeInput();
-    }
-    
-    if (window.currentStep === "4") {
+    // Initialize username verification if configured
+    if (stepConfig.usernameVerification) {
         initializeUsernameVerification();
     }
     
-    if (window.currentStep === "5") {
+    // Initialize password validation if configured
+    if (stepConfig.passwordValidation) {
         initializePasswordValidation();
+    }
+    
+    // Initialize form fields (auto-focus, password toggles, etc.)
+    if (stepConfig.formFields) {
+        initializeFormFields(stepConfig.formFields);
     }
 }

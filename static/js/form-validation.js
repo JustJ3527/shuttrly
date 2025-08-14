@@ -416,16 +416,16 @@ class FormValidator {
         if (!field) return;
 
         const fieldContainer = this.findErrorContainer(field);
-        // if (fieldContainer) {
-        //     const existingErrors = fieldContainer.querySelectorAll('.field-error-message');
-        //     existingErrors.forEach(error => {
-        //         error.style.transition = `all ${VALIDATION_CONFIG.ui.animationDuration}ms ease`;
-        //         error.style.opacity = '0';
-        //         error.style.transform = 'translateY(-10px)';
+        if (fieldContainer) {
+            const existingErrors = fieldContainer.querySelectorAll('.field-error-message');
+            existingErrors.forEach(error => {
+                error.style.transition = `all ${VALIDATION_CONFIG.ui.animationDuration}ms ease`;
+                error.style.opacity = '0';
+                error.style.transform = 'translateY(-10px)';
                 
-        //         setTimeout(() => error.remove(), VALIDATION_CONFIG.ui.animationDuration);
-        //     });
-        // }
+                setTimeout(() => error.remove(), VALIDATION_CONFIG.ui.animationDuration);
+            });
+        }
     }
 
     /**

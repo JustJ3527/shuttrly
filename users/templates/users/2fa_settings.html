@@ -196,62 +196,8 @@
 
   {# Countdown timer for resend email code #}
   {% if not can_resend and time_until_resend > 0 %}
-    <script>
-      document.addEventListener('DOMContentLoaded', () => {
-        let timeLeft = {{ time_until_resend }};
-        const timerElement = document.getElementById('timer');
-        const countdownElement = document.getElementById('countdown');
-        const resendForm = document.getElementById('resend-form');
-
-        const updateTimer = () => {
-          if (timeLeft <= 0) {
-            // Show resend form when timer reaches zero
-            countdownElement.style.display = "none";
-            resendForm.style.display = "block";
-            return;
-          }
-
-          const minutes = Math.floor(timeLeft / 60);
-          const seconds = timeLeft % 60;
-
-          if (minutes > 0) {
-            timerElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-          } else {
-            timerElement.textContent = seconds;
-          }
-
-          timeLeft--;
-        };
-
-        updateTimer();
-        setInterval(updateTimer, 1000);
-      });
-    </script>
+    <div class="countdown" id="countdown" data-countdown-type="email" data-time-until-resend="{{ time_until_resend }}" data-can-resend="{{ can_resend|yesno:'true,false' }}">
+      You can request a new code in <span id="timer">{{ time_until_resend }}</span> seconds.
+    </div>
   {% endif %}
-
-  <script>
-    // Toggle the visibility of device details on click
-    function toggleDetails(summary) {
-      const details = summary.nextElementSibling;
-      if (details.style.display === "none" || !details.style.display) {
-        details.style.display = "block";
-      } else {
-        details.style.display = "none";
-      }
-    }
-
-    // Copy TOTP URI to clipboard with feedback
-    document.getElementById('copyTotpUriBtn')?.addEventListener('click', function() {
-      const input = document.getElementById('totpUriInput');
-      input.select();
-      input.setSelectionRange(0, 99999); // For mobile devices
-      navigator.clipboard.writeText(input.value).then(() => {
-        const msg = document.getElementById('copyMessage');
-        msg.style.display = 'inline';
-        setTimeout(() => { msg.style.display = 'none'; }, 2000);
-      }).catch(err => {
-        alert('Error copying link: ' + err);
-      });
-    });
-  </script>
 {% endblock %}

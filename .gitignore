@@ -25,6 +25,7 @@ staticfiles/           # si tu collectes en local (STATIC_ROOT)
 
 # VS Code / IDEs
 .vscode/
+../.vscode/
 .idea/
 .vs/
 

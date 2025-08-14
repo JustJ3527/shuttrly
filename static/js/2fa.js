@@ -376,30 +376,30 @@ class TwoFactorAuth {
     // ERROR HANDLING
     // =============================================================================
 
-    showFieldError(fieldId, message, errorType = 'error') {
-        const field = document.getElementById(fieldId);
-        if (!field) return;
+    // showFieldError(fieldId, message, errorType = 'error') {
+    //     const field = document.getElementById(fieldId);
+    //     if (!field) return;
 
-        // Remove any existing error messages
-        this.clearFieldErrors(fieldId);
+    //     // Remove any existing error messages
+    //     this.clearFieldErrors(fieldId);
         
-        // Create error message element
-        const errorDiv = document.createElement('div');
-        errorDiv.className = `field-error-message ${errorType === 'error' ? 'text-danger' : 'text-warning'}`;
-        errorDiv.innerHTML = `<i class="fas fa-${errorType === 'error' ? 'exclamation-circle' : 'exclamation-triangle'}"></i> ${message}`;
+    //     // Create error message element
+    //     const errorDiv = document.createElement('div');
+    //     errorDiv.className = `field-error-message ${errorType === 'error' ? 'text-danger' : 'text-warning'}`;
+    //     errorDiv.innerHTML = `<i class="fas fa-${errorType === 'error' ? 'exclamation-circle' : 'exclamation-triangle'}"></i> ${message}`;
         
-        // Find the error container
-        let errorContainer = field.closest('.form-group')?.querySelector('.error-message-container');
+    //     // Find the error container
+    //     let errorContainer = field.closest('.form-group')?.querySelector('.error-message-container');
         
-        // If no error container found, look for other common containers
-        if (!errorContainer) {
-            errorContainer = field.closest('.mb-4, .mb-3, .form-group');
-        }
+    //     // If no error container found, look for other common containers
+    //     if (!errorContainer) {
+    //         errorContainer = field.closest('.mb-4, .mb-3, .form-group');
+    //     }
         
-        if (errorContainer) {
-            errorContainer.appendChild(errorDiv);
-        }
-    }
+    //     if (errorContainer) {
+    //         errorContainer.appendChild(errorDiv);
+    //     }
+    // }
 
     clearFieldErrors(fieldId) {
         const field = document.getElementById(fieldId);

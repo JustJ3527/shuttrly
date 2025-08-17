@@ -1,0 +1,246 @@
+<!-- Preferences Category -->
+<div class="category-content">
+    <!-- Header -->
+    <div class="category-header">
+        <h2><i class="fas fa-cog"></i> Preferences</h2>
+        <p class="text-muted">Customize your account preferences and settings</p>
+    </div>
+
+    <!-- Form Section -->
+    <div class="category-form">
+        <form method="POST" action="{% url 'settings_save' 'preferences' %}" 
+              hx-post="{% url 'settings_save' 'preferences' %}" 
+              hx-target="#settings-content-area" 
+              hx-swap="innerHTML">
+            {% csrf_token %}
+            
+            <!-- Notifications Section -->
+            <div class="form-section">
+                <h3><i class="fas fa-bell"></i> Notifications</h3>
+                <p class="text-muted">Control how and when you receive notifications</p>
+                
+                <div class="form-group">
+                    <div class="form-check">
+                        {{ form.notifications_enabled }}
+                        <label class="form-check-label" for="{{ form.notifications_enabled.id_for_label }}">
+                            {{ form.notifications_enabled.label }}
+                        </label>
+                    </div>
+                    <small class="form-text text-muted">
+                        <i class="fas fa-info-circle"></i> 
+                        Receive notifications about important account activities and updates
+                    </small>
+                </div>
+                
+                <!-- Additional notification preferences (placeholder for future expansion) -->
+                <div class="notification-options" style="display: none;">
+                    <div class="form-group">
+                        <label>Email Notifications</label>
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="email_security" checked>
+                            <label class="form-check-label" for="email_security">
+                                Security alerts and login notifications
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="email_updates" checked>
+                            <label class="form-check-label" for="email_updates">
+                                Account updates and changes
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Language Section -->
+            <div class="form-section">
+                <h3><i class="fas fa-globe"></i> Language & Region</h3>
+                <p class="text-muted">Choose your preferred language and regional settings</p>
+                
+                <div class="form-group">
+                    <label for="{{ form.language.id_for_label }}">{{ form.language.label }}</label>
+                    {{ form.language }}
+                    <small class="form-text text-muted">
+                        <i class="fas fa-info-circle"></i> 
+                        This will affect the language of the interface and communications
+                    </small>
+                </div>
+            </div>
+
+            <!-- Timezone Section -->
+            <div class="form-section">
+                <h3><i class="fas fa-clock"></i> Timezone</h3>
+                <p class="text-muted">Set your local timezone for accurate time displays</p>
+                
+                <div class="form-group">
+                    <label for="{{ form.timezone.id_for_label }}">{{ form.timezone.label }}</label>
+                    {{ form.timezone }}
+                    <small class="form-text text-muted">
+                        <i class="fas fa-info-circle"></i> 
+                        All times will be displayed in your selected timezone
+                    </small>
+                </div>
+                
+                <div class="current-time-display">
+                    <p><strong>Current Time:</strong> <span id="current-time"></span></p>
+                    <p><strong>Selected Timezone:</strong> <span id="selected-timezone"></span></p>
+                </div>
+            </div>
+
+            <!-- Display Preferences Section -->
+            <div class="form-section">
+                <h3><i class="fas fa-palette"></i> Display Preferences</h3>
+                <p class="text-muted">Customize how information is displayed</p>
+                
+                <div class="form-group">
+                    <label>Date Format</label>
+                    <div class="form-check">
+                        <input type="radio" class="form-check-input" name="date_format" id="date_mdy" value="mdy" checked>
+                        <label class="form-check-label" for="date_mdy">
+                            Month/Day/Year (MM/DD/YYYY)
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input type="radio" class="form-check-input" name="date_format" id="date_dmy" value="dmy">
+                        <label class="form-check-label" for="date_dmy">
+                            Day/Month/Year (DD/MM/YYYY)
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input type="radio" class="form-check-input" name="date_format" id="date_ymd" value="ymd">
+                        <label class="form-check-label" for="date_ymd">
+                            Year/Month/Day (YYYY-MM-DD)
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Time Format</label>
+                    <div class="form-check">
+                        <input type="radio" class="form-check-input" name="time_format" id="time_12" value="12" checked>
+                        <label class="form-check-label" for="time_12">
+                            12-hour format (AM/PM)
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input type="radio" class="form-check-input" name="time_format" id="time_24" value="24">
+                        <label class="form-check-label" for="time_24">
+                            24-hour format
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary btn-lg" id="preferences-submit-btn">
+                    <span class="btn-content">
+                        <i class="fas fa-save"></i> Save Preferences
+                    </span>
+                    <span class="btn-loading-content" style="display: none;">
+                        <i class="fas fa-spinner fa-spin"></i> Saving...
+                    </span>
+                </button>
+                <a href="{% url 'profile' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-times"></i> Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Show/hide notification options based on main toggle
+        const notificationsToggle = document.getElementById('{{ form.notifications_enabled.id_for_label }}');
+        const notificationOptions = document.querySelector('.notification-options');
+        
+        if (notificationsToggle && notificationOptions) {
+            function toggleNotificationOptions() {
+                if (notificationsToggle.checked) {
+                    notificationOptions.style.display = 'block';
+                } else {
+                    notificationOptions.style.display = 'none';
+                }
+            }
+            
+            notificationsToggle.addEventListener('change', toggleNotificationOptions);
+            toggleNotificationOptions(); // Initial state
+        }
+        
+        // Update current time display
+        function updateCurrentTime() {
+            const timezoneSelect = document.getElementById('{{ form.timezone.id_for_label }}');
+            const currentTimeSpan = document.getElementById('current-time');
+            const selectedTimezoneSpan = document.getElementById('selected-timezone');
+            
+            if (timezoneSelect && currentTimeSpan && selectedTimezoneSpan) {
+                const selectedTimezone = timezoneSelect.value;
+                const now = new Date();
+                
+                try {
+                    const timeString = now.toLocaleString('en-US', {
+                        timeZone: selectedTimezone,
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit'
+                    });
+                    
+                    currentTimeSpan.textContent = timeString;
+                    selectedTimezoneSpan.textContent = selectedTimezone;
+                } catch (error) {
+                    currentTimeSpan.textContent = 'Error getting time';
+                    selectedTimezoneSpan.textContent = selectedTimezone;
+                }
+            }
+        }
+        
+        // Update time every second
+        updateCurrentTime();
+        setInterval(updateCurrentTime, 1000);
+        
+        // Update time when timezone changes
+        const timezoneSelect = document.getElementById('{{ form.timezone.id_for_label }}');
+        if (timezoneSelect) {
+            timezoneSelect.addEventListener('change', updateCurrentTime);
+        }
+    });
+</script>
+
+<style>
+    .notification-options {
+        margin-top: 1rem;
+        padding: 1rem;
+        background: #fff;
+        border-radius: 8px;
+        border: 1px solid #e9ecef;
+    }
+    
+    .current-time-display {
+        margin-top: 1rem;
+        padding: 1rem;
+        background: #f8f9fa;
+        border-radius: 8px;
+        border-left: 4px solid #28a745;
+    }
+    
+    .current-time-display p {
+        margin-bottom: 0.5rem;
+        color: #495057;
+    }
+    
+    .current-time-display p strong {
+        color: #28a745;
+    }
+    
+    .form-check {
+        margin-bottom: 0.75rem;
+    }
+    
+    .form-check:last-child {
+        margin-bottom: 0;
+    }
+</style>

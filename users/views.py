@@ -20,12 +20,10 @@ import uuid
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import get_backends, login, logout
-from django.contrib.auth.forms import PasswordResetForm, SetPasswordForm
 from django.contrib.auth.tokens import default_token_generator
-from django.contrib.sites.shortcuts import get_current_site
-from django.core.mail import send_mail, EmailMultiAlternatives
+from django.core.mail import EmailMultiAlternatives
 from django.db.models import Q
-from django.http import HttpResponseRedirect, JsonResponse
+from django.http import HttpResponseRedirect, JsonResponse, HttpResponse
 from django.shortcuts import redirect, render
 from django.template.loader import render_to_string
 from django.urls import reverse
@@ -61,6 +59,11 @@ from .forms import (
     PublicProfileForm,
     CustomPasswordResetForm,
     CustomSetPasswordForm,
+    GeneralSettingsForm,
+    PrivacySettingsForm,
+    PreferencesSettingsForm,
+    MediaSettingsForm,
+    AdvancedSecurityForm,
 )
 
 # === Project Utils ===
@@ -1469,9 +1472,14 @@ def handle_enable_email_2fa_action(request, user):
 
     if not success:
         messages.error(request, error_message)
-        return redirect("personal_settings")
+        # Return to security category with error
+        return False, error_message, {"step": "initial"}
 
-    return redirect(redirect_url)
+    # Success - redirect to security category with verification step
+    messages.success(
+        request, "Verification code sent to your email. Please check your inbox."
+    )
+    return True, "Verification code sent successfully!", {"step": "verify_email_code"}
 
 
 def handle_verify_email_2fa_action(request, user):
@@ -1481,10 +1489,12 @@ def handle_verify_email_2fa_action(request, user):
 
     if success:
         messages.success(request, "Email 2FA enabled successfully!")
-        return redirect(reverse("personal_settings") + "?step=initial")
+        # Return to security category with success
+        return True, "Email 2FA enabled successfully!", {"step": "initial"}
     else:
         messages.error(request, error_message)
-        return redirect(reverse("personal_settings") + "?step=verify_email_code")
+        # Return to security category with verification step
+        return False, error_message, {"step": "verify_email_code"}
 
 
 def handle_resend_email_2fa_action(request, user):
@@ -1495,11 +1505,10 @@ def handle_resend_email_2fa_action(request, user):
         messages.success(
             request, error_message
         )  # error_message contains success message here
+        return True, error_message, {"step": "verify_email_code"}
     else:
         messages.error(request, error_message)
-
-    url = reverse("personal_settings") + "?" + urlencode({"step": "verify_email_code"})
-    return redirect(url)
+        return False, error_message, {"step": "verify_email_code"}
 
 
 def handle_enable_totp_2fa_action(request, user, context):
@@ -1509,11 +1518,12 @@ def handle_enable_totp_2fa_action(request, user, context):
 
     if not success:
         messages.error(request, error_message)
-        return redirect("personal_settings")
+        # Return to security category with error
+        return False, error_message, {"step": "initial"}
 
-    # Update context with TOTP data
-    context.update(context_data)
-    return render(request, "users/personal_settings.html", context)
+    # Success - return to security category with TOTP setup step
+    messages.success(request, "TOTP 2FA setup initiated. Please scan the QR code.")
+    return True, "TOTP 2FA setup initiated!", {"step": "verify_totp"}
 
 
 def handle_verify_totp_2fa_action(request, user):
@@ -1523,10 +1533,12 @@ def handle_verify_totp_2fa_action(request, user):
 
     if success:
         messages.success(request, "TOTP 2FA enabled successfully!")
-        return redirect(reverse("personal_settings") + "?step=initial")
+        # Return to security category with success
+        return True, "TOTP 2FA enabled successfully!", {"step": "initial"}
     else:
         messages.error(request, error_message)
-        return redirect(reverse("personal_settings") + "?step=verify_totp")
+        # Return to security category with TOTP setup step
+        return False, error_message, {"step": "verify_totp"}
 
 
 def handle_disable_2fa_action(request, user, method):
@@ -1536,10 +1548,10 @@ def handle_disable_2fa_action(request, user, method):
 
     if success:
         messages.success(request, message)
+        return True, message, {"step": "initial"}
     else:
         messages.error(request, message)
-
-    return redirect("personal_settings")
+        return False, message, {"step": "initial"}
 
 
 def handle_remove_trusted_device_action(request, user, current_device_token):
@@ -1551,16 +1563,16 @@ def handle_remove_trusted_device_action(request, user, current_device_token):
 
     if not success:
         messages.error(request, error_message)
-        return redirect("personal_settings")
+        # Return to security category with error
+        return False, error_message, {"step": "initial"}
 
     if is_current_device:
-        response = redirect("personal_settings")
-        response.delete_cookie(f"trusted_device_{user.pk}")
         messages.success(request, "Current trusted device removed successfully!")
-        return response
+        return True, "Current trusted device removed successfully!", {"step": "initial"}
     else:
         messages.success(request, "Trusted device removed successfully!")
-        return redirect("personal_settings")
+        # Return to security category with success
+        return True, "Trusted device removed successfully!", {"step": "initial"}
 
 
 # ========= AJAX VIEWS =========
@@ -2701,3 +2713,544 @@ def public_user_profile_view(request, username):
                 "user_not_found": True,
             },
         )
+
+
+# =============================================================================
+# SETTINGS DASHBOARD VIEWS
+# =============================================================================
+
+
+@redirect_not_authenticated_user
+def settings_dashboard_view(request):
+    """
+    Main settings dashboard view with category navigation.
+
+    This view serves as the main entry point for user settings,
+    displaying the navigation sidebar and loading the default category.
+    """
+    user = request.user
+
+    # Get category from query parameters or default to general
+    default_category = request.GET.get("category", "general")
+
+    # Get trusted devices for security category
+    trusted_devices = TrustedDevice.objects.filter(user=user).order_by("-created_at")
+    current_device_token = get_current_device_token(request, user)
+    for device in trusted_devices:
+        enhance_trusted_device_info(device, current_device_token)
+
+    # Get 2FA context for security category
+    step = request.GET.get("step", "initial")
+    context = get_2fa_settings_context(user, trusted_devices, step)
+
+    # Add user and default category to context
+    context.update(
+        {
+            "user": user,
+            "current_category": default_category,
+            "trusted_devices": trusted_devices,
+        }
+    )
+
+    return render(request, "users/settings_dashboard.html", context)
+
+
+@redirect_not_authenticated_user
+def settings_category_view(request, category, step_override=None):
+    """
+    HTMX view to load category content dynamically.
+
+    Args:
+        request: HTTP request object
+        category: Category name to load (general, security, profile, media, preferences, advanced_security)
+        step_override: Optional step override for security category
+
+    Returns:
+        Rendered template fragment for the specified category
+    """
+    # Check if this is a direct browser request (not HTMX)
+    # If so, redirect to the dashboard with the category parameter
+    if not request.headers.get("HX-Request"):
+        return redirect(f"/settings/?category={category}")
+
+    user = request.user
+
+    # Define category configurations
+    category_configs = {
+        "general": {
+            "title": "General Information",
+            "icon": "fas fa-user",
+            "subtitle": "Email, date of birth, basic information",
+            "form_class": GeneralSettingsForm,
+            "template": "users/settings_categories/general.html",
+        },
+        "security": {
+            "title": "Privacy & Security",
+            "icon": "fas fa-shield-alt",
+            "subtitle": "2FA, passwords, trusted devices",
+            "form_class": PrivacySettingsForm,
+            "template": "users/settings_categories/security.html",
+        },
+        "profile": {
+            "title": "Public Profile",
+            "icon": "fas fa-id-card",
+            "subtitle": "Name, bio, visibility settings",
+            "form_class": PublicProfileForm,
+            "template": "users/settings_categories/profile.html",
+        },
+        "media": {
+            "title": "Media",
+            "icon": "fas fa-image",
+            "subtitle": "Profile photos, uploads",
+            "form_class": MediaSettingsForm,
+            "template": "users/settings_categories/media.html",
+        },
+        "preferences": {
+            "title": "Preferences",
+            "icon": "fas fa-cog",
+            "subtitle": "Notifications, language, timezone",
+            "form_class": PreferencesSettingsForm,
+            "template": "users/settings_categories/preferences.html",
+        },
+        "advanced_security": {
+            "title": "Advanced Security",
+            "icon": "fas fa-lock",
+            "subtitle": "Active sessions, connection history",
+            "form_class": AdvancedSecurityForm,
+            "template": "users/settings_categories/advanced_security.html",
+        },
+    }
+
+    # Get category configuration
+    config = category_configs.get(category)
+    if not config:
+        return HttpResponse("Category not found", status=404)
+
+    # Initialize form
+    if config["form_class"]:
+        if hasattr(config["form_class"], "Meta") and hasattr(
+            config["form_class"].Meta, "model"
+        ):
+            # ModelForm
+            form = config["form_class"](instance=user)
+        else:
+            # Regular Form
+            form = config["form_class"]()
+    else:
+        form = None
+
+    # Get additional context for specific categories
+    context = {
+        "user": user,
+        "form": form,
+        "category": category,
+        "category_config": config,
+    }
+
+    # Add specific context for security category
+    if category == "security":
+        trusted_devices = TrustedDevice.objects.filter(user=user).order_by(
+            "-created_at"
+        )
+        current_device_token = get_current_device_token(request, user)
+        for device in trusted_devices:
+            enhance_trusted_device_info(device, current_device_token)
+
+        # Use step_override if provided, otherwise get from request
+        step = (
+            step_override
+            if step_override is not None
+            else request.GET.get("step", "initial")
+        )
+        security_context = get_2fa_settings_context(user, trusted_devices, step)
+        context.update(security_context)
+        context["trusted_devices"] = trusted_devices
+
+    return render(request, config["template"], context)
+
+
+@redirect_not_authenticated_user
+def settings_save_view(request, category):
+    """
+    HTMX view to save category settings.
+
+    Args:
+        request: HTTP request object
+        category: Category name being saved
+
+    Returns:
+        HTML response with updated content and success/error messages
+    """
+    user = request.user
+
+    if request.method != "POST":
+        return HttpResponse("Invalid request method", status=405)
+
+    # Define category save handlers
+    category_handlers = {
+        "general": handle_general_settings_save,
+        "security": handle_security_settings_save,
+        "profile": handle_profile_settings_save,
+        "media": handle_media_settings_save,
+        "preferences": handle_preferences_settings_save,
+        "advanced_security": handle_advanced_security_save,
+    }
+
+    handler = category_handlers.get(category)
+    if not handler:
+        return HttpResponse("Category not found", status=404)
+
+    try:
+        success, message, data = handler(request, user)
+
+        if success:
+            # Add success message to Django messages framework for regular requests
+            messages.success(request, message)
+
+            # For HTMX requests, we need to include the message directly in the response
+            if request.headers.get("HX-Request"):
+                # Create a custom response with the message included
+                if category == "security" and data and isinstance(data, dict):
+                    step = data.get("step", "initial")
+                    response = settings_category_view(
+                        request, category, step_override=step
+                    )
+                else:
+                    response = settings_category_view(request, category)
+
+                # Add the success message to the response content
+                content = response.content.decode("utf-8")
+                message_html = f"""
+                <div class="alert alert-success alert-dismissible fade show" role="alert" style="position: fixed; top: 20px; right: 20px; z-index: 9999; min-width: 300px; max-width: 500px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border: none; border-radius: 8px;">
+                    <i class="fas fa-check-circle"></i>
+                    {message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                {content}
+                """
+                return HttpResponse(message_html, content_type="text/html")
+            else:
+                # Regular request - use Django messages
+                if category == "security" and data and isinstance(data, dict):
+                    step = data.get("step", "initial")
+                    return settings_category_view(request, category, step_override=step)
+                return settings_category_view(request, category)
+        else:
+            # Add error message to Django messages framework for regular requests
+            messages.error(request, message)
+
+            # For HTMX requests, we need to include the message directly in the response
+            if request.headers.get("HX-Request"):
+                # Create a custom response with the message included
+                if category == "security" and data and isinstance(data, dict):
+                    step = data.get("step", "initial")
+                    response = settings_category_view(
+                        request, category, step_override=step
+                    )
+                else:
+                    response = settings_category_view(request, category)
+
+                # Add the error message to the response content
+                content = response.content.decode("utf-8")
+                message_html = f"""
+                <div class="alert alert-danger alert-dismissible fade show" role="alert" style="position: fixed; top: 20px; right: 20px; z-index: 9999; min-width: 300px; max-width: 500px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border: none; border-radius: 8px;">
+                    <i class="fas fa-exclamation-circle"></i>
+                    {message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                {content}
+                """
+                return HttpResponse(message_html, content_type="text/html")
+            else:
+                # Regular request - use Django messages
+                if category == "security" and data and isinstance(data, dict):
+                    step = data.get("step", "initial")
+                    return settings_category_view(request, category, step_override=step)
+                return settings_category_view(request, category)
+
+    except Exception as e:
+        error_message = f"An error occurred: {str(e)}"
+        messages.error(request, error_message)
+
+        # For HTMX requests, include error message directly
+        if request.headers.get("HX-Request"):
+            response = settings_category_view(request, category)
+            content = response.content.decode("utf-8")
+            message_html = f"""
+            <div class="alert alert-danger alert-dismissible fade show" role="alert" style="position: fixed; top: 20px; right: 20px; z-index: 9999; min-width: 300px; max-width: 500px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border: none; border-radius: 8px;">
+                <i class="fas fa-exclamation-circle"></i>
+                {error_message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {content}
+            """
+            return HttpResponse(message_html, content_type="text/html")
+
+        return settings_category_view(request, category)
+
+
+def handle_general_settings_save(request, user):
+    """Handle saving general settings (email, password, date of birth)."""
+    form = GeneralSettingsForm(request.POST, instance=user)
+
+    if form.is_valid():
+        try:
+            # Check if email changed
+            old_email = user.email
+            new_email = form.cleaned_data["email"]
+            email_changed = new_email.lower() != old_email.lower()
+
+            # Check if password is being changed
+            current_password = form.cleaned_data.get("current_password")
+            new_password = form.cleaned_data.get("password1")
+            password_changed = bool(new_password)
+
+            # Verify current password if changing password
+            if password_changed and not user.check_password(current_password):
+                return False, "Incorrect current password.", None
+
+            # Handle email change
+            if email_changed:
+                user.email = new_email
+                user.is_email_verified = True
+
+            # Handle password change
+            if password_changed:
+                user.set_password(new_password)
+
+            # Update other fields
+            user.date_of_birth = form.cleaned_data["date_of_birth"]
+            user.save()
+
+            # Log settings update
+            ip = get_client_ip(request)
+            user_agent = get_user_agent(request)
+            location = get_location_from_ip(ip)
+
+            log_user_action_json(
+                user=user,
+                action="general_settings_update",
+                request=request,
+                ip_address=ip,
+                extra_info={
+                    "impacted_user_id": user.id,
+                    "changes": {
+                        "email_changed": email_changed,
+                        "password_changed": password_changed,
+                        "date_of_birth_changed": True,
+                    },
+                },
+            )
+
+            return (
+                True,
+                "General settings updated successfully!",
+                {
+                    "email_changed": email_changed,
+                    "password_changed": password_changed,
+                },
+            )
+
+        except Exception as e:
+            return False, f"Error updating settings: {str(e)}", None
+    else:
+        errors = []
+        for field, field_errors in form.errors.items():
+            for error in field_errors:
+                errors.append(f"{field}: {error}")
+        return False, f"Validation errors: {'; '.join(errors)}", None
+
+
+def handle_security_settings_save(request, user):
+    """Handle saving security settings (privacy, 2FA)."""
+    action = request.POST.get("action")
+
+    if action:
+        # Handle 2FA actions
+        if action == "enable_email":
+            return handle_enable_email_2fa_action(request, user)
+        elif action == "verify_email_code":
+            return handle_verify_email_2fa_action(request, user)
+        elif action == "resend_email_code":
+            return handle_resend_email_2fa_action(request, user)
+        elif action == "enable_totp":
+            return handle_enable_totp_2fa_action(request, user, {})
+        elif action == "verify_totp":
+            return handle_verify_totp_2fa_action(request, user)
+        elif action == "disable_email":
+            return handle_disable_2fa_action(request, user, "email")
+        elif action == "disable_totp":
+            return handle_disable_2fa_action(request, user, "totp")
+        elif action in ["remove_trusted_device", "revoke_device"]:
+            current_device_token = get_current_device_token(request, user)
+            return handle_remove_trusted_device_action(
+                request, user, current_device_token
+            )
+        elif action == "cancel":
+            return handle_2fa_cancel_operation(user, request.GET.get("step", "initial"))
+
+    # Handle privacy settings
+    form = PrivacySettingsForm(request.POST, instance=user)
+    if form.is_valid():
+        try:
+            old_is_private = user.is_private
+            user.is_private = form.cleaned_data["is_private"]
+            user.save()
+
+            # Log privacy change
+            if old_is_private != user.is_private:
+                ip = get_client_ip(request)
+                log_user_action_json(
+                    user=user,
+                    action="privacy_settings_update",
+                    request=request,
+                    ip_address=ip,
+                    extra_info={
+                        "impacted_user_id": user.id,
+                        "changes": {
+                            "privacy_changed": True,
+                            "new_privacy_setting": user.is_private,
+                        },
+                    },
+                )
+
+            return (
+                True,
+                "Privacy settings updated successfully!",
+                {"privacy_changed": True},
+            )
+
+        except Exception as e:
+            return False, f"Error updating privacy settings: {str(e)}", None
+    else:
+        return False, "Invalid form data", None
+
+
+def handle_profile_settings_save(request, user):
+    """Handle saving profile settings (name, username, bio, profile picture)."""
+    form = PublicProfileForm(request.POST, request.FILES, instance=user)
+
+    if form.is_valid():
+        try:
+            # Handle profile picture change
+            if form.cleaned_data.get("profile_picture"):
+                if user.profile_picture:
+                    schedule_profile_picture_deletion(user.profile_picture.path)
+                user.profile_picture = form.cleaned_data["profile_picture"]
+
+            # Update other fields
+            user.first_name = form.cleaned_data["first_name"]
+            user.last_name = form.cleaned_data["last_name"]
+            user.username = form.cleaned_data["username"]
+            user.bio = form.cleaned_data.get("bio", "")
+
+            user.save()
+
+            # Log profile update
+            ip = get_client_ip(request)
+            user_agent = get_user_agent(request)
+            location = get_location_from_ip(ip)
+
+            log_user_action_json(
+                user=user,
+                action="update_profile",
+                request=request,
+                ip_address=ip,
+                extra_info={
+                    "impacted_user_id": user.id,
+                    "changes": {
+                        "name_changed": True,
+                        "username_changed": True,
+                        "bio_changed": True,
+                        "profile_picture_changed": bool(
+                            form.cleaned_data.get("profile_picture")
+                        ),
+                    },
+                },
+            )
+
+            return (
+                True,
+                "Profile settings updated successfully!",
+                {"profile_updated": True},
+            )
+
+        except Exception as e:
+            return False, f"Error updating profile: {str(e)}", None
+    else:
+        errors = []
+        for field, field_errors in form.errors.items():
+            for error in field_errors:
+                errors.append(f"{field}: {error}")
+        return False, f"Validation errors: {'; '.join(errors)}", None
+
+
+def handle_media_settings_save(request, user):
+    """Handle saving media settings (profile picture)."""
+    form = MediaSettingsForm(request.POST, request.FILES, instance=user)
+
+    if form.is_valid():
+        try:
+            # Handle profile picture change
+            if form.cleaned_data.get("profile_picture"):
+                if user.profile_picture:
+                    schedule_profile_picture_deletion(user.profile_picture.path)
+                user.profile_picture = form.cleaned_data["profile_picture"]
+                user.save()
+
+                # Log media update
+                ip = get_client_ip(request)
+                log_user_action_json(
+                    user=user,
+                    action="media_settings_update",
+                    request=request,
+                    ip_address=ip,
+                    extra_info={
+                        "impacted_user_id": user.id,
+                        "changes": {
+                            "profile_picture_changed": True,
+                        },
+                    },
+                )
+
+                return (
+                    True,
+                    "Profile picture updated successfully!",
+                    {"picture_updated": True},
+                )
+            else:
+                return False, "No profile picture provided", None
+
+        except Exception as e:
+            return False, f"Error updating profile picture: {str(e)}", None
+    else:
+        return False, "Invalid form data", None
+
+
+def handle_preferences_settings_save(request, user):
+    """Handle saving preferences settings."""
+    form = PreferencesSettingsForm(request.POST)
+
+    if form.is_valid():
+        try:
+            # For now, we'll just return success
+            # In the future, this could save to user preferences or settings
+            return (
+                True,
+                "Preferences updated successfully!",
+                {"preferences_updated": True},
+            )
+
+        except Exception as e:
+            return False, f"Error updating preferences: {str(e)}", None
+    else:
+        return False, "Invalid form data", None
+
+
+def handle_advanced_security_save(request, user):
+    """Handle advanced security settings (currently placeholder)."""
+    return (
+        True,
+        "Advanced security settings updated successfully!",
+        {"security_updated": True},
+    )

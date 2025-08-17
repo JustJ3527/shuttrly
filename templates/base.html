@@ -39,15 +39,15 @@
 
         <ul id="navbar-menu" class="navbar-menu">
             {% if user.is_authenticated and user.is_online%}
-                <li class="nav-item"><a href="{% url 'profile' %}" class="nav-link">Profile</a></li>
+                <li class="navbar-item"><a href="{% url 'profile' %}" class="nav-link">Profile</a></li>
                 {% if user.is_superuser %}
-                    <li class="nav-item"><a href="{% url 'admin:index' %}" class="nav-link">Admin Django</a></li>
-                    <li class="nav-item"><a style="color: red;" href="{% url 'adminpanel:admin_dashboard' %}">Admin panel</li>
+                    <li class="navbar-item"><a href="{% url 'admin:index' %}" class="nav-link">Admin Django</a></li>
+                    <li class="navbar-item"><a style="color: red;" href="{% url 'adminpanel:admin_dashboard' %}">Admin panel</li>
                 {% endif %}
-                <li class="nav-item"><a href="{% url 'logout' %}" class="nav-link">Logout</a></li>
+                <li class="navbar-item"><a href="{% url 'logout' %}" class="nav-link">Logout</a></li>
             {% else %}
-                <li class="nav-item"><a href="{% url 'login' %}" class="nav-link">Login</a></li>
-                <li class="nav-item"><a href="{% url 'register' %}" class="nav-link">Register</a></li>
+                <li class="navbar-item"><a href="{% url 'login' %}" class="nav-link">Login</a></li>
+                <li class="navbar-item"><a href="{% url 'register' %}" class="nav-link">Register</a></li>
             {% endif %}
         </ul>
     </nav>

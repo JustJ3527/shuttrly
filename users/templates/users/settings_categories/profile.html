@@ -1,0 +1,143 @@
+<!-- Public Profile Category -->
+<div class="category-content">
+    <!-- Header -->
+    <div class="category-header">
+        <h2><i class="fas fa-id-card"></i> Public Profile</h2>
+        <p class="text-muted">Manage information visible to other users</p>
+    </div>
+
+    <!-- Form Section -->
+    <div class="category-form">
+        <form method="POST" action="{% url 'settings_save' 'profile' %}" 
+              hx-post="{% url 'settings_save' 'profile' %}" 
+              hx-target="#settings-content-area" 
+              hx-swap="innerHTML"
+              enctype="multipart/form-data">
+            {% csrf_token %}
+            
+            <!-- Personal Information Section -->
+            <div class="form-section">
+                <h3><i class="fas fa-user"></i> Personal Information</h3>
+                
+                <div class="form-group">
+                    <label for="{{ form.first_name.id_for_label }}">{{ form.first_name.label }} *</label>
+                    {{ form.first_name }}
+                    {% if form.first_name.errors %}
+                        <div class="error-message">
+                            {% for error in form.first_name.errors %}
+                                <i class="fas fa-exclamation-circle"></i> {{ error }}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label for="{{ form.last_name.id_for_label }}">{{ form.last_name.label }} *</label>
+                    {{ form.last_name }}
+                    {% if form.last_name.errors %}
+                        <div class="error-message">
+                            {% for error in form.last_name.errors %}
+                                <i class="fas fa-exclamation-circle"></i> {{ error }}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label for="{{ form.username.id_for_label }}">{{ form.username.label }} *</label>
+                    {{ form.username }}
+                    {% if form.username.errors %}
+                        <div class="error-message">
+                            {% for error in form.username.errors %}
+                                <i class="fas fa-exclamation-circle"></i> {{ error }}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                    <small class="form-text text-muted">
+                        <i class="fas fa-info-circle"></i> 
+                        The username must be unique and cannot be modified after creation
+                    </small>
+                </div>
+            </div>
+
+            <!-- Biography Section -->
+            <div class="form-section">
+                <h3><i class="fas fa-quote-left"></i> Biography</h3>
+                <p class="text-muted">About you</p>
+                
+                <div class="form-group">
+                    <label for="{{ form.bio.id_for_label }}">{{ form.bio.label }}</label>
+                    {{ form.bio }}
+                    {% if form.bio.errors %}
+                        <div class="error-message">
+                            {% for error in form.bio.errors %}
+                                <i class="fas fa-exclamation-circle"></i> {{ error }}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                    <small class="form-text text-muted">
+                        <i class="fas fa-info-circle"></i> 
+                        Describe yourself in a few words (optional)
+                    </small>
+                </div>
+            </div>
+
+            <!-- Profile Picture Section -->
+            <div class="form-section">
+                <h3><i class="fas fa-camera"></i> Profile Picture</h3>
+                
+                <div class="form-group">
+                    <label for="{{ form.profile_picture.id_for_label }}">{{ form.profile_picture.label }}</label>
+                    {{ form.profile_picture }}
+                    {% if form.profile_picture.errors %}
+                        <div class="error-message">
+                            {% for error in form.profile_picture.errors %}
+                                <i class="fas fa-exclamation-circle"></i> {{ error }}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                    <small class="form-text text-muted">
+                        <i class="fas fa-info-circle"></i> 
+                        Recommended size: 450x450 pixels. Supported formats: JPG, PNG, GIF
+                    </small>
+                </div>
+
+                {% if user.profile_picture and user.profile_picture.name != 'profiles/default.jpg' %}
+                    <div class="current-picture">
+                        <p><strong>Current Profile Picture:</strong></p>
+                        <img src="{{ user.profile_picture.url }}" alt="Current Profile Picture" 
+                             style="max-width: 150px; border-radius: 8px; border: 2px solid #e9ecef;">
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary btn-lg" id="profile-submit-btn">
+                    <span class="btn-content">
+                        <i class="fas fa-save"></i> Save Profile Settings
+                    </span>
+                    <span class="btn-loading-content" style="display: none;">
+                        <i class="fas fa-spinner fa-spin"></i> Saving...
+                    </span>
+                </button>
+                <a href="{% url 'profile' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-times"></i> Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    // Username availability check (if needed)
+    document.addEventListener('DOMContentLoaded', function() {
+        const usernameInput = document.getElementById('{{ form.username.id_for_label }}');
+        if (usernameInput) {
+            // Add real-time username validation if needed
+            usernameInput.addEventListener('blur', function() {
+                // Could add AJAX username availability check here
+            });
+        }
+    });
+</script>

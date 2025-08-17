@@ -1,0 +1,277 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load users_filters datetime_tags %}
+{% block title %}Settings Dashboard - Shuttrly{% endblock %}
+{% block head %}
+    {{ block.super }}
+    <link rel="stylesheet" href="{% static 'css/users.css' %}">
+    <link rel="stylesheet" href="{% static 'css/settings_dashboard.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="container-bc">
+    <div class="container-fluid">
+        <div class="settings-dashboard">
+            <!-- Header -->
+            <div class="settings-header">
+                <h1><i class="fas fa-cog"></i> Settings Dashboard</h1>
+                <p class="text-muted">Manage your account settings and preferences</p>
+            </div>
+
+            <div class="settings-content">
+                <!-- Django Messages Section -->
+                {% if messages %}
+                    <div class="settings-messages">
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                <i class="fas fa-{% if message.tags == 'success' %}check-circle{% elif message.tags == 'error' %}exclamation-circle{% elif message.tags == 'warning' %}exclamation-triangle{% else %}info-circle{% endif %}"></i>
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+                
+                <!-- Left Column - Navigation Sidebar -->
+                <div class="settings-sidebar">
+                    <div class="sidebar-header">
+                        <h3><i class="fas fa-bars"></i> Categories</h3>
+                    </div>
+                    
+                    <nav class="settings-nav">
+                        <a href="{% url 'settings_category' 'general' %}" 
+                           class="nav-item {% if current_category == 'general' %}active{% endif %}"
+                           data-category="general"
+                           hx-get="{% url 'settings_category' 'general' %}"
+                           hx-target="#settings-content-area"
+                           hx-push-url="true"
+                           hx-swap="innerHTML"
+                           onclick="handleSettingsNavClick('general', this)">
+                            <div class="nav-icon">
+                                <i class="fas fa-user"></i>
+                            </div>
+                            <div class="nav-content">
+                                <div class="nav-title">General Information</div>
+                                <div class="nav-subtitle">Email, date of birth, basic information</div>
+                            </div>
+                            <div class="nav-arrow">
+                                <i class="fas fa-chevron-right"></i>
+                            </div>
+                        </a>
+
+                        <a href="{% url 'settings_category' 'security' %}" 
+                           class="nav-item {% if current_category == 'security' %}active{% endif %}"
+                           data-category="security"
+                           hx-get="{% url 'settings_category' 'security' %}"
+                           hx-target="#settings-content-area"
+                           hx-push-url="true"
+                           hx-swap="innerHTML"
+                           onclick="handleSettingsNavClick('security', this)">
+                            <div class="nav-icon">
+                                <i class="fas fa-shield-alt"></i>
+                            </div>
+                            <div class="nav-content">
+                                <div class="nav-title">Privacy & Security</div>
+                                <div class="nav-subtitle">2FA, passwords, trusted devices</div>
+                            </div>
+                            <div class="nav-arrow">
+                                <i class="fas fa-chevron-right"></i>
+                            </div>
+                        </a>
+
+                        <a href="{% url 'settings_category' 'profile' %}" 
+                           class="nav-item {% if current_category == 'profile' %}active{% endif %}"
+                           data-category="profile"
+                           hx-get="{% url 'settings_category' 'profile' %}"
+                           hx-target="#settings-content-area"
+                           hx-push-url="true"
+                           hx-swap="innerHTML"
+                           onclick="handleSettingsNavClick('profile', this)">
+                            <div class="nav-icon">
+                                <i class="fas fa-id-card"></i>
+                            </div>
+                            <div class="nav-content">
+                                <div class="nav-title">Public Profile</div>
+                                <div class="nav-subtitle">Name, bio, visibility settings</div>
+                            </div>
+                            <div class="nav-arrow">
+                                <i class="fas fa-chevron-right"></i>
+                            </div>
+                        </a>
+
+                        <a href="{% url 'settings_category' 'media' %}" 
+                           class="nav-item {% if current_category == 'media' %}active{% endif %}"
+                           data-category="media"
+                           hx-get="{% url 'settings_category' 'media' %}"
+                           hx-target="#settings-content-area"
+                           hx-push-url="true"
+                           hx-swap="innerHTML"
+                           onclick="handleSettingsNavClick('media', this)">
+                            <div class="nav-icon">
+                                <i class="fas fa-image"></i>
+                            </div>
+                            <div class="nav-content">
+                                <div class="nav-title">Media</div>
+                                <div class="nav-subtitle">Profile photos, uploads</div>
+                            </div>
+                            <div class="nav-arrow">
+                                <i class="fas fa-chevron-right"></i>
+                            </div>
+                        </a>
+
+                        <a href="{% url 'settings_category' 'preferences' %}" 
+                           class="nav-item {% if current_category == 'preferences' %}active{% endif %}"
+                           data-category="preferences"
+                           hx-get="{% url 'settings_category' 'preferences' %}"
+                           hx-target="#settings-content-area"
+                           hx-push-url="true"
+                           hx-swap="innerHTML"
+                           onclick="handleSettingsNavClick('preferences', this)">
+                            <div class="nav-icon">
+                                <i class="fas fa-cog"></i>
+                            </div>
+                            <div class="nav-content">
+                                <div class="nav-title">Preferences</div>
+                                <div class="nav-subtitle">Notifications, language, timezone</div>
+                            </div>
+                            <div class="nav-arrow">
+                                <i class="fas fa-chevron-right"></i>
+                            </div>
+                        </a>
+
+                        <a href="{% url 'settings_category' 'advanced_security' %}" 
+                           class="nav-item {% if current_category == 'advanced_security' %}active{% endif %}"
+                           hx-get="{% url 'settings_category' 'advanced_security' %}"
+                           hx-target="#settings-content-area"
+                           hx-push-url="true"
+                           hx-swap="innerHTML"
+                           onclick="handleSettingsNavClick('advanced_security', this)">
+                            <div class="nav-icon">
+                                <i class="fas fa-lock"></i>
+                            </div>
+                            <div class="nav-content">
+                                <div class="nav-title">Advanced Security</div>
+                                <div class="nav-subtitle">Active sessions, connection history</div>
+                            </div>
+                            <div class="nav-arrow">
+                                <i class="fas fa-chevron-right"></i>
+                            </div>
+                        </a>
+                    </nav>
+                </div>
+
+                <!-- Right Column - Content Area -->
+                <div class="settings-main">
+                    <div id="settings-content-area">
+                        <!-- Content will be loaded here via HTMX -->
+                        <!-- Initial content will be loaded dynamically -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+    {{ block.super }}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- HTMX for dynamic content loading -->
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    
+    <!-- Settings navigation JavaScript -->
+    <script src="{% static 'js/settings_navigation.js' %}"></script>
+    
+    <!-- Button states management -->
+    <script src="{% static 'js/settings_button_states.js' %}"></script>
+    
+    <script>
+        // Global variables for settings dashboard
+        window.currentCategory = '{{ current_category }}';
+        window.settingsBaseUrl = '/settings/'; // Base URL for category views
+        
+        // Function to handle navigation clicks with immediate visual feedback
+        function handleSettingsNavClick(category, element) {
+            // Update active navigation immediately for better UX
+            if (window.SettingsNavigation && window.SettingsNavigation.updateActiveNavigationItem) {
+                window.SettingsNavigation.updateActiveNavigationItem(element);
+            }
+            
+            // Update global current category
+            window.currentCategory = category;
+        }
+        
+        // Function to get category from URL query parameters
+        function getCategoryFromURL() {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get('category') || '{{ current_category }}';
+        }
+        
+        // Initialize HTMX after page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Get category from URL or fallback to template variable
+            const urlCategory = getCategoryFromURL();
+            const templateCategory = '{{ current_category }}';
+            
+            // Use URL category if available, otherwise fall back to template category
+            const initialCategory = urlCategory !== 'general' ? urlCategory : templateCategory;
+            
+            if (initialCategory && initialCategory !== 'settings') {
+                // Update global current category
+                window.currentCategory = initialCategory;
+                
+                // Use the centralized navigation system
+                if (window.SettingsNavigation && window.SettingsNavigation.loadCategory) {
+                    window.SettingsNavigation.loadCategory(initialCategory);
+                }
+                
+                // Update navigation state after a short delay to ensure DOM is ready
+                setTimeout(() => {
+                    if (window.SettingsNavigation && window.SettingsNavigation.updateActiveNavigationWithPriority) {
+                        window.SettingsNavigation.updateActiveNavigationWithPriority(initialCategory);
+                    } else if (window.SettingsNavigation && window.SettingsNavigation.updateActiveNavigation) {
+                        window.SettingsNavigation.updateActiveNavigation();
+                    }
+                }, 100);
+            }
+            
+            // Set up HTMX indicators
+            htmx.on('htmx:beforeRequest', function(evt) {
+                // Show loading indicator
+                const target = evt.detail.target;
+                if (target) {
+                    target.style.opacity = '0.6';
+                }
+            });
+            
+            htmx.on('htmx:afterRequest', function(evt) {
+                // Hide loading indicator
+                const target = evt.detail.target;
+                if (target) {
+                    target.style.opacity = '1';
+                }
+                
+                // Update active navigation item using centralized system
+                if (evt.detail.xhr.status === 200) {
+                    if (window.SettingsNavigation && window.SettingsNavigation.updateActiveNavigation) {
+                        window.SettingsNavigation.updateActiveNavigation();
+                    }
+                }
+            });
+            
+            // Handle browser back/forward buttons using centralized system
+            window.addEventListener('popstate', function(event) {
+                if (event.state && event.state.category) {
+                    if (window.SettingsNavigation && window.SettingsNavigation.loadCategory) {
+                        window.SettingsNavigation.loadCategory(event.state.category);
+                    }
+                }
+                // Update navigation state
+                if (window.SettingsNavigation && window.SettingsNavigation.updateActiveNavigation) {
+                    window.SettingsNavigation.updateActiveNavigation();
+                }
+            });
+        });
+    </script>
+{% endblock %}

@@ -1,0 +1,206 @@
+<!-- Media Category -->
+<div class="category-content">
+    <!-- Header -->
+    <div class="category-header">
+        <h2><i class="fas fa-image"></i> Media</h2>
+        <p class="text-muted">Manage your profile photos and media uploads</p>
+    </div>
+
+    <!-- Form Section -->
+    <div class="category-form">
+        <form method="POST" action="{% url 'settings_save' 'media' %}" 
+              hx-post="{% url 'settings_save' 'media' %}" 
+              hx-target="#settings-content-area" 
+              hx-swap="innerHTML"
+              enctype="multipart/form-data">
+            {% csrf_token %}
+            
+            <!-- Profile Picture Section -->
+            <div class="form-section">
+                <h3><i class="fas fa-camera"></i> Profile Picture</h3>
+                
+                <div class="form-group">
+                    <label for="{{ form.profile_picture.id_for_label }}">{{ form.profile_picture.label }}</label>
+                    {{ form.profile_picture }}
+                    {% if form.profile_picture.errors %}
+                        <div class="error-message">
+                            {% for error in form.profile_picture.errors %}
+                                <i class="fas fa-exclamation-circle"></i> {{ error }}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                    <small class="form-text text-muted">
+                        <i class="fas fa-info-circle"></i> 
+                        Recommended size: 450x450 pixels. Supported formats: JPG, PNG, GIF
+                    </small>
+                </div>
+
+                {% if user.profile_picture and user.profile_picture.name != 'profiles/default.jpg' %}
+                    <div class="current-picture">
+                        <p><strong>Current Profile Picture:</strong></p>
+                        <div class="picture-preview">
+                            <img src="{{ user.profile_picture.url }}" alt="Current Profile Picture" 
+                                 class="profile-preview-image">
+                            <div class="picture-info">
+                                <p><strong>File:</strong> {{ user.profile_picture.name|slice:"8:" }}</p>
+                                <p><strong>Size:</strong> {{ user.profile_picture.size|filesizeformat }}</p>
+                                <p><strong>Uploaded:</strong> {{ user.profile_picture.uploaded_at|date:"F j, Y"|default:"Unknown" }}</p>
+                            </div>
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="no-picture">
+                        <div class="alert alert-light text-center">
+                            <i class="fas fa-user-circle" style="font-size: 3rem; color: #6c757d; margin-bottom: 1rem;"></i>
+                            <p><strong>No profile picture set</strong></p>
+                            <p class="text-muted">Upload a profile picture to personalize your account</p>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Media Guidelines Section -->
+            <div class="form-section">
+                <h3><i class="fas fa-info-circle"></i> Media Guidelines</h3>
+                
+                <div class="guidelines-content">
+                    <div class="guideline-item">
+                        <h4><i class="fas fa-image"></i> Image Requirements</h4>
+                        <ul>
+                            <li><strong>Format:</strong> JPG, PNG, GIF</li>
+                            <li><strong>Size:</strong> Maximum 5MB</li>
+                            <li><strong>Dimensions:</strong> Recommended 450x450 pixels</li>
+                            <li><strong>Quality:</strong> High quality, clear images work best</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="guideline-item">
+                        <h4><i class="fas fa-shield-alt"></i> Content Guidelines</h4>
+                        <ul>
+                            <li>Use appropriate, non-offensive content</li>
+                            <li>Avoid copyrighted material</li>
+                            <li>Keep it professional and respectful</li>
+                            <li>Your face or a clear representation is recommended</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="guideline-item">
+                        <h4><i class="fas fa-cog"></i> Processing</h4>
+                        <ul>
+                            <li>Images are automatically resized to 450x450 pixels</li>
+                            <li>File size is optimized for web use</li>
+                            <li>Old profile pictures are automatically deleted</li>
+                            <li>Changes take effect immediately</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary btn-lg" id="media-submit-btn">
+                    <span class="btn-content">
+                        <i class="fas fa-upload"></i> Upload Profile Picture
+                    </span>
+                    <span class="btn-loading-content" style="display: none;">
+                        <i class="fas fa-spinner fa-spin"></i> Uploading...
+                    </span>
+                </button>
+                <a href="{% url 'profile' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-times"></i> Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    .picture-preview {
+        display: flex;
+        gap: 1.5rem;
+        align-items: flex-start;
+        margin-top: 1rem;
+        padding: 1rem;
+        background: #fff;
+        border-radius: 8px;
+        border: 2px solid #e9ecef;
+    }
+    
+    .profile-preview-image {
+        max-width: 200px;
+        border-radius: 12px;
+        border: 3px solid #28a745;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    }
+    
+    .picture-info {
+        flex: 1;
+    }
+    
+    .picture-info p {
+        margin-bottom: 0.5rem;
+        color: #495057;
+    }
+    
+    .picture-info p strong {
+        color: #28a745;
+    }
+    
+    .no-picture {
+        margin-top: 1rem;
+    }
+    
+    .guidelines-content {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+    }
+    
+    .guideline-item {
+        background: #fff;
+        padding: 1.25rem;
+        border-radius: 8px;
+        border: 1px solid #e9ecef;
+    }
+    
+    .guideline-item h4 {
+        color: #495057;
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .guideline-item h4 i {
+        color: #28a745;
+    }
+    
+    .guideline-item ul {
+        margin: 0;
+        padding-left: 1.25rem;
+        color: #6c757d;
+    }
+    
+    .guideline-item li {
+        margin-bottom: 0.5rem;
+        line-height: 1.4;
+    }
+    
+    .guideline-item li strong {
+        color: #495057;
+    }
+    
+    @media (max-width: 768px) {
+        .picture-preview {
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+        
+        .guidelines-content {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>

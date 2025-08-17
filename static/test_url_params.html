@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>URL Parameters Test</title>
+    <style>
+        .test-container {
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .test-button {
+            margin: 5px;
+            padding: 10px 15px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .test-button:hover {
+            background: #0056b3;
+        }
+        .current-url {
+            font-family: monospace;
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>URL Parameters Test</h1>
+        
+        <div class="test-section">
+            <h3>Current URL</h3>
+            <div class="current-url" id="current-url"></div>
+            
+            <h4>Test Navigation</h4>
+            <button class="test-button" onclick="testURL('general')">Set category=general</button>
+            <button class="test-button" onclick="testURL('security')">Set category=security</button>
+            <button class="test-button" onclick="testURL('profile')">Set category=profile</button>
+            <button class="test-button" onclick="testURL('media')">Set category=media</button>
+            <button class="test-button" onclick="testURL('preferences')">Set category=preferences</button>
+            <button class="test-button" onclick="testURL('advanced_security')">Set category=advanced_security</button>
+        </div>
+        
+        <div class="test-section">
+            <h3>Test Functions</h3>
+            <button class="test-button" onclick="testGetCategoryFromURL()">Test getCategoryFromURL()</button>
+            <button class="test-button" onclick="testUpdateActiveNavigation()">Test updateActiveNavigation()</button>
+            <button class="test-button" onclick="testLoadCategory('security')">Test loadCategory('security')</button>
+        </div>
+        
+        <div class="test-section">
+            <h3>Console Log</h3>
+            <div class="log" id="console-log"></div>
+        </div>
+    </div>
+
+    <!-- Load the settings navigation JavaScript -->
+    <script src="js/settings_navigation.js"></script>
+    
+    <script>
+        // Override console.log to display in our log div
+        const originalLog = console.log;
+        const logDiv = document.getElementById('console-log');
+        
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            const logEntry = document.createElement('div');
+            logEntry.textContent = new Date().toLocaleTimeString() + ': ' + args.join(' ');
+            logDiv.appendChild(logEntry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        };
+        
+        // Test functions
+        function testURL(category) {
+            const url = new URL(window.location);
+            url.searchParams.set('category', category);
+            window.history.pushState({ category: category }, '', url);
+            updateCurrentURLDisplay();
+            console.log('URL updated to:', url.toString());
+        }
+        
+        function testGetCategoryFromURL() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const category = urlParams.get('category') || 'none';
+            console.log('Category from URL:', category);
+        }
+        
+        function testUpdateActiveNavigation() {
+            if (window.SettingsNavigation && window.SettingsNavigation.updateActiveNavigation) {
+                console.log('Calling updateActiveNavigation()');
+                window.SettingsNavigation.updateActiveNavigation();
+            } else {
+                console.log('SettingsNavigation.updateActiveNavigation not available');
+            }
+        }
+        
+        function testLoadCategory(category) {
+            if (window.SettingsNavigation && window.SettingsNavigation.loadCategory) {
+                console.log('Calling loadCategory(' + category + ')');
+                window.SettingsNavigation.loadCategory(category);
+            } else {
+                console.log('SettingsNavigation.loadCategory not available');
+            }
+        }
+        
+        function updateCurrentURLDisplay() {
+            document.getElementById('current-url').textContent = window.location.href;
+        }
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            updateCurrentURLDisplay();
+            console.log('Test page loaded');
+            console.log('SettingsNavigation available:', !!window.SettingsNavigation);
+            
+            if (window.SettingsNavigation) {
+                console.log('Available functions:', Object.keys(window.SettingsNavigation));
+            }
+            
+            // Listen for popstate events
+            window.addEventListener('popstate', function(event) {
+                console.log('Popstate event:', event.state);
+                updateCurrentURLDisplay();
+            });
+        });
+    </script>
+</body>
+</html>

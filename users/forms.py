@@ -990,3 +990,205 @@ class CustomSetPasswordForm(DjangoSetPasswordForm):
                 raise forms.ValidationError("The two password fields didn't match.")
 
         return cleaned_data
+
+
+# =============================================================================
+# SETTINGS DASHBOARD FORMS
+# =============================================================================
+
+
+class GeneralSettingsForm(forms.ModelForm):
+    """Form for general user information (email, password, date of birth)."""
+
+    current_password = forms.CharField(
+        label="Current Password",
+        required=False,
+        widget=forms.PasswordInput(
+            attrs={
+                "class": "form-control",
+                "placeholder": "Enter your current password to change password",
+            }
+        ),
+        help_text="Required only if you want to change your password",
+    )
+
+    password1 = forms.CharField(
+        label="New Password",
+        required=False,
+        widget=forms.PasswordInput(
+            attrs={
+                "class": "form-control",
+                "placeholder": "Enter new password (optional)",
+            }
+        ),
+        help_text="Leave blank if you don't want to change your password",
+    )
+
+    password2 = forms.CharField(
+        label="Confirm New Password",
+        required=False,
+        widget=forms.PasswordInput(
+            attrs={
+                "class": "form-control",
+                "placeholder": "Confirm new password",
+            }
+        ),
+    )
+
+    class Meta:
+        model = CustomUser
+        fields = ["email", "date_of_birth"]
+        labels = {
+            "email": "Email Address",
+            "date_of_birth": "Date of Birth",
+        }
+        widgets = {
+            "email": forms.EmailInput(
+                attrs={
+                    "class": "form-control",
+                    "placeholder": "Enter your email address",
+                    "type": "email",
+                }
+            ),
+            "date_of_birth": forms.DateInput(
+                attrs={
+                    "class": "form-control",
+                    "type": "date",
+                }
+            ),
+        }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        password1 = cleaned_data.get("password1")
+        password2 = cleaned_data.get("password2")
+        current_password = cleaned_data.get("current_password")
+
+        # If any password field is filled, all must be filled
+        if password1 or password2 or current_password:
+            if not current_password:
+                raise forms.ValidationError(
+                    "Current password is required to change your password."
+                )
+            if not password1:
+                raise forms.ValidationError("New password is required.")
+            if not password2:
+                raise forms.ValidationError("Please confirm your new password.")
+            if password1 != password2:
+                raise forms.ValidationError("The new passwords do not match.")
+
+            # Validate password strength
+            if password1:
+                validator = CustomPasswordValidator()
+                try:
+                    validator.validate(password1)
+                except ValidationError as e:
+                    self.add_error("password1", str(e))
+
+        return cleaned_data
+
+    def clean_email(self):
+        email = self.cleaned_data.get("email")
+        if email and hasattr(self, "instance") and self.instance:
+            # Check if email is already used by another user
+            if (
+                CustomUser.objects.filter(email=email)
+                .exclude(pk=self.instance.pk)
+                .exists()
+            ):
+                raise forms.ValidationError(
+                    "An account with this email already exists."
+                )
+        return email
+
+
+class PrivacySettingsForm(forms.ModelForm):
+    """Form for privacy and security settings (2FA, private account, etc.)."""
+
+    class Meta:
+        model = CustomUser
+        fields = ["is_private"]
+        labels = {
+            "is_private": "Private Account",
+        }
+        widgets = {
+            "is_private": forms.CheckboxInput(
+                attrs={
+                    "class": "form-check-input",
+                    "hx-post": "",  # Will be set dynamically
+                    "hx-swap": "none",
+                }
+            ),
+        }
+
+
+class MediaSettingsForm(forms.ModelForm):
+    """Form for media and profile picture management."""
+
+    class Meta:
+        model = CustomUser
+        fields = ["profile_picture"]
+        labels = {
+            "profile_picture": "Profile Picture",
+        }
+        widgets = {
+            "profile_picture": forms.FileInput(
+                attrs={
+                    "class": "form-control",
+                    "accept": "image/*",
+                }
+            ),
+        }
+
+
+class PreferencesSettingsForm(forms.Form):
+    """Form for user preferences (notifications, language, timezone)."""
+
+    # Placeholder form for future preferences
+    # This can be expanded later with actual preference fields
+    notifications_enabled = forms.BooleanField(
+        label="Enable Notifications",
+        required=False,
+        initial=True,
+        widget=forms.CheckboxInput(
+            attrs={
+                "class": "form-check-input",
+                "hx-post": "",  # Will be set dynamically
+                "hx-swap": "none",
+            }
+        ),
+    )
+
+    language = forms.ChoiceField(
+        label="Language",
+        choices=[
+            ("en", "English"),
+            ("fr", "Français"),
+        ],
+        initial="en",
+        widget=forms.Select(attrs={"class": "form-control"}),
+    )
+
+    timezone = forms.ChoiceField(
+        label="Timezone",
+        choices=[
+            ("UTC", "UTC"),
+            ("Europe/Paris", "Europe/Paris"),
+            ("America/New_York", "America/New_York"),
+        ],
+        initial="UTC",
+        widget=forms.Select(attrs={"class": "form-control"}),
+    )
+
+
+class AdvancedSecurityForm(forms.Form):
+    """Form for advanced security settings (sessions, login history)."""
+
+    # This form will be used to display security information
+    # and manage active sessions
+    pass
+
+
+# =============================================================================
+# EXISTING FORMS
+# =============================================================================

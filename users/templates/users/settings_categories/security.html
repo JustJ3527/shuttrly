@@ -1,0 +1,588 @@
+{% load users_filters datetime_tags %}
+
+<!-- Privacy & Security Category -->
+<div class="category-content">
+    <!-- Header -->
+    <div class="category-header">
+        <h2><i class="fas fa-shield-alt"></i> Privacy & Security</h2>
+        <p class="text-muted">Manage your account security, privacy, and two-factor authentication</p>
+    </div>
+
+    <!-- Privacy Settings Section -->
+    <div class="form-section">
+        <h3><i class="fas fa-eye-slash"></i> Privacy Settings</h3>
+        
+        <form method="POST" action="{% url 'settings_save' 'security' %}" 
+              hx-post="{% url 'settings_save' 'security' %}" 
+              hx-target="#settings-content-area" 
+              hx-swap="innerHTML">
+            {% csrf_token %}
+            
+            <div class="form-group">
+                <div class="form-check">
+                    {{ form.is_private }}
+                    <label class="form-check-label" for="{{ form.is_private.id_for_label }}">
+                        Private Account
+                    </label>
+                </div>
+                <small class="form-text text-muted">
+                    <i class="fas fa-users"></i> 
+                    Private accounts are only visible to approved followers
+                </small>
+            </div>
+        </form>
+    </div>
+
+    <!-- Two-Factor Authentication Section -->
+    <div class="form-section">
+        <h3><i class="fas fa-shield-alt"></i> Two-Factor Authentication (2FA)</h3>
+        <p class="text-muted">Add an extra layer of security to your account</p>
+
+        <!-- Email 2FA Method -->
+        <div class="twofa-method-section">
+            <div class="twofa-method-header">
+                <div class="twofa-method-info">
+                    <h4><i class="fas fa-envelope"></i> Email Verification</h4>
+                    <p class="text-muted">Receive verification codes via email when logging in from new devices</p>
+                </div>
+                <div class="twofa-status-badge">
+                    {% if email_2fa_enabled %}
+                        <span class="badge bg-success">
+                            <i class="fas fa-check-circle"></i> Active
+                        </span>
+                    {% else %}
+                        <span class="badge bg-secondary">
+                            <i class="fas fa-times-circle"></i> Inactive
+                        </span>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if email_2fa_enabled %}
+                <!-- Email 2FA is enabled - show disable option -->
+                <div class="twofa-enabled-state">
+                    <div class="alert alert-success">
+                        <i class="fas fa-shield-check"></i> 
+                        <strong>Email 2FA is protecting your account</strong><br>
+                        <small>You'll receive verification codes when logging in from new devices.</small>
+                    </div>
+                    
+                    <!-- Inline disable form -->
+                    <div id="disable-email-2fa-form" class="inline-2fa-form" style="display: none;">
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <strong>Security Warning:</strong> Disabling Email 2FA will reduce the security of your account.
+                        </div>
+                        <form method="POST" class="verification-form" 
+                              hx-post="{% url 'settings_save' 'security' %}" 
+                              hx-target="#settings-content-area" 
+                              hx-swap="innerHTML">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="disable_email">
+                            <div class="form-group">
+                                <label for="disable_email_password">Password</label>
+                                <div class="verification-input-group">
+                                    <input type="password" class="form-control" id="disable_email_password" 
+                                           name="password" placeholder="Enter your password" required>
+                                    <button type="submit" class="btn btn-danger" id="disable-email-2fa-btn">
+                                        <span class="btn-content">
+                                            <i class="fas fa-times"></i> Disable Email 2FA
+                                        </span>
+                                        <span class="btn-loading-content" style="display: none;">
+                                            <i class="fas fa-spinner fa-spin"></i> Disabling...
+                                        </span>
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary" onclick="hideDisableEmail2FA()">
+                                        <i class="fas fa-times"></i> Cancel
+                                    </button>
+                                </div>
+                                <div class="error-message-container"></div>
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <!-- Main action button -->
+                    <div id="disable-email-2fa-button" class="main-action-button">
+                        <button type="button" class="btn btn-outline-danger" onclick="showDisableEmail2FA()">
+                            <i class="fas fa-times"></i> Disable Email 2FA
+                        </button>
+                    </div>
+                </div>
+            {% elif step == "verify_email_code" %}
+                <!-- Email 2FA verification step -->
+                <div class="twofa-setup-state">
+                    <div class="alert alert-info">
+                        <i class="fas fa-envelope-open"></i> 
+                        <strong>Verification Code Sent</strong><br>
+                        <small>We've sent a 6-digit code to your email address. Please enter it below.</small>
+                    </div>
+                    
+                    <form method="POST" class="verification-form" 
+                          hx-post="{% url 'settings_save' 'security' %}" 
+                          hx-target="#settings-content-area" 
+                          hx-swap="innerHTML">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="verify_email_code" />
+                        <div class="form-group">
+                            <label for="email_code">Verification Code</label>
+                            <div class="verification-input-group">
+                                <input type="text" class="form-control verification-code-input" 
+                                       id="email_code" name="email_code" 
+                                       placeholder="000000" maxlength="6" pattern="[0-9]{6}" required>
+                                                                    <button type="submit" class="btn btn-primary" id="verify-email-2fa-btn">
+                                        <span class="btn-content">
+                                            <i class="fas fa-check"></i> Verify & Enable
+                                        </span>
+                                        <span class="btn-loading-content" style="display: none;">
+                                            <i class="fas fa-spinner fa-spin"></i> Verifying...
+                                        </span>
+                                    </button>
+                            </div>
+                        </div>
+                    </form>
+
+                    <div class="verification-actions">
+                        <button type="button" class="btn btn-outline-secondary" onclick="cancelEmail2FASetup()">
+                            <i class="fas fa-times"></i> Cancel Setup
+                        </button>
+                        
+                        <div class="resend-section">
+                            {% if not can_resend %}
+                                <div class="countdown-info">
+                                    <i class="fas fa-clock"></i> 
+                                    New code available in <span id="timer" class="countdown-timer">{{ time_until_resend }}</span> seconds
+                                </div>
+                            {% else %}
+                                <form method="POST" style="display: inline;" 
+                                      hx-post="{% url 'settings_save' 'security' %}" 
+                                      hx-target="#settings-content-area" 
+                                      hx-swap="innerHTML">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="resend_email_code" />
+                                    <button type="submit" class="btn btn-outline-info" id="resend-email-code-btn">
+                                        <span class="btn-content">
+                                            <i class="fas fa-redo"></i> Resend Code
+                                        </span>
+                                        <span class="btn-loading-content" style="display: none;">
+                                            <i class="fas fa-spinner fa-spin"></i> Sending...
+                                        </span>
+                                    </button>
+                                </form>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            {% else %}
+                <!-- Email 2FA is disabled - show enable option -->
+                <div class="twofa-disabled-state">
+                    <div class="alert alert-light">
+                        <i class="fas fa-shield-alt"></i> 
+                        <strong>Email 2FA is not active</strong><br>
+                        <small>Enable it to add an extra layer of security to your account.</small>
+                    </div>
+                    
+                    <!-- Inline enable form -->
+                    <div id="enable-email-2fa-form" class="inline-2fa-form" style="display: none;">
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i>
+                            <strong>How it works:</strong> You'll receive a verification code via email whenever you log in from a new device.
+                        </div>
+                        <form method="POST" class="verification-form" 
+                              hx-post="{% url 'settings_save' 'security' %}" 
+                              hx-target="#settings-content-area" 
+                              hx-swap="innerHTML">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="enable_email">
+                            <div class="form-group">
+                                <label for="enable_email_password">Password</label>
+                                <div class="verification-input-group">
+                                    <input type="password" class="form-control" id="enable_email_password" 
+                                           name="password" placeholder="Enter your password" required>
+                                    <button type="submit" class="btn btn-success" id="enable-email-2fa-btn">
+                                        <span class="btn-content">
+                                            <i class="fas fa-plus"></i> Enable Email 2FA
+                                        </span>
+                                        <span class="btn-loading-content" style="display: none;">
+                                            <i class="fas fa-spinner fa-spin"></i> Enabling...
+                                        </span>
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary" onclick="hideEnableEmail2FA()">
+                                        <i class="fas fa-times"></i> Cancel
+                                    </button>
+                                </div>
+                                <div class="error-message-container"></div>
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <!-- Main action button -->
+                    <div id="enable-email-2fa-button" class="main-action-button">
+                        <button type="button" class="btn btn-outline-success" onclick="showEnableEmail2FA()">
+                            <i class="fas fa-plus"></i> Enable Email 2FA
+                        </button>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+        
+        <!-- TOTP 2FA Method -->
+        <div class="twofa-method-section">
+            <div class="twofa-method-header">
+                <div class="twofa-method-info">
+                    <h4><i class="fas fa-mobile-alt"></i> Authenticator App</h4>
+                    <p class="text-muted">Use apps like Google Authenticator, Authy, or 2FAS for time-based codes</p>
+                </div>
+                <div class="twofa-status-badge">
+                    {% if totp_enabled %}
+                        <span class="badge bg-success">
+                            <i class="fas fa-check-circle"></i> Active
+                        </span>
+                    {% else %}
+                        <span class="badge bg-secondary">
+                            <i class="fas fa-times-circle"></i> Inactive
+                        </span>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if totp_enabled %}
+                <!-- TOTP 2FA is enabled - show disable option -->
+                <div class="twofa-enabled-state">
+                    <div class="alert alert-success">
+                        <i class="fas fa-shield-check"></i> 
+                        <strong>Authenticator App 2FA is protecting your account</strong><br>
+                        <small>You'll need to enter a 6-digit code from your authenticator app when logging in.</small>
+                    </div>
+                    
+                    <!-- Inline disable form -->
+                    <div id="disable-totp-2fa-form" class="inline-2fa-form" style="display: none;">
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <strong>Security Warning:</strong> Disabling Authenticator App 2FA will reduce the security of your account.
+                        </div>
+                        <form method="POST" class="verification-form" 
+                              hx-post="{% url 'settings_save' 'security' %}" 
+                              hx-target="#settings-content-area" 
+                              hx-swap="innerHTML">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="disable_totp">
+                            <div class="form-group">
+                                <label for="disable_totp_password">Password</label>
+                                <input type="password" class="form-control" id="disable_totp_password" 
+                                       name="password" placeholder="Enter your password" required>
+                                <div class="error-message-container"></div>
+                            </div>
+                            <div class="form-group">
+                                <label for="disable_totp_code">Authenticator Code</label>
+                                <div class="verification-input-group">
+                                    <input type="text" class="form-control" id="disable_totp_code" 
+                                           name="disable_totp_code" placeholder="000000" maxlength="6" required>
+                                    <button type="submit" class="btn btn-danger" id="disable-totp-2fa-btn">
+                                        <span class="btn-content">
+                                            <i class="fas fa-times"></i> Disable Authenticator App 2FA
+                                        </span>
+                                        <span class="btn-loading-content" style="display: none;">
+                                            <i class="fas fa-spinner fa-spin"></i> Disabling...
+                                        </span>
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary" onclick="hideDisableTOTP2FA()">
+                                        <i class="fas fa-times"></i> Cancel
+                                    </button>
+                                </div>
+                                <div class="error-message-container"></div>
+                                <small class="form-text text-muted">Enter the current 6-digit code from your authenticator app</small>
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <!-- Main action button -->
+                    <div id="disable-totp-2fa-button" class="main-action-button">
+                        <button type="button" class="btn btn-outline-danger" onclick="showDisableTOTP2FA()">
+                            <i class="fas fa-times"></i> Disable Authenticator App 2FA
+                        </button>
+                    </div>
+                </div>
+            {% elif step == "verify_totp" %}
+                <!-- TOTP 2FA setup step -->
+                <div class="twofa-setup-state totp-setup">
+                    <div class="alert alert-info">
+                        <i class="fas fa-qrcode"></i> 
+                        <strong>Setup Authenticator App</strong><br>
+                        <small>Scan the QR code below with your authenticator app to complete the setup.</small>
+                    </div>
+                    
+                    <div class="totp-setup-content">
+                        <div class="qr-code-section">
+                            <img src="data:image/png;base64,{{ qr_code_url }}" alt="TOTP QR Code" class="qr-code-image">
+                            <p class="qr-code-instructions">
+                                <strong>Instructions:</strong><br>
+                                1. Open your authenticator app (Google Authenticator, Authy, 2FAS, etc.)<br>
+                                2. Scan this QR code or manually enter the setup key<br>
+                                3. Enter the 6-digit code that appears in your app
+                            </p>
+                        </div>
+
+                        {% if totp_uri %}
+                            <div class="totp-uri-section">
+                                <button id="copyTotpUriBtn" type="button" class="btn btn-outline-info btn-sm">
+                                    <i class="fas fa-copy"></i> Copy Setup Key
+                                </button>
+                                <input type="text" id="totpUriInput" value="{{ totp_uri }}" readonly style="position: absolute; left: -9999px;"/>
+                                <span id="copyMessage" class="copy-success-message">Setup key copied!</span>
+                            </div>
+                        {% endif %}
+
+                        <form method="POST" class="verification-form" 
+                              hx-post="{% url 'settings_save' 'security' %}" 
+                              hx-target="#settings-content-area" 
+                              hx-swap="innerHTML">
+                            {% csrf_token %}
+                            <div class="form-group">
+                                <label for="totp_code">Verification Code</label>
+                                <div class="verification-input-group">
+                                    <input type="text" class="form-control verification-code-input" 
+                                           id="totp_code" name="totp_code" 
+                                           placeholder="000000" maxlength="6" pattern="[0-9]{6}" required>
+                                    <button type="submit" name="action" value="verify_totp" class="btn btn-primary" id="verify-totp-2fa-btn">
+                                        <span class="btn-content">
+                                            <i class="fas fa-check"></i> Verify & Enable
+                                        </span>
+                                        <span class="btn-loading-content" style="display: none;">
+                                            <i class="fas fa-spinner fa-spin"></i> Verifying...
+                                        </span>
+                                    </button>
+                                </div>
+                                <small class="form-text text-muted">Enter the 6-digit code from your authenticator app</small>
+                            </div>
+                        </form>
+
+                        <div class="verification-actions">
+                            <button type="button" class="btn btn-outline-secondary" onclick="cancelTOTP2FASetup()">
+                                <i class="fas fa-times"></i> Cancel Setup
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            {% else %}
+                <!-- TOTP 2FA is disabled - show enable option -->
+                <div class="twofa-disabled-state">
+                    <div class="alert alert-light">
+                        <i class="fas fa-shield-alt"></i> 
+                        <strong>Authenticator App 2FA is not active</strong><br>
+                        <small>Enable it to use authenticator apps for enhanced security.</small>
+                    </div>
+                    
+                    <!-- Inline enable form -->
+                    <div id="enable-totp-2fa-form" class="inline-2fa-form" style="display: none;">
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i>
+                            <strong>How it works:</strong> You'll scan a QR code with your authenticator app and enter 6-digit codes when logging in.
+                        </div>
+                        <form method="POST" class="verification-form" 
+                              hx-post="{% url 'settings_save' 'security' %}" 
+                              hx-target="#settings-content-area" 
+                              hx-swap="innerHTML">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="enable_totp">
+                            <div class="form-group">
+                                <label for="enable_totp_password">Password</label>
+                                <div class="verification-input-group">
+                                    <input type="password" class="form-control" id="enable_totp_password" 
+                                           name="password" placeholder="Enter your password" required>
+                                    <button type="submit" class="btn btn-success" id="enable-totp-2fa-btn">
+                                        <span class="btn-content">
+                                            <i class="fas fa-plus"></i> Enable Authenticator App 2FA
+                                        </span>
+                                        <span class="btn-loading-content" style="display: none;">
+                                            <i class="fas fa-spinner fa-spin"></i> Enabling...
+                                        </span>
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary" onclick="hideEnableTOTP2FA()">
+                                        <i class="fas fa-times"></i> Cancel
+                                    </button>
+                                </div>
+                                <div class="error-message-container"></div>
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <!-- Main action button -->
+                    <div id="enable-totp-2fa-button" class="main-action-button">
+                        <button type="button" class="btn btn-outline-success" onclick="showEnableTOTP2FA()">
+                            <i class="fas fa-plus"></i> Enable Authenticator App 2FA
+                        </button>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+        
+        <!-- Trusted Devices Section -->
+        <div class="trusted-devices-subsection">
+            <h4><i class="fas fa-desktop"></i> Trusted Devices</h4>
+            <p class="text-muted">Manage devices that can access your account without 2FA verification</p>
+
+            {% if trusted_devices %}
+                <div class="trusted-devices-list">
+                    {% for device in trusted_devices %}
+                        <div class="device-card">
+                            <div class="device-header" onclick="toggleDeviceDetails(this)">
+                                <div class="device-info">
+                                    <div class="device-name">
+                                        <i class="fas fa-{{ device.device_type|lower|default:'desktop' }}"></i>
+                                        {{ device.device_type|default:"Unknown Device" }}
+                                        {% if device.is_current_device %}
+                                            <span class="current-device-badge">Current Device</span>
+                                        {% endif %}
+                                    </div>
+                                    <div class="device-meta">
+                                        <span class="device-location">{{ device.location_display|format_location }}</span>
+                                        <span class="device-time">Last used {% local_datetime device.last_used_at %}</span>
+                                    </div>
+                                </div>
+                                <div class="device-actions">
+                                    {% if device.expires_soon %}
+                                        <span class="expiry-warning">Expires soon</span>
+                                    {% endif %}
+                                    <i class="fas fa-chevron-down toggle-icon"></i>
+                                </div>
+                            </div>
+                            <div class="device-details">
+                                <div class="device-specs">
+                                    <div class="spec-item">
+                                        <strong>Model:</strong> {{ device.device_family|default:"Unknown" }}
+                                    </div>
+                                    <div class="spec-item">
+                                        <strong>Browser:</strong> {{ device.browser_family|default:"Unknown" }} {{ device.browser_version|default:"" }}
+                                    </div>
+                                    <div class="spec-item">
+                                        <strong>OS:</strong> {{ device.os_family|default:"Unknown" }} {{ device.os_version|default:"" }}
+                                    </div>
+                                    <div class="spec-item">
+                                        <strong>IP:</strong> {{ device.ip_address|default:"Unknown" }}
+                                    </div>
+                                    {% if device.expires_at %}
+                                        <div class="spec-item">
+                                            <strong>Expires:</strong> {% local_datetime device.expires_at %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <div class="device-actions-bottom">
+                                    <form method="POST" style="display: inline;" 
+                                          hx-post="{% url 'settings_save' 'security' %}" 
+                                          hx-target="#settings-content-area" 
+                                          hx-swap="innerHTML">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="remove_trusted_device">
+                                        <input type="hidden" name="device_id" value="{{ device.id }}">
+                                                                                                <button type="submit" onclick="return confirm('Are you sure you want to revoke access for this device?')" 
+                                                                class="btn btn-outline-danger btn-sm" id="revoke-device-{{ device.id }}-btn">
+                                                            <span class="btn-content">
+                                                                <i class="fas fa-trash"></i> Revoke Access
+                                                            </span>
+                                                            <span class="btn-loading-content" style="display: none;">
+                                                                <i class="fas fa-spinner fa-spin"></i> Revoking...
+                                                            </span>
+                                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="no-devices-message">
+                    <div class="alert alert-light text-center">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>No trusted devices</strong><br>
+                        <small>When you log in from a new device, you can choose to trust it for future logins.</small>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+    // 2FA form toggle functions
+    function showEnableEmail2FA() {
+        document.getElementById('enable-email-2fa-form').style.display = 'block';
+        document.getElementById('enable-email-2fa-button').style.display = 'none';
+    }
+    
+    function hideEnableEmail2FA() {
+        document.getElementById('enable-email-2fa-form').style.display = 'none';
+        document.getElementById('enable-email-2fa-button').style.display = 'block';
+    }
+    
+    function showDisableEmail2FA() {
+        document.getElementById('disable-email-2fa-form').style.display = 'block';
+        document.getElementById('disable-email-2fa-button').style.display = 'none';
+    }
+    
+    function hideDisableEmail2FA() {
+        document.getElementById('disable-email-2fa-form').style.display = 'none';
+        document.getElementById('disable-email-2fa-button').style.display = 'block';
+    }
+    
+    function showEnableTOTP2FA() {
+        document.getElementById('enable-totp-2fa-form').style.display = 'block';
+        document.getElementById('enable-totp-2fa-button').style.display = 'none';
+    }
+    
+    function hideEnableTOTP2FA() {
+        document.getElementById('enable-totp-2fa-form').style.display = 'none';
+        document.getElementById('enable-totp-2fa-button').style.display = 'block';
+    }
+    
+    function showDisableTOTP2FA() {
+        document.getElementById('disable-totp-2fa-form').style.display = 'block';
+        document.getElementById('disable-totp-2fa-button').style.display = 'none';
+    }
+    
+    function hideDisableTOTP2FA() {
+        document.getElementById('disable-totp-2fa-form').style.display = 'none';
+        document.getElementById('disable-totp-2fa-button').style.display = 'block';
+    }
+    
+    function cancelEmail2FASetup() {
+        // Redirect back to main security page
+        htmx.ajax('GET', '{% url "settings_category" "security" %}', '#settings-content-area');
+    }
+    
+    function cancelTOTP2FASetup() {
+        // Redirect back to main security page
+        htmx.ajax('GET', '{% url "settings_category" "security" %}', '#settings-content-area');
+    }
+    
+    function toggleDeviceDetails(element) {
+        const details = element.nextElementSibling;
+        const icon = element.querySelector('.toggle-icon');
+        
+        if (details.style.display === 'none' || !details.style.display) {
+            details.style.display = 'block';
+            element.classList.add('expanded');
+        } else {
+            details.style.display = 'none';
+            element.classList.remove('expanded');
+        }
+    }
+    
+    // TOTP setup copy functionality
+    document.addEventListener('DOMContentLoaded', function() {
+        const copyBtn = document.getElementById('copyTotpUriBtn');
+        const copyMessage = document.getElementById('copyMessage');
+        
+        if (copyBtn) {
+            copyBtn.addEventListener('click', function() {
+                const input = document.getElementById('totpUriInput');
+                input.select();
+                document.execCommand('copy');
+                
+                copyMessage.classList.add('show');
+                setTimeout(function() {
+                    copyMessage.classList.remove('show');
+                }, 2000);
+            });
+        }
+    });
+</script>

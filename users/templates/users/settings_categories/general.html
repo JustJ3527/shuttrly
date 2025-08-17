@@ -1,0 +1,158 @@
+<!-- General Information Category -->
+<div class="category-content">
+    <!-- Header -->
+    <div class="category-header">
+        <h2><i class="fas fa-user"></i> General Information</h2>
+        <p class="text-muted">Manage your basic account information and credentials</p>
+    </div>
+
+    <!-- Form Section -->
+    <div class="category-form">
+        <form method="POST" action="{% url 'settings_save' 'general' %}" 
+              hx-post="{% url 'settings_save' 'general' %}" 
+              hx-target="#settings-content-area" 
+              hx-swap="innerHTML">
+            {% csrf_token %}
+            
+            <!-- Email Section -->
+            <div class="form-section">
+                <h3><i class="fas fa-envelope"></i> Email & Account</h3>
+                
+                <div class="form-group">
+                    <label for="{{ form.email.id_for_label }}">{{ form.email.label }} *</label>
+                    {{ form.email }}
+                    {% if form.email.errors %}
+                        <div class="error-message">
+                            {% for error in form.email.errors %}
+                                <i class="fas fa-exclamation-circle"></i> {{ error }}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                    <small class="form-text text-muted">
+                        <i class="fas fa-info-circle"></i> 
+                        We'll send a verification code if you change this email address
+                    </small>
+                </div>
+
+                <div class="form-group">
+                    <label for="{{ form.date_of_birth.id_for_label }}">{{ form.date_of_birth.label }} *</label>
+                    {{ form.date_of_birth }}
+                    {% if form.date_of_birth.errors %}
+                        <div class="error-message">
+                            {% for error in form.date_of_birth.errors %}
+                                <i class="fas fa-exclamation-circle"></i> {{ error }}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                    <small class="form-text text-muted">
+                        <i class="fas fa-calendar"></i> 
+                        You must be at least 16 years old. This information is private.
+                    </small>
+                </div>
+            </div>
+
+            <!-- Password Section -->
+            <div class="form-section">
+                <h3><i class="fas fa-lock"></i> Change Password</h3>
+                
+                <div class="form-group">
+                    <label for="{{ form.current_password.id_for_label }}">{{ form.current_password.label }}</label>
+                    {{ form.current_password }}
+                    {% if form.current_password.errors %}
+                        <div class="error-message">
+                            {% for error in form.current_password.errors %}
+                                <i class="fas fa-exclamation-circle"></i> {{ error }}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                    <small class="form-text text-muted">
+                        <i class="fas fa-shield-alt"></i> 
+                        Required only if you want to change your password
+                    </small>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.password1.id_for_label }}">{{ form.password1.label }}</label>
+                            <div class="password-input-wrapper">
+                                {{ form.password1 }}
+                                <i class="fas fa-eye password-toggle-icon" id="toggle-password1"></i>
+                            </div>
+                            {% if form.password1.errors %}
+                                <div class="error-message">
+                                    {% for error in form.password1.errors %}
+                                        <i class="fas fa-exclamation-circle"></i> {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <small class="form-text text-muted">
+                                <i class="fas fa-key"></i> 
+                                At least 12 characters with mixed case, numbers, and symbols
+                            </small>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.password2.id_for_label }}">{{ form.password2.label }}</label>
+                            <div class="password-input-wrapper">
+                                {{ form.password2 }}
+                                <i class="fas fa-eye password-toggle-icon" id="toggle-password2"></i>
+                            </div>
+                            {% if form.password2.errors %}
+                                <div class="error-message">
+                                    {% for error in form.password2.errors %}
+                                        <i class="fas fa-exclamation-circle"></i> {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary btn-lg" id="general-submit-btn">
+                    <span class="btn-content">
+                        <i class="fas fa-save"></i> Save General Settings
+                    </span>
+                    <span class="btn-loading-content" style="display: none;">
+                        <i class="fas fa-spinner fa-spin"></i> Saving...
+                    </span>
+                </button>
+                <a href="{% url 'profile' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-times"></i> Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    // Password toggle functionality
+    document.addEventListener('DOMContentLoaded', function() {
+        const togglePassword1 = document.getElementById('toggle-password1');
+        const togglePassword2 = document.getElementById('toggle-password2');
+        const password1 = document.getElementById('{{ form.password1.id_for_label }}');
+        const password2 = document.getElementById('{{ form.password2.id_for_label }}');
+        
+        if (togglePassword1 && password1) {
+            togglePassword1.addEventListener('click', function() {
+                const type = password1.getAttribute('type') === 'password' ? 'text' : 'password';
+                password1.setAttribute('type', type);
+                this.classList.toggle('fa-eye');
+                this.classList.toggle('fa-eye-slash');
+            });
+        }
+        
+        if (togglePassword2 && password2) {
+            togglePassword2.addEventListener('click', function() {
+                const type = password2.getAttribute('type') === 'password' ? 'text' : 'password';
+                password2.setAttribute('type', type);
+                this.classList.toggle('fa-eye');
+                this.classList.toggle('fa-eye-slash');
+            });
+        }
+    });
+</script>

@@ -45,6 +45,27 @@ urlpatterns = [
         public_profile_view,
         name="public_profile",
     ),
+    # Settings Dashboard - New HTMX-based approach
+    path(
+        "settings/dashboard/",
+        settings_dashboard_view,
+        name="settings_dashboard",
+    ),
+    path(
+        "settings/",
+        settings_dashboard_view,
+        name="settings_dashboard_root",
+    ),
+    path(
+        "settings/<str:category>/",
+        settings_category_view,
+        name="settings_category",
+    ),
+    path(
+        "settings/<str:category>/save/",
+        settings_save_view,
+        name="settings_save",
+    ),
     # Profile editing - simple approach
     path(
         "profile/edit-simple/",

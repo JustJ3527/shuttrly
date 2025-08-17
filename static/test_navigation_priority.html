@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Navigation Priority Test</title>
+    <link rel="stylesheet" href="css/settings_dashboard.css">
+    <style>
+        .test-container {
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .test-button {
+            margin: 5px;
+            padding: 10px 15px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .test-button:hover {
+            background: #0056b3;
+        }
+        .test-button.success {
+            background: #28a745;
+        }
+        .test-button.warning {
+            background: #ffc107;
+            color: #212529;
+        }
+        .current-category {
+            font-weight: bold;
+            color: #28a745;
+        }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .priority-info {
+            background: #e7f3ff;
+            border: 1px solid #b3d9ff;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .priority-info h4 {
+            color: #0056b3;
+            margin-top: 0;
+        }
+        .priority-list {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        .priority-list li {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>Navigation Priority Test</h1>
+        
+        <div class="priority-info">
+            <h4>Priority System</h4>
+            <p>This test demonstrates the new navigation priority system:</p>
+            <ol class="priority-list">
+                <li><strong>User Selection (Highest)</strong> - When you click a navigation item</li>
+                <li><strong>Current Global Category</strong> - The last selected category</li>
+                <li><strong>URL Parameters (Lowest)</strong> - Category from URL query string</li>
+            </ol>
+            <p>The system now respects your clicks and won't override them with URL state.</p>
+        </div>
+        
+        <div class="test-section">
+            <h3>Test Navigation</h3>
+            <p>Current category: <span id="current-category" class="current-category">general</span></p>
+            
+            <nav class="settings-nav">
+                <a href="/settings/general/" class="nav-item active" data-category="general" onclick="handleNavClick('general', this)">
+                    <div class="nav-icon">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <div class="nav-content">
+                        <div class="nav-title">General</div>
+                        <div class="nav-subtitle">General settings</div>
+                    </div>
+                    <div class="nav-arrow">
+                        <i class="fas fa-chevron-right"></i>
+                    </div>
+                </a>
+                
+                <a href="/settings/security/" class="nav-item" data-category="security" onclick="handleNavClick('security', this)">
+                    <div class="nav-icon">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <div class="nav-content">
+                        <div class="nav-title">Security</div>
+                        <div class="nav-subtitle">Security settings</div>
+                    </div>
+                    <div class="nav-arrow">
+                        <i class="fas fa-chevron-right"></i>
+                    </div>
+                </a>
+                
+                <a href="/settings/profile/" class="nav-item" data-category="profile" onclick="handleNavClick('profile', this)">
+                    <div class="nav-title">Profile</div>
+                    <div class="nav-subtitle">Profile settings</div>
+                </a>
+                
+                <a href="/settings/media/" class="nav-item" data-category="media" onclick="handleNavClick('media', this)">
+                    <div class="nav-title">Media</div>
+                    <div class="nav-subtitle">Media settings</div>
+                </a>
+            </nav>
+        </div>
+        
+        <div class="test-section">
+            <h3>Test Controls</h3>
+            <h4>Direct Navigation</h4>
+            <button class="test-button" onclick="testDirectClick('general')">Click General</button>
+            <button class="test-button" onclick="testDirectClick('security')">Click Security</button>
+            <button class="test-button" onclick="testDirectClick('profile')">Click Profile</button>
+            <button class="test-button" onclick="testDirectClick('media')">Click Media</button>
+            
+            <h4>Priority Functions</h4>
+            <button class="test-button success" onclick="testPriorityUpdate('general')">Priority Update: General</button>
+            <button class="test-button success" onclick="testPriorityUpdate('security')">Priority Update: Security</button>
+            <button class="test-button success" onclick="testPriorityUpdate('profile')">Priority Update: Profile</button>
+            
+            <h4>URL Simulation</h4>
+            <button class="test-button warning" onclick="testURLOverride('security')">Simulate URL: security</button>
+            <button class="test-button warning" onclick="testURLOverride('profile')">Simulate URL: profile</button>
+            <button class="test-button warning" onclick="testURLOverride('media')">Simulate URL: media</button>
+            
+            <h4>Reset & Test</h4>
+            <button class="test-button" onclick="testReset()">Reset Navigation</button>
+            <button class="test-button" onclick="testCurrentState()">Show Current State</button>
+        </div>
+        
+        <div class="test-section">
+            <h3>Test Results</h3>
+            <div id="test-results">
+                <p>Click the buttons above to test the navigation priority system.</p>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h3>Console Log</h3>
+            <div class="log" id="console-log"></div>
+        </div>
+    </div>
+
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Load the settings navigation JavaScript -->
+    <script src="js/settings_navigation.js"></script>
+    
+    <script>
+        // Override console.log to display in our log div
+        const originalLog = console.log;
+        const logDiv = document.getElementById('console-log');
+        
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            const logEntry = document.createElement('div');
+            logEntry.textContent = new Date().toLocaleTimeString() + ': ' + args.join(' ');
+            logDiv.appendChild(logEntry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        };
+        
+        // Test functions
+        function handleNavClick(category, element) {
+            console.log('Nav item clicked:', category);
+            
+            // Update active navigation immediately for better UX
+            if (window.SettingsNavigation && window.SettingsNavigation.updateActiveNavigationItem) {
+                window.SettingsNavigation.updateActiveNavigationItem(element);
+            }
+            
+            // Update display
+            updateTestDisplay(category);
+        }
+        
+        function testDirectClick(category) {
+            console.log('Testing direct click on:', category);
+            
+            // Simulate clicking the navigation item
+            const navItem = document.querySelector(`[data-category="${category}"]`);
+            if (navItem) {
+                handleNavClick(category, navItem);
+            }
+        }
+        
+        function testPriorityUpdate(category) {
+            console.log('Testing priority update for:', category);
+            
+            if (window.SettingsNavigation && window.SettingsNavigation.updateActiveNavigationWithPriority) {
+                window.SettingsNavigation.updateActiveNavigationWithPriority(category);
+                updateTestDisplay(category);
+            } else {
+                console.log('Priority function not available');
+            }
+        }
+        
+        function testURLOverride(category) {
+            console.log('Testing URL override with:', category);
+            
+            // Simulate URL change
+            const url = new URL(window.location);
+            url.searchParams.set('category', category);
+            window.history.pushState({ category: category }, '', url);
+            
+            // Try to update navigation (should not override user selection)
+            if (window.SettingsNavigation && window.SettingsNavigation.updateActiveNavigation) {
+                window.SettingsNavigation.updateActiveNavigation();
+            }
+            
+            updateTestDisplay(category);
+        }
+        
+        function testReset() {
+            console.log('Resetting navigation state');
+            
+            // Remove all active classes
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            
+            // Reset current category
+            if (window.SettingsNavigation) {
+                window.SettingsNavigation.currentCategory = 'general';
+            }
+            
+            updateTestDisplay('general');
+        }
+        
+        function testCurrentState() {
+            console.log('Current navigation state:');
+            
+            const activeItem = document.querySelector('.nav-item.active');
+            if (activeItem) {
+                const category = activeItem.getAttribute('data-category');
+                console.log('- Active category:', category);
+                console.log('- Active element:', activeItem);
+            } else {
+                console.log('- No active category');
+            }
+            
+            if (window.SettingsNavigation) {
+                console.log('- Global currentCategory:', window.SettingsNavigation.currentCategory);
+            }
+            
+            const urlParams = new URLSearchParams(window.location.search);
+            const urlCategory = urlParams.get('category');
+            console.log('- URL category:', urlCategory);
+        }
+        
+        function updateTestDisplay(category) {
+            document.getElementById('current-category').textContent = category;
+            
+            const results = document.getElementById('test-results');
+            results.innerHTML = `
+                <p><strong>Current Category:</strong> ${category}</p>
+                <p><strong>Active Item:</strong> ${document.querySelector('.nav-item.active') ? 'Found' : 'Not found'}</p>
+                <p><strong>Active Item Category:</strong> ${document.querySelector('.nav-item.active')?.getAttribute('data-category') || 'None'}</p>
+                <p><strong>Global Category:</strong> ${window.SettingsNavigation ? window.SettingsNavigation.currentCategory : 'Not available'}</p>
+                <p><strong>URL Category:</strong> ${new URLSearchParams(window.location.search).get('category') || 'None'}</p>
+            `;
+        }
+        
+        // Initialize test
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Navigation priority test page loaded');
+            console.log('SettingsNavigation available:', !!window.SettingsNavigation);
+            
+            if (window.SettingsNavigation) {
+                console.log('Available functions:', Object.keys(window.SettingsNavigation));
+            }
+            
+            // Set initial state
+            updateTestDisplay('general');
+        });
+    </script>
+</body>
+</html>

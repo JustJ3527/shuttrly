@@ -16,22 +16,14 @@
             <div class="settings-header">
                 <h1><i class="fas fa-cog"></i> Settings Dashboard</h1>
                 <p class="text-muted">Manage your account settings and preferences</p>
+                
+                <!-- Optional Progress Bar for Multi-step Forms -->
+                <div class="settings-progress" id="settings-progress" style="display: none;">
+                    <div class="settings-progress-bar" style="width: 0%"></div>
+                </div>
             </div>
 
             <div class="settings-content">
-                <!-- Django Messages Section -->
-                {% if messages %}
-                    <div class="settings-messages">
-                        {% for message in messages %}
-                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-                                <i class="fas fa-{% if message.tags == 'success' %}check-circle{% elif message.tags == 'error' %}exclamation-circle{% elif message.tags == 'warning' %}exclamation-triangle{% else %}info-circle{% endif %}"></i>
-                                {{ message }}
-                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                            </div>
-                        {% endfor %}
-                    </div>
-                {% endif %}
-                
                 <!-- Left Column - Navigation Sidebar -->
                 <div class="settings-sidebar">
                     <div class="sidebar-header">
@@ -39,7 +31,7 @@
                     </div>
                     
                     <nav class="settings-nav">
-                        <a href="{% url 'settings_category' 'general' %}" 
+                        <a href="{% url 'settings_dashboard_root' %}?category=general" 
                            class="nav-item {% if current_category == 'general' %}active{% endif %}"
                            data-category="general"
                            hx-get="{% url 'settings_category' 'general' %}"
@@ -59,7 +51,7 @@
                             </div>
                         </a>
 
-                        <a href="{% url 'settings_category' 'security' %}" 
+                        <a href="{% url 'settings_dashboard_root' %}?category=security" 
                            class="nav-item {% if current_category == 'security' %}active{% endif %}"
                            data-category="security"
                            hx-get="{% url 'settings_category' 'security' %}"
@@ -79,7 +71,7 @@
                             </div>
                         </a>
 
-                        <a href="{% url 'settings_category' 'profile' %}" 
+                        <a href="{% url 'settings_dashboard_root' %}?category=profile" 
                            class="nav-item {% if current_category == 'profile' %}active{% endif %}"
                            data-category="profile"
                            hx-get="{% url 'settings_category' 'profile' %}"
@@ -99,7 +91,7 @@
                             </div>
                         </a>
 
-                        <a href="{% url 'settings_category' 'media' %}" 
+                        <a href="{% url 'settings_dashboard_root' %}?category=media" 
                            class="nav-item {% if current_category == 'media' %}active{% endif %}"
                            data-category="media"
                            hx-get="{% url 'settings_category' 'media' %}"
@@ -119,7 +111,7 @@
                             </div>
                         </a>
 
-                        <a href="{% url 'settings_category' 'preferences' %}" 
+                        <a href="{% url 'settings_dashboard_root' %}?category=preferences" 
                            class="nav-item {% if current_category == 'preferences' %}active{% endif %}"
                            data-category="preferences"
                            hx-get="{% url 'settings_category' 'preferences' %}"
@@ -139,7 +131,7 @@
                             </div>
                         </a>
 
-                        <a href="{% url 'settings_category' 'advanced_security' %}" 
+                        <a href="{% url 'settings_dashboard_root' %}?category=advanced_security" 
                            class="nav-item {% if current_category == 'advanced_security' %}active{% endif %}"
                            hx-get="{% url 'settings_category' 'advanced_security' %}"
                            hx-target="#settings-content-area"
@@ -162,7 +154,23 @@
 
                 <!-- Right Column - Content Area -->
                 <div class="settings-main">
-                    <div id="settings-content-area">
+                    <div id="settings-content-area"
+                         hx-get="{% url 'settings_category' current_category %}"
+                         hx-trigger="load"
+                         hx-target="this"
+                         hx-swap="innerHTML"
+                         hx-indicator="#loading-spinner"
+                         hx-transition="fade"
+                         hx-preserve="true">
+                        
+                        <!-- Loading Spinner -->
+                        <div id="loading-spinner" class="loading-spinner" style="display: none;">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="mt-2 text-muted">Loading settings...</p>
+                        </div>
+                        
                         <!-- Content will be loaded here via HTMX -->
                         <!-- Initial content will be loaded dynamically -->
                     </div>
@@ -191,8 +199,13 @@
         window.currentCategory = '{{ current_category }}';
         window.settingsBaseUrl = '/settings/'; // Base URL for category views
         
-        // Function to handle navigation clicks with immediate visual feedback
+        // Enhanced function to handle navigation clicks with immediate visual feedback
         function handleSettingsNavClick(category, element) {
+            // Prevent multiple clicks
+            if (element.classList.contains('loading')) {
+                return;
+            }
+            
             // Update active navigation immediately for better UX
             if (window.SettingsNavigation && window.SettingsNavigation.updateActiveNavigationItem) {
                 window.SettingsNavigation.updateActiveNavigationItem(element);
@@ -200,77 +213,304 @@
             
             // Update global current category
             window.currentCategory = category;
+            
+            // Update URL to reflect the selected category
+            const newUrl = `/settings/?category=${category}`;
+            window.history.pushState({ category: category }, '', newUrl);
+            
+            // Add loading state to navigation
+            setNavigationLoading(category, true);
+            
+            // Show loading feedback
+            showSettingsFeedback(`Loading ${category} settings...`, 'info');
+            
+            // Update progress bar if available
+            updateSettingsProgress(25);
+            
+            // Store the category in sessionStorage for persistence
+            sessionStorage.setItem('currentSettingsCategory', category);
         }
         
         // Function to get category from URL query parameters
         function getCategoryFromURL() {
             const urlParams = new URLSearchParams(window.location.search);
-            return urlParams.get('category') || '{{ current_category }}';
+            const category = urlParams.get('category');
+            return category || 'general';
+        }
+        
+        // Function to get category from multiple sources (URL, sessionStorage, default)
+        function getCurrentCategory() {
+            // First priority: URL parameters
+            const urlCategory = getCategoryFromURL();
+            if (urlCategory && urlCategory !== 'general') {
+                return urlCategory;
+            }
+            
+            // Second priority: sessionStorage
+            const storedCategory = sessionStorage.getItem('currentSettingsCategory');
+            if (storedCategory && storedCategory !== 'general') {
+                return storedCategory;
+            }
+            
+            // Fallback: default category
+            return 'general';
+        }
+        
+        // Function to show feedback messages
+        function showSettingsFeedback(message, type = 'info') {
+            const feedbackDiv = document.createElement('div');
+            feedbackDiv.className = `alert alert-${type === 'error' ? 'danger' : type === 'success' ? 'success' : 'info'} settings-feedback`;
+            feedbackDiv.innerHTML = `
+                <i class="fas fa-${type === 'error' ? 'exclamation-circle' : type === 'success' ? 'check-circle' : 'info-circle'}"></i>
+                ${message}
+                <button type="button" class="btn-close" onclick="this.parentElement.remove()" aria-label="Close"></button>
+            `;
+            
+            // Remove existing feedback
+            document.querySelectorAll('.settings-feedback').forEach(item => item.remove());
+            
+            // Add new feedback
+            document.body.appendChild(feedbackDiv);
+            
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                if (feedbackDiv.parentElement) {
+                    feedbackDiv.remove();
+                }
+            }, 5000);
+        }
+        
+        // Function to add loading state to navigation
+        function setNavigationLoading(category, isLoading = true) {
+            const navItem = document.querySelector(`[data-category="${category}"]`);
+            if (navItem) {
+                if (isLoading) {
+                    navItem.classList.add('loading');
+                } else {
+                    navItem.classList.remove('loading');
+                }
+            }
+        }
+        
+        // Function to update progress bar
+        function updateSettingsProgress(progress) {
+            const progressBar = document.querySelector('.settings-progress-bar');
+            if (progressBar) {
+                progressBar.style.width = `${progress}%`;
+            }
+        }
+        
+        // Function to show/hide progress bar
+        function toggleProgressBar(show = true) {
+            const progressContainer = document.getElementById('settings-progress');
+            if (progressContainer) {
+                progressContainer.style.display = show ? 'block' : 'none';
+            }
+        }
+        
+        // Function to animate progress bar
+        function animateProgressBar(from, to, duration = 1000) {
+            const progressBar = document.querySelector('.settings-progress-bar');
+            if (!progressBar) return;
+            
+            const start = performance.now();
+            const change = to - from;
+            
+            function updateProgress(currentTime) {
+                const elapsed = currentTime - start;
+                const progress = Math.min(elapsed / duration, 1);
+                
+                // Easing function for smooth animation
+                const easeOutQuart = 1 - Math.pow(1 - progress, 4);
+                const currentProgress = from + (change * easeOutQuart);
+                
+                progressBar.style.width = `${currentProgress}%`;
+                
+                if (progress < 1) {
+                    requestAnimationFrame(updateProgress);
+                }
+            }
+            
+            requestAnimationFrame(updateProgress);
         }
         
         // Initialize HTMX after page load
         document.addEventListener('DOMContentLoaded', function() {
-            // Get category from URL or fallback to template variable
-            const urlCategory = getCategoryFromURL();
-            const templateCategory = '{{ current_category }}';
+            // Get the current category from multiple sources
+            const initialCategory = getCurrentCategory();
             
-            // Use URL category if available, otherwise fall back to template category
-            const initialCategory = urlCategory !== 'general' ? urlCategory : templateCategory;
+            // Update global current category
+            window.currentCategory = initialCategory;
             
-            if (initialCategory && initialCategory !== 'settings') {
-                // Update global current category
-                window.currentCategory = initialCategory;
-                
-                // Use the centralized navigation system
-                if (window.SettingsNavigation && window.SettingsNavigation.loadCategory) {
-                    window.SettingsNavigation.loadCategory(initialCategory);
-                }
-                
-                // Update navigation state after a short delay to ensure DOM is ready
-                setTimeout(() => {
-                    if (window.SettingsNavigation && window.SettingsNavigation.updateActiveNavigationWithPriority) {
-                        window.SettingsNavigation.updateActiveNavigationWithPriority(initialCategory);
-                    } else if (window.SettingsNavigation && window.SettingsNavigation.updateActiveNavigation) {
-                        window.SettingsNavigation.updateActiveNavigation();
-                    }
-                }, 100);
+            // Store in sessionStorage if not already there
+            if (initialCategory !== 'general') {
+                sessionStorage.setItem('currentSettingsCategory', initialCategory);
             }
             
-            // Set up HTMX indicators
-            htmx.on('htmx:beforeRequest', function(evt) {
-                // Show loading indicator
-                const target = evt.detail.target;
-                if (target) {
-                    target.style.opacity = '0.6';
+            // Update navigation state after a short delay to ensure DOM is ready
+            setTimeout(() => {
+                if (window.SettingsNavigation && window.SettingsNavigation.updateActiveNavigationWithPriority) {
+                    window.SettingsNavigation.updateActiveNavigationWithPriority(initialCategory);
+                } else if (window.SettingsNavigation && window.SettingsNavigation.updateActiveNavigation) {
+                    window.SettingsNavigation.updateActiveNavigation();
                 }
+            }, 100);
+            
+            // If we're not on the general category, ensure the content is loaded
+            if (initialCategory !== 'general') {
+                // Small delay to ensure HTMX is ready
+                setTimeout(() => {
+                    const contentArea = document.getElementById('settings-content-area');
+                    if (contentArea && !contentArea.hasAttribute('hx-loaded')) {
+                        // Force load the category content
+                        htmx.ajax('GET', `/settings/${initialCategory}/`, {
+                            target: '#settings-content-area',
+                            swap: 'innerHTML',
+                            headers: {
+                                'HX-Request': 'true'
+                            }
+                        });
+                    }
+                }, 200);
+            }
+        });
+            
+                    // Enhanced HTMX event handling
+        htmx.on('htmx:beforeRequest', function(evt) {
+            const target = evt.detail.target;
+            const category = evt.detail.elt.getAttribute('data-category') || 
+                           evt.detail.elt.closest('[data-category]')?.getAttribute('data-category');
+            
+            // Add loading state to navigation item
+            if (category) {
+                const navItem = document.querySelector(`[data-category="${category}"]`);
+                if (navItem) {
+                    navItem.classList.add('loading');
+                }
+            }
+            
+            // Show loading state on target
+            if (target) {
+                target.classList.add('settings-content-loading');
+                target.classList.remove('settings-content-loaded');
+            }
+            
+            // Show loading spinner
+            const spinner = document.getElementById('loading-spinner');
+            if (spinner) {
+                spinner.style.display = 'flex';
+            }
+        });
+        
+        htmx.on('htmx:beforeSwap', function(evt) {
+            const target = evt.detail.target;
+            
+            // Add fade-out effect
+            target.style.opacity = '0';
+            target.style.transform = 'translateY(-10px)';
+            
+            // Wait for transition to complete
+            setTimeout(() => {
+                // Perform the swap
+                evt.detail.shouldSwap = true;
+            }, 150);
+        });
+        
+        htmx.on('htmx:afterSwap', function(evt) {
+            const target = evt.detail.target;
+            
+            // Add fade-in effect
+            target.style.opacity = '0';
+            target.style.transform = 'translateY(10px)';
+            
+            // Animate in
+            requestAnimationFrame(() => {
+                target.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                target.style.opacity = '1';
+                target.style.transform = 'translateY(0)';
             });
             
-            htmx.on('htmx:afterRequest', function(evt) {
-                // Hide loading indicator
-                const target = evt.detail.target;
-                if (target) {
-                    target.style.opacity = '1';
-                }
-                
-                // Update active navigation item using centralized system
-                if (evt.detail.xhr.status === 200) {
-                    if (window.SettingsNavigation && window.SettingsNavigation.updateActiveNavigation) {
-                        window.SettingsNavigation.updateActiveNavigation();
-                    }
-                }
-            });
+            // Update classes
+            target.classList.remove('settings-content-loading');
+            target.classList.add('settings-content-loaded');
             
-            // Handle browser back/forward buttons using centralized system
-            window.addEventListener('popstate', function(event) {
-                if (event.state && event.state.category) {
-                    if (window.SettingsNavigation && window.SettingsNavigation.loadCategory) {
-                        window.SettingsNavigation.loadCategory(event.state.category);
-                    }
-                }
-                // Update navigation state
+            // Mark as loaded
+            target.setAttribute('hx-loaded', 'true');
+            
+            // Hide loading spinner
+            const spinner = document.getElementById('loading-spinner');
+            if (spinner) {
+                spinner.style.display = 'none';
+            }
+            
+            // Update active navigation
+            if (evt.detail.xhr.status === 200) {
                 if (window.SettingsNavigation && window.SettingsNavigation.updateActiveNavigation) {
                     window.SettingsNavigation.updateActiveNavigation();
                 }
+            }
+            
+            // Remove loading state from navigation
+            document.querySelectorAll('.nav-item.loading').forEach(item => {
+                item.classList.remove('loading');
+            });
+        });
+        
+        htmx.on('htmx:responseError', function(evt) {
+            const target = evt.detail.target;
+            
+            // Remove loading states
+            if (target) {
+                target.classList.remove('settings-content-loading');
+                target.classList.add('settings-content-loaded');
+            }
+            
+            // Hide loading spinner
+            const spinner = document.getElementById('loading-spinner');
+            if (spinner) {
+                spinner.style.display = 'none';
+            }
+            
+            // Remove loading state from navigation
+            document.querySelectorAll('.nav-item.loading').forEach(item => {
+                item.classList.remove('loading');
+            });
+            
+            // Show error message
+            showSettingsFeedback('Error loading content. Please try again.', 'error');
+        });
+            
+            // Enhanced handling of browser back/forward buttons
+            window.addEventListener('popstate', function(event) {
+                // Get category from URL parameters
+                const urlCategory = getCategoryFromURL();
+                
+                // Update global current category
+                window.currentCategory = urlCategory;
+                
+                // Update active navigation item
+                if (window.SettingsNavigation && window.SettingsNavigation.updateActiveNavigation) {
+                    window.SettingsNavigation.updateActiveNavigation();
+                }
+                
+                // Load the category content via HTMX
+                const contentArea = document.getElementById('settings-content-area');
+                if (contentArea) {
+                    // Show loading state
+                    contentArea.classList.add('settings-content-loading');
+                    
+                    // Load the category content
+                    htmx.ajax('GET', `/settings/${urlCategory}/`, {
+                        target: '#settings-content-area',
+                        swap: 'innerHTML',
+                        headers: {
+                            'HX-Request': 'true'
+                        }
+                    });
+                }
+                
+                // Show feedback
+                showSettingsFeedback(`Loaded ${urlCategory} settings`, 'info');
             });
         });
     </script>

@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     "users.apps.UsersConfig",
     "adminpanel",
     "logs",
+    "photos.apps.PhotosConfig",  # Add this line
 ]
 
 MIDDLEWARE = [
@@ -174,3 +175,39 @@ DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default=EMAIL_HOST_USER)
 # veriables
 # settings.py
 PROFILE_PICTURE_DELETION_DELAY_SECONDS = 10
+
+# Photo upload settings
+MAX_PHOTO_SIZE = 100 * 1024 * 1024  # 100MB
+PHOTO_UPLOAD_PATH = "photos/"
+ALLOWED_PHOTO_EXTENSIONS = [
+    "jpg",
+    "jpeg",
+    "png",
+    "tiff",
+    "tif",
+    "raw",
+    "cr2",
+    "nef",
+    "arw",
+    "dng",
+    "cr3",
+]
+
+# File upload timeout and session settings for large uploads
+FILE_UPLOAD_MAX_MEMORY_SIZE = 50 * 1024 * 1024  # 50MB in memory
+DATA_UPLOAD_MAX_MEMORY_SIZE = 50 * 1024 * 1024  # 50MB in memory
+FILE_UPLOAD_TEMP_DIR = os.path.join(BASE_DIR, "temp_uploads")
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 1000  # Allow more form fields
+
+# Session settings for progress tracking
+SESSION_ENGINE = "django.contrib.sessions.backends.db"
+SESSION_COOKIE_AGE = 7200  # 2 hours
+SESSION_SAVE_EVERY_REQUEST = True
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False
+
+# Timeout settings for long-running operations
+REQUEST_TIMEOUT = 300  # 5 minutes
+UPLOAD_TIMEOUT = 600  # 10 minutes
+
+# Create temp upload directory if it doesn't exist
+os.makedirs(FILE_UPLOAD_TEMP_DIR, exist_ok=True)

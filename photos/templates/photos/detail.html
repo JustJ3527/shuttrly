@@ -1,0 +1,353 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ photo.title|default:"Untitled" }} - Shuttrly{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/photo_detail.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Photo Display -->
+        <div class="col-lg-8">
+            <div class="photo-display-container">
+                <div class="photo-display">
+                    {% if photo.original_file %}
+                        <img src="{{ photo.original_file.url }}" 
+                             alt="{{ photo.title|default:'Untitled' }}" 
+                             class="img-fluid main-photo"
+                             id="main-photo">
+                    {% endif %}
+                </div>
+                
+                <!-- Photo Actions -->
+                <div class="photo-actions-bar">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <h1 class="photo-title">{{ photo.title|default:"Untitled" }}</h1>
+                            {% if photo.description %}
+                                <p class="photo-description">{{ photo.description }}</p>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 text-end">
+                            <div class="btn-group" role="group">
+                                <a href="{% url 'photos:edit' photo.id %}" class="btn btn-outline-primary">
+                                    <i class="fas fa-edit"></i> Edit
+                                </a>
+                                <a href="{% url 'photos:download' photo.id %}" class="btn btn-outline-success">
+                                    <i class="fas fa-download"></i> Download
+                                </a>
+                                <button class="btn btn-outline-danger" onclick="confirmDelete()">
+                                    <i class="fas fa-trash"></i> Delete
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Photo Metadata -->
+                <div class="photo-metadata">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="metadata-item">
+                                <strong>Uploaded:</strong> {{ photo.created_at|date:"F d, Y at H:i" }}
+                            </div>
+                            {% if photo.date_taken %}
+                                <div class="metadata-item">
+                                    <strong>Date Taken:</strong> {{ photo.date_taken|date:"F d, Y at H:i" }}
+                                </div>
+                            {% endif %}
+                            <div class="metadata-item">
+                                <strong>File Size:</strong> {{ photo.get_file_size_mb }} MB
+                            </div>
+                            <div class="metadata-item">
+                                <strong>Dimensions:</strong> {{ photo.get_dimensions_display }}
+                            </div>
+                            <div class="metadata-item">
+                                <strong>Format:</strong> 
+                                <span class="badge {% if photo.is_raw %}bg-warning{% else %}bg-info{% endif %}">
+                                    {{ photo.file_extension|upper }}
+                                    {% if photo.is_raw %}(RAW){% endif %}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            {% if photo.tags %}
+                                <div class="metadata-item">
+                                    <strong>Tags:</strong>
+                                    <div class="tags-container">
+                                        {% for tag in photo.get_tags_list %}
+                                            <span class="tag">{{ tag }}</span>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            {% endif %}
+                            <div class="metadata-item">
+                                <strong>Status:</strong>
+                                {% if photo.is_public %}
+                                    <span class="badge bg-success">Public</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Private</span>
+                                {% endif %}
+                                {% if photo.is_featured %}
+                                    <span class="badge bg-primary">Featured</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- EXIF Data Sidebar -->
+        <div class="col-lg-4">
+            <div class="exif-sidebar">
+                <!-- Camera Information -->
+                <div class="exif-section">
+                    <h4><i class="fas fa-camera"></i> Camera & Lens</h4>
+                    <div class="exif-grid">
+                        {% if photo.camera_make or photo.camera_model %}
+                            <div class="exif-item">
+                                <span class="exif-label">Camera:</span>
+                                <span class="exif-value">{{ photo.get_camera_display }}</span>
+                            </div>
+                        {% endif %}
+                        {% if photo.lens_make or photo.lens_model %}
+                            <div class="exif-item">
+                                <span class="exif-label">Lens:</span>
+                                <span class="exif-value">
+                                    {% if photo.lens_make %}{{ photo.lens_make }} {% endif %}
+                                    {% if photo.lens_model %}{{ photo.lens_model }}{% endif %}
+                                </span>
+                            </div>
+                        {% endif %}
+                        {% if photo.focal_length %}
+                            <div class="exif-item">
+                                <span class="exif-label">Focal Length:</span>
+                                <span class="exif-value">{{ photo.focal_length }}mm</span>
+                            </div>
+                        {% endif %}
+                        {% if photo.focal_length_35mm %}
+                            <div class="exif-item">
+                                <span class="exif-label">35mm Equivalent:</span>
+                                <span class="exif-value">{{ photo.focal_length_35mm }}mm</span>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Exposure Settings -->
+                <div class="exif-section">
+                    <h4><i class="fas fa-sliders-h"></i> Exposure Settings</h4>
+                    <div class="exif-grid">
+                        {% if photo.shutter_speed %}
+                            <div class="exif-item">
+                                <span class="exif-label">Shutter Speed:</span>
+                                <span class="exif-value">1/{{ photo.shutter_speed }}s</span>
+                            </div>
+                        {% endif %}
+                        {% if photo.aperture %}
+                            <div class="exif-item">
+                                <span class="exif-label">Aperture:</span>
+                                <span class="exif-value">f/{{ photo.aperture }}</span>
+                            </div>
+                        {% endif %}
+                        {% if photo.iso %}
+                            <div class="exif-item">
+                                <span class="exif-label">ISO:</span>
+                                <span class="exif-value">{{ photo.iso }}</span>
+                            </div>
+                        {% endif %}
+                        {% if photo.exposure_bias %}
+                            <div class="exif-item">
+                                <span class="exif-label">Exposure Bias:</span>
+                                <span class="exif-value">{{ photo.exposure_bias }} EV</span>
+                            </div>
+                        {% endif %}
+                        {% if photo.exposure_mode %}
+                            <div class="exif-item">
+                                <span class="exif-label">Exposure Mode:</span>
+                                <span class="exif-value">{{ photo.exposure_mode }}</span>
+                            </div>
+                        {% endif %}
+                        {% if photo.metering_mode %}
+                            <div class="exif-item">
+                                <span class="exif-label">Metering Mode:</span>
+                                <span class="exif-value">{{ photo.metering_mode }}</span>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Image Settings -->
+                <div class="exif-section">
+                    <h4><i class="fas fa-palette"></i> Image Settings</h4>
+                    <div class="exif-grid">
+                        {% if photo.white_balance %}
+                            <div class="exif-item">
+                                <span class="exif-label">White Balance:</span>
+                                <span class="exif-value">{{ photo.white_balance }}</span>
+                            </div>
+                        {% endif %}
+                        {% if photo.color_space %}
+                            <div class="exif-item">
+                                <span class="exif-label">Color Space:</span>
+                                <span class="exif-value">{{ photo.color_space }}</span>
+                            </div>
+                        {% endif %}
+                        {% if photo.flash %}
+                            <div class="exif-item">
+                                <span class="exif-label">Flash:</span>
+                                <span class="exif-value">{{ photo.flash }}</span>
+                            </div>
+                        {% endif %}
+                        {% if photo.digital_zoom_ratio %}
+                            <div class="exif-item">
+                                <span class="exif-label">Digital Zoom:</span>
+                                <span class="exif-value">{{ photo.digital_zoom_ratio }}x</span>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Location Data -->
+                {% if photo.latitude and photo.longitude %}
+                    <div class="exif-section">
+                        <h4><i class="fas fa-map-marker-alt"></i> Location</h4>
+                        <div class="exif-grid">
+                            <div class="exif-item">
+                                <span class="exif-label">Coordinates:</span>
+                                <span class="exif-value">
+                                    {{ photo.latitude|floatformat:6 }}, {{ photo.longitude|floatformat:6 }}
+                                </span>
+                            </div>
+                            {% if photo.altitude %}
+                                <div class="exif-item">
+                                    <span class="exif-label">Altitude:</span>
+                                    <span class="exif-value">{{ photo.altitude }}m</span>
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="map-container mt-2">
+                            <div id="photo-map" style="height: 200px; width: 100%;"></div>
+                        </div>
+                    </div>
+                {% endif %}
+
+                <!-- Additional Metadata -->
+                {% if photo.software_used or photo.copyright %}
+                    <div class="exif-section">
+                        <h4><i class="fas fa-info-circle"></i> Additional Info</h4>
+                        <div class="exif-grid">
+                            {% if photo.software_used %}
+                                <div class="exif-item">
+                                    <span class="exif-label">Software:</span>
+                                    <span class="exif-value">{{ photo.software_used }}</span>
+                                </div>
+                            {% endif %}
+                            {% if photo.copyright %}
+                                <div class="exif-item">
+                                    <span class="exif-label">Copyright:</span>
+                                    <span class="exif-value">{{ photo.copyright }}</span>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Similar Photos -->
+    {% if similar_photos %}
+        <div class="row mt-5">
+            <div class="col-12">
+                <h3>Similar Photos</h3>
+                <div class="similar-photos">
+                    <div class="row">
+                        {% for similar_photo in similar_photos %}
+                            <div class="col-lg-2 col-md-3 col-sm-4 col-6 mb-3">
+                                <div class="similar-photo-card">
+                                    <a href="{% url 'photos:detail' similar_photo.id %}">
+                                        {% if similar_photo.thumbnail %}
+                                            <img src="{{ similar_photo.thumbnail.url }}" 
+                                                 alt="{{ similar_photo.title|default:'Untitled' }}" 
+                                                 class="img-fluid">
+                                        {% elif similar_photo.original_file %}
+                                            <img src="{{ similar_photo.original_file.url }}" 
+                                                 alt="{{ similar_photo.title|default:'Untitled' }}" 
+                                                 class="img-fluid">
+                                        {% endif %}
+                                    </a>
+                                    <div class="similar-photo-info">
+                                        <div class="similar-photo-title">
+                                            {{ similar_photo.title|default:"Untitled"|truncatechars:20 }}
+                                        </div>
+                                        <div class="similar-photo-date">
+                                            {% if similar_photo.date_taken %}
+                                                {{ similar_photo.date_taken|date:"M d, Y" }}
+                                            {% else %}
+                                                {{ similar_photo.created_at|date:"M d, Y" }}
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Delete Photo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete "{{ photo.title|default:'this photo' }}"? This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form method="post" action="{% url 'photos:delete' photo.id %}" class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">Delete Photo</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/photo_detail.js' %}"></script>
+{% if photo.latitude and photo.longitude %}
+    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY"></script>
+    <script>
+        // Initialize map when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            const mapElement = document.getElementById('photo-map');
+            if (mapElement) {
+                const map = new google.maps.Map(mapElement, {
+                    center: { lat: {{ photo.latitude }}, lng: {{ photo.longitude }} },
+                    zoom: 15,
+                    mapTypeId: google.maps.MapTypeId.ROADMAP
+                });
+                
+                new google.maps.Marker({
+                    position: { lat: {{ photo.latitude }}, lng: {{ photo.longitude }} },
+                    map: map,
+                    title: '{{ photo.title|default:"Photo location" }}'
+                });
+            }
+        });
+    </script>
+{% endif %}
+{% endblock %}

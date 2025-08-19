@@ -1,0 +1,210 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Upload Photos - Shuttrly{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/photo_upload.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="upload-header">
+                <h1 class="upload-title">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    Upload Photos
+                </h1>
+                <p class="upload-subtitle">
+                    Upload your photos including RAW files. We'll automatically extract EXIF data and create thumbnails.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Progress Bar Section -->
+    <div class="row mb-4" id="progress-section" style="display: none;">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-spinner fa-spin"></i> Uploading Photos...</h5>
+                </div>
+                <div class="card-body">
+                    <div class="progress mb-3" style="height: 25px;">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                             role="progressbar" 
+                             id="upload-progress-bar"
+                             style="width: 0%">
+                            0%
+                        </div>
+                    </div>
+                    <div class="upload-status">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <small class="text-muted">Total Files:</small>
+                                <div id="total-files">0</div>
+                            </div>
+                            <div class="col-md-3">
+                                <small class="text-muted">Processed:</small>
+                                <div id="processed-files">0</div>
+                            </div>
+                            <div class="col-md-3">
+                                <small class="text-muted">Successfully Uploaded:</small>
+                                <div id="uploaded-files">0</div>
+                            </div>
+                            <div class="col-md-3">
+                                <small class="text-muted">Current Batch:</small>
+                                <div id="current-batch">0</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-3" id="upload-errors" style="display: none;">
+                        <div class="alert alert-warning">
+                            <h6>Some files failed to process completely:</h6>
+                            <ul id="error-list" class="mb-0"></ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Test Progress Bar Button (for debugging) -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="alert alert-info">
+                <strong>Debug:</strong> 
+                <button type="button" class="btn btn-sm btn-outline-info" onclick="testProgressBar()">
+                    Test Progress Bar
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-warning" onclick="clearProgress()">
+                    Clear Progress
+                </button>
+                <span id="debug-status" class="ms-3">Ready to test</span>
+                <span id="js-status" class="ms-3 badge bg-secondary">JS Loading...</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <!-- Upload Form -->
+            <div class="upload-container">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-upload"></i> Upload Photos</h5>
+                    </div>
+                    <div class="card-body">
+                        <form method="post" enctype="multipart/form-data" id="upload-form">
+                            {% csrf_token %}
+                            
+                            <!-- File Input - VISIBLE -->
+                            <div class="mb-4">
+                                <label for="id_photos" class="form-label">
+                                    <strong>Select Photos</strong>
+                                </label>
+                                <input type="file" 
+                                       name="photos" 
+                                       id="id_photos" 
+                                       multiple 
+                                       accept=".jpg,.jpeg,.png,.tiff,.tif,.raw,.cr2,.nef,.arw,.dng,.raf,.orf,.pef,.srw,.x3f,.rw2,.mrw,.crw,.kdc,.dcr,.mos,.mef,.nrw, .cr3"
+                                       class="form-control"
+                                       required>
+                                <div class="form-text">
+                                    You can select multiple photos. Supported formats: JPEG, PNG, TIFF, RAW (CR2, CR3, NEF, ARW, DNG, etc.)
+                                    <br><strong>Recommended: Upload 15 photos at a time for optimal performance.</strong>
+                                </div>
+                            </div>
+
+                            <!-- Photo Details -->
+                            <div class="mb-3">
+                                <label for="id_title" class="form-label">Title (optional)</label>
+                                <input type="text" 
+                                       name="title" 
+                                       id="id_title" 
+                                       class="form-control" 
+                                       placeholder="Photo title (optional)">
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="id_description" class="form-label">Description (optional)</label>
+                                <textarea name="description" 
+                                          id="id_description" 
+                                          class="form-control" 
+                                          rows="3" 
+                                          placeholder="Photo description (optional)"></textarea>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="id_tags" class="form-label">Tags (optional)</label>
+                                <input type="text" 
+                                       name="tags" 
+                                       id="id_tags" 
+                                       class="form-control" 
+                                       placeholder="Tags separated by commas (optional)">
+                                <div class="form-text">Separate tags with commas</div>
+                            </div>
+
+                            <div class="mb-4">
+                                <div class="form-check">
+                                    <input type="checkbox" 
+                                           name="is_public" 
+                                           id="id_is_public" 
+                                           class="form-check-input">
+                                    <label class="form-check-label" for="id_is_public">
+                                        Make this photo public
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Submit Button -->
+                            <button type="submit" class="btn btn-primary btn-lg w-100" id="upload-submit-btn">
+                                <i class="fas fa-upload"></i> Upload Photos
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Upload Tips -->
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-lightbulb"></i> Upload Tips</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled mb-0">
+                        <li class="mb-2">
+                            <i class="fas fa-check text-success"></i>
+                            <strong>Batch Size:</strong> Upload 15 photos at a time for best performance
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-check text-success"></i>
+                            <strong>File Size:</strong> Maximum 100MB per file
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-check text-success"></i>
+                            <strong>Formats:</strong> JPEG, PNG, TIFF, RAW files supported
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-info-circle text-info"></i>
+                            <strong>Processing:</strong> EXIF data and thumbnails generated automatically
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-clock text-warning"></i>
+                            <strong>Time:</strong> RAW files take longer to process
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ block.super }}
+<script src="{% static 'js/photo_upload_progress.js' %}"></script>
+{% endblock %}

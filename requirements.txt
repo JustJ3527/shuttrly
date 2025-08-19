@@ -49,3 +49,5 @@ ua-parser==1.0.1
 ua-parser-builtins==0.18.0.post1
 urllib3==2.2.3
 user-agents==2.2.0
+exifread==3.0.0
+rawpy==0.19.0

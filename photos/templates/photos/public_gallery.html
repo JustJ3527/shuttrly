@@ -1,0 +1,263 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Public Photo Gallery - Shuttrly{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/photo_gallery.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Public Gallery Header -->
+    <div class="gallery-header">
+        <div class="row align-items-center">
+            <div class="col-md-6">
+                <h1 class="gallery-title">
+                    <i class="fas fa-globe"></i>
+                    Public Photo Gallery
+                </h1>
+                <p class="gallery-subtitle">
+                    Discover amazing photos from photographers around the world
+                </p>
+            </div>
+            <div class="col-md-6 text-end">
+                <a href="{% url 'photos:gallery' %}" class="btn btn-outline-primary">
+                    <i class="fas fa-images"></i> My Photos
+                </a>
+                <a href="{% url 'photos:upload' %}" class="btn btn-primary">
+                    <i class="fas fa-upload"></i> Share Your Photos
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search Bar -->
+    <div class="search-bar mb-4">
+        <div class="card">
+            <div class="card-body">
+                <form method="get" class="row g-3">
+                    <div class="col-md-8">
+                        <div class="input-group">
+                            <span class="input-group-text">
+                                <i class="fas fa-search"></i>
+                            </span>
+                            <input type="text" 
+                                   name="q" 
+                                   value="{{ query }}" 
+                                   class="form-control" 
+                                   placeholder="Search photos, photographers, tags, or camera models...">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-search"></i> Search
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Photo Grid -->
+    <div class="photo-grid">
+        {% if page_obj %}
+            <div class="row">
+                {% for photo in page_obj %}
+                    <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
+                        <div class="public-photo-card">
+                            <div class="photo-image">
+                                <a href="{% url 'photos:detail' photo.id %}" class="photo-link">
+                                    {% if photo.thumbnail %}
+                                        <img src="{{ photo.thumbnail.url }}" 
+                                             alt="{{ photo.title|default:'Untitled' }}" 
+                                             class="img-fluid">
+                                    {% elif photo.original_file %}
+                                        <img src="{{ photo.original_file.url }}" 
+                                             alt="{{ photo.title|default:'Untitled' }}" 
+                                             class="img-fluid">
+                                    {% endif %}
+                                </a>
+                                <div class="photo-overlay">
+                                    <div class="photo-actions">
+                                        <a href="{% url 'photos:detail' photo.id %}" class="btn btn-sm btn-light" title="View Details">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        {% if photo.user == request.user %}
+                                            <a href="{% url 'photos:edit' photo.id %}" class="btn btn-sm btn-light" title="Edit">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="photo-info">
+                                <div class="photo-title">
+                                    <a href="{% url 'photos:detail' photo.id %}">
+                                        {{ photo.title|default:"Untitled"|truncatechars:25 }}
+                                    </a>
+                                </div>
+                                <div class="photo-photographer">
+                                    <small class="text-muted">
+                                        by <a href="#" class="photographer-link">{{ photo.user.username }}</a>
+                                    </small>
+                                </div>
+                                <div class="photo-meta">
+                                    {% if photo.is_raw %}
+                                        <span class="badge bg-warning">RAW</span>
+                                    {% endif %}
+                                    {% if photo.is_featured %}
+                                        <span class="badge bg-primary">Featured</span>
+                                    {% endif %}
+                                </div>
+                                <div class="photo-exif">
+                                    {% if photo.get_exposure_display != "Unknown" %}
+                                        <small class="text-muted">{{ photo.get_exposure_display }}</small>
+                                    {% endif %}
+                                </div>
+                                <div class="photo-date">
+                                    <small class="text-muted">
+                                        {% if photo.date_taken %}
+                                            {{ photo.date_taken|date:"M d, Y" }}
+                                        {% else %}
+                                            {{ photo.created_at|date:"M d, Y" }}
+                                        {% endif %}
+                                    </small>
+                                </div>
+                                {% if photo.tags %}
+                                    <div class="photo-tags">
+                                        {% for tag in photo.get_tags_list|slice:":3" %}
+                                            <span class="tag">{{ tag }}</span>
+                                        {% endfor %}
+                                        {% if photo.get_tags_list|length > 3 %}
+                                            <span class="tag-more">+{{ photo.get_tags_list|length|add:"-3" }} more</span>
+                                        {% endif %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+
+            <!-- Pagination -->
+            {% if page_obj.has_other_pages %}
+                <nav aria-label="Public gallery pagination" class="mt-4">
+                    <ul class="pagination justify-content-center">
+                        {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?{% if query %}q={{ query }}&{% endif %}page={{ page_obj.previous_page_number }}">
+                                    <i class="fas fa-chevron-left"></i> Previous
+                                </a>
+                            </li>
+                        {% endif %}
+
+                        {% for num in page_obj.paginator.page_range %}
+                            {% if page_obj.number == num %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ num }}</span>
+                                </li>
+                            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?{% if query %}q={{ query }}&{% endif %}page={{ num }}">{{ num }}</a>
+                                </li>
+                            {% endif %}
+                        {% endfor %}
+
+                        {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?{% if query %}q={{ query }}&{% endif %}page={{ page_obj.next_page_number }}">
+                                    Next <i class="fas fa-chevron-right"></i>
+                                </a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            {% endif %}
+
+        {% else %}
+            <!-- Empty State -->
+            <div class="empty-gallery">
+                <div class="text-center py-5">
+                    <i class="fas fa-globe empty-icon"></i>
+                    <h3>No public photos found</h3>
+                    <p class="text-muted">
+                        {% if query %}
+                            No photos match your search criteria "{{ query }}". Try a different search term.
+                        {% else %}
+                            No public photos have been shared yet. Be the first to share your photos!
+                        {% endif %}
+                    </p>
+                    <a href="{% url 'photos:upload' %}" class="btn btn-primary">
+                        <i class="fas fa-upload"></i> Share Your Photos
+                    </a>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Featured Photos Section -->
+    {% if featured_photos %}
+        <div class="featured-section mt-5">
+            <div class="row">
+                <div class="col-12">
+                    <h3 class="featured-title">
+                        <i class="fas fa-star"></i>
+                        Featured Photos
+                    </h3>
+                    <div class="row">
+                        {% for photo in featured_photos %}
+                            <div class="col-lg-4 col-md-6 mb-4">
+                                <div class="featured-photo-card">
+                                    <div class="featured-photo-image">
+                                        <a href="{% url 'photos:detail' photo.id %}">
+                                            {% if photo.thumbnail %}
+                                                <img src="{{ photo.thumbnail.url }}" 
+                                                     alt="{{ photo.title|default:'Untitled' }}" 
+                                                     class="img-fluid">
+                                            {% elif photo.original_file %}
+                                                <img src="{{ photo.original_file.url }}" 
+                                                     alt="{{ photo.title|default:'Untitled' }}" 
+                                                     class="img-fluid">
+                                            {% endif %}
+                                        </a>
+                                        <div class="featured-badge">
+                                            <i class="fas fa-star"></i> Featured
+                                        </div>
+                                    </div>
+                                    <div class="featured-photo-info">
+                                        <h5 class="featured-photo-title">
+                                            <a href="{% url 'photos:detail' photo.id %}">
+                                                {{ photo.title|default:"Untitled" }}
+                                            </a>
+                                        </h5>
+                                        <p class="featured-photo-description">
+                                            {{ photo.description|truncatechars:100 }}
+                                        </p>
+                                        <div class="featured-photo-meta">
+                                            <span class="photographer">
+                                                by {{ photo.user.username }}
+                                            </span>
+                                            <span class="date">
+                                                {% if photo.date_taken %}
+                                                    {{ photo.date_taken|date:"M d, Y" }}
+                                                {% else %}
+                                                    {{ photo.created_at|date:"M d, Y" }}
+                                                {% endif %}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/photo_gallery.js' %}"></script>
+{% endblock %}

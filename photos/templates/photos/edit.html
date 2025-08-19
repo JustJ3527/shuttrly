@@ -1,0 +1,236 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Edit {{ photo.title|default:"Photo" }} - Shuttrly{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/photo_edit.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-12">
+            <div class="edit-header">
+                <h1 class="edit-title">
+                    <i class="fas fa-edit"></i>
+                    Edit Photo
+                </h1>
+                <p class="edit-subtitle">
+                    Update the metadata for your photo
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Photo Preview -->
+        <div class="col-lg-4">
+            <div class="photo-preview-container">
+                <div class="photo-preview">
+                    {% if photo.thumbnail %}
+                        <img src="{{ photo.thumbnail.url }}" 
+                             alt="{{ photo.title|default:'Untitled' }}" 
+                             class="img-fluid preview-image">
+                    {% elif photo.original_file %}
+                        <img src="{{ photo.original_file.url }}" 
+                             alt="{{ photo.title|default:'Untitled' }}" 
+                             class="img-fluid preview-image">
+                    {% endif %}
+                </div>
+                
+                <div class="photo-info-preview">
+                    <h5>{{ photo.title|default:"Untitled" }}</h5>
+                    <div class="info-item">
+                        <strong>Format:</strong> 
+                        <span class="badge {% if photo.is_raw %}bg-warning{% else %}bg-info{% endif %}">
+                            {{ photo.file_extension|upper }}
+                            {% if photo.is_raw %}(RAW){% endif %}
+                        </span>
+                    </div>
+                    <div class="info-item">
+                        <strong>Size:</strong> {{ photo.get_file_size_mb }} MB
+                    </div>
+                    <div class="info-item">
+                        <strong>Dimensions:</strong> {{ photo.get_dimensions_display }}
+                    </div>
+                    {% if photo.get_exposure_display != "Unknown" %}
+                        <div class="info-item">
+                            <strong>Exposure:</strong> {{ photo.get_exposure_display }}
+                        </div>
+                    {% endif %}
+                    {% if photo.get_camera_display != "Unknown" %}
+                        <div class="info-item">
+                            <strong>Camera:</strong> {{ photo.get_camera_display }}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Edit Form -->
+        <div class="col-lg-8">
+            <div class="edit-form-container">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-edit"></i> Photo Details</h5>
+                    </div>
+                    <div class="card-body">
+                        <form method="post">
+                            {% csrf_token %}
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="{{ form.title.id_for_label }}" class="form-label">
+                                            {{ form.title.label }}
+                                        </label>
+                                        {{ form.title }}
+                                        {% if form.title.help_text %}
+                                            <div class="form-text">{{ form.title.help_text }}</div>
+                                        {% endif %}
+                                        {% if form.title.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {% for error in form.title.errors %}
+                                                    {{ error }}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="{{ form.is_public.id_for_label }}" class="form-label">
+                                            {{ form.is_public.label }}
+                                        </label>
+                                        <div class="form-check">
+                                            {{ form.is_public }}
+                                            <label class="form-check-label" for="{{ form.is_public.id_for_label }}">
+                                                Make this photo visible to everyone
+                                            </label>
+                                        </div>
+                                        {% if form.is_public.help_text %}
+                                            <div class="form-text">{{ form.is_public.help_text }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="{{ form.description.id_for_label }}" class="form-label">
+                                    {{ form.description.label }}
+                                </label>
+                                {{ form.description }}
+                                {% if form.description.help_text %}
+                                    <div class="form-text">{{ form.description.help_text }}</div>
+                                {% endif %}
+                                {% if form.description.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {% for error in form.description.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="{{ form.tags.id_for_label }}" class="form-label">
+                                    {{ form.tags.label }}
+                                </label>
+                                {{ form.tags }}
+                                {% if form.tags.help_text %}
+                                    <div class="form-text">{{ form.tags.help_text }}</div>
+                                {% endif %}
+                                {% if form.tags.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {% for error in form.tags.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    {{ form.is_featured }}
+                                    <label class="form-check-label" for="{{ form.is_featured.id_for_label }}">
+                                        {{ form.is_featured.label }}
+                                    </label>
+                                </div>
+                                {% if form.is_featured.help_text %}
+                                    <div class="form-text">{{ form.is_featured.help_text }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save"></i> Save Changes
+                                </button>
+                                <a href="{% url 'photos:detail' photo.id %}" class="btn btn-outline-secondary">
+                                    <i class="fas fa-times"></i> Cancel
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- EXIF Information (Read-only) -->
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h6><i class="fas fa-camera"></i> EXIF Data (Read-only)</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                {% if photo.camera_make or photo.camera_model %}
+                                    <div class="exif-item">
+                                        <strong>Camera:</strong> {{ photo.get_camera_display }}
+                                    </div>
+                                {% endif %}
+                                {% if photo.lens_model %}
+                                    <div class="exif-item">
+                                        <strong>Lens:</strong> {{ photo.lens_model }}
+                                    </div>
+                                {% endif %}
+                                {% if photo.focal_length %}
+                                    <div class="exif-item">
+                                        <strong>Focal Length:</strong> {{ photo.focal_length }}mm
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                {% if photo.shutter_speed %}
+                                    <div class="exif-item">
+                                        <strong>Shutter Speed:</strong> 1/{{ photo.shutter_speed }}s
+                                    </div>
+                                {% endif %}
+                                {% if photo.aperture %}
+                                    <div class="exif-item">
+                                        <strong>Aperture:</strong> f/{{ photo.aperture }}
+                                    </div>
+                                {% endif %}
+                                {% if photo.iso %}
+                                    <div class="exif-item">
+                                        <strong>ISO:</strong> {{ photo.iso }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="text-muted mt-2">
+                            <small>
+                                <i class="fas fa-info-circle"></i>
+                                EXIF data is automatically extracted from your photo and cannot be edited.
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/photo_edit.js' %}"></script>
+{% endblock %}

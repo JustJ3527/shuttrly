@@ -12,7 +12,6 @@ This module contains all user-related views including:
 
 # === Python Standard Library ===
 from datetime import date, datetime
-from urllib.parse import urlencode
 import uuid
 
 
@@ -22,7 +21,6 @@ from django.contrib import messages
 from django.contrib.auth import get_backends, login, logout
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import EmailMultiAlternatives
-from django.db.models import Q
 from django.http import HttpResponseRedirect, JsonResponse, HttpResponse
 from django.shortcuts import redirect, render
 from django.template.loader import render_to_string
@@ -2771,7 +2769,7 @@ def settings_category_view(request, category, step_override=None):
     # Check if this is a direct browser request (not HTMX)
     # If so, redirect to the dashboard with the category parameter
     if not request.headers.get("HX-Request"):
-        return redirect(f"/settings/?category={category}")
+        return redirect(f"{reverse('settings_dashboard_root')}?category={category}")
 
     user = request.user
 

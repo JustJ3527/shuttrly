@@ -706,3 +706,171 @@
     color: #6c757d;
     border-color: #6c757d;
 }
+
+/* =============================================================================
+   HTMX TRANSITIONS AND LOADING STATES
+   ============================================================================= */
+
+/* Loading Spinner for Settings Content */
+.loading-spinner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+.loading-spinner .spinner-border {
+    width: 3rem;
+    height: 3rem;
+    border-width: 0.25rem;
+}
+
+.loading-spinner p {
+    margin-top: 1rem;
+    font-size: 1rem;
+    color: #6c757d;
+}
+
+/* HTMX Transition Effects */
+.htmx-transition {
+    transition: all 0.3s ease-in-out;
+}
+
+/* Fade transition for content */
+.htmx-fade {
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.htmx-fade.htmx-transitioning {
+    opacity: 0;
+    transform: translateY(10px);
+}
+
+.htmx-fade.htmx-settled {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Slide transition for content */
+.htmx-slide {
+    opacity: 0;
+    transform: translateX(-20px);
+    transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.htmx-slide.htmx-transitioning {
+    opacity: 0;
+    transform: translateX(-20px);
+}
+
+.htmx-slide.htmx-settled {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+/* Scale transition for content */
+.htmx-scale {
+    opacity: 0;
+    transform: scale(0.95);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.htmx-scale.htmx-transitioning {
+    opacity: 0;
+    transform: scale(0.95);
+}
+
+.htmx-scale.htmx-settled {
+    opacity: 1;
+    transform: scale(1);
+}
+
+/* Content loading states */
+.settings-content-loading {
+    opacity: 0.6;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.settings-content-loaded {
+    opacity: 1;
+    pointer-events: auto;
+    transition: opacity 0.3s ease;
+}
+
+/* Navigation item loading state */
+.nav-item.loading {
+    background: #e3f2fd;
+    border-color: #2196f3;
+    color: #1976d2;
+    pointer-events: none;
+}
+
+.nav-item.loading .nav-arrow {
+    animation: spin 1s linear infinite;
+}
+
+/* Success/Error feedback animations */
+.settings-feedback {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    min-width: 300px;
+    max-width: 500px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border: none;
+    border-radius: 8px;
+    animation: slideInRight 0.3s ease;
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Progress bar for multi-step forms */
+.settings-progress {
+    position: relative;
+    height: 4px;
+    background: #e9ecef;
+    border-radius: 2px;
+    overflow: hidden;
+    margin: 1rem 0;
+}
+
+.settings-progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #28a745, #20c997);
+    border-radius: 2px;
+    transition: width 0.6s ease;
+    position: relative;
+}
+
+.settings-progress-bar::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}

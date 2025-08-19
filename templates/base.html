@@ -40,6 +40,8 @@
         <ul id="navbar-menu" class="navbar-menu">
             {% if user.is_authenticated and user.is_online%}
                 <li class="navbar-item"><a href="{% url 'profile' %}" class="nav-link">Profile</a></li>
+                <li class="navbar-item"><a href="{% url 'photos:gallery' %}" class="nav-link">Photos</a></li>
+                <li class="navbar-item"><a href="{% url 'photos:upload' %}" class="nav-link">Upload</a></li>
                 {% if user.is_superuser %}
                     <li class="navbar-item"><a href="{% url 'admin:index' %}" class="nav-link">Admin Django</a></li>
                     <li class="navbar-item"><a style="color: red;" href="{% url 'adminpanel:admin_dashboard' %}">Admin panel</li>

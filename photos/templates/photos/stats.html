@@ -1,0 +1,355 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Photo Statistics - Shuttrly{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/photo_stats.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Stats Header -->
+    <div class="stats-header">
+        <div class="row align-items-center">
+            <div class="col-md-6">
+                <h1 class="stats-title">
+                    <i class="fas fa-chart-bar"></i>
+                    Photo Statistics
+                </h1>
+                <p class="stats-subtitle">
+                    Analytics and insights about your photo collection
+                </p>
+            </div>
+            <div class="col-md-6 text-end">
+                <a href="{% url 'photos:gallery' %}" class="btn btn-outline-primary">
+                    <i class="fas fa-images"></i> View Gallery
+                </a>
+                <a href="{% url 'photos:upload' %}" class="btn btn-primary">
+                    <i class="fas fa-upload"></i> Upload More
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Overview Cards -->
+    <div class="row mb-4">
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-image"></i>
+                </div>
+                <div class="stat-content">
+                    <h3 class="stat-number">{{ total_photos }}</h3>
+                    <p class="stat-label">Total Photos</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="stat-card">
+                <div class="stat-icon raw">
+                    <i class="fas fa-camera"></i>
+                </div>
+                <div class="stat-content">
+                    <h3 class="stat-number">{{ raw_photos }}</h3>
+                    <p class="stat-label">RAW Files</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="stat-card">
+                <div class="stat-icon public">
+                    <i class="fas fa-globe"></i>
+                </div>
+                <div class="stat-content">
+                    <h3 class="stat-number">{{ public_photos }}</h3>
+                    <p class="stat-label">Public Photos</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="stat-card">
+                <div class="stat-icon featured">
+                    <i class="fas fa-star"></i>
+                </div>
+                <div class="stat-content">
+                    <h3 class="stat-number">{{ featured_photos }}</h3>
+                    <p class="stat-label">Featured</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Storage and Size Stats -->
+    <div class="row mb-4">
+        <div class="col-lg-6 mb-3">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-hdd"></i> Storage Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="storage-stats">
+                        <div class="storage-item">
+                            <span class="storage-label">Total Size:</span>
+                            <span class="storage-value">{{ total_size_mb }} MB</span>
+                        </div>
+                        <div class="storage-item">
+                            <span class="storage-label">Average Photo Size:</span>
+                            <span class="storage-value">{{ avg_size_mb }} MB</span>
+                        </div>
+                        <div class="storage-item">
+                            <span class="storage-label">Storage Efficiency:</span>
+                            <span class="storage-value">
+                                {% if total_photos > 0 %}
+                                    {{ raw_photos|floatformat:0 }}% RAW, {{ 100|add:"-"|add:raw_photos|floatformat:0 }}% Processed
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6 mb-3">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-calendar-alt"></i> Upload Trends</h5>
+                </div>
+                <div class="card-body">
+                    <div class="trend-stats">
+                        {% if monthly_stats %}
+                            <div class="trend-chart">
+                                <canvas id="uploadTrendChart" width="400" height="200"></canvas>
+                            </div>
+                        {% else %}
+                            <div class="no-data">
+                                <i class="fas fa-chart-line"></i>
+                                <p>Not enough data to show trends</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Camera and Lens Statistics -->
+    <div class="row mb-4">
+        <div class="col-lg-6 mb-3">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-camera"></i> Camera Usage</h5>
+                </div>
+                <div class="card-body">
+                    {% if camera_stats %}
+                        <div class="camera-stats">
+                            {% for camera in camera_stats %}
+                                <div class="camera-item">
+                                    <div class="camera-info">
+                                        <span class="camera-name">
+                                            {% if camera.camera_make %}{{ camera.camera_make }} {% endif %}
+                                            {% if camera.camera_model %}{{ camera.camera_model }}{% endif %}
+                                        </span>
+                                        <span class="camera-count">{{ camera.count }} photos</span>
+                                    </div>
+                                    <div class="camera-bar">
+                                        <div class="camera-bar-fill" style="width: {% widthratio camera.count total_photos 100 %}%"></div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="no-data">
+                            <i class="fas fa-camera"></i>
+                            <p>No camera data available</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6 mb-3">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-eye"></i> Lens Usage</h5>
+                </div>
+                <div class="card-body">
+                    {% if lens_stats %}
+                        <div class="lens-stats">
+                            {% for lens in lens_stats %}
+                                <div class="lens-item">
+                                    <div class="lens-info">
+                                        <span class="lens-name">{{ lens.lens_model }}</span>
+                                        <span class="lens-count">{{ lens.count }} photos</span>
+                                    </div>
+                                    <div class="lens-bar">
+                                        <div class="lens-bar-fill" style="width: {% widthratio lens.count total_photos 100 %}%"></div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="no-data">
+                            <i class="fas fa-eye"></i>
+                            <p>No lens data available</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Exposure Settings Statistics -->
+    <div class="row mb-4">
+        <div class="col-lg-6 mb-3">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-sliders-h"></i> ISO Usage</h5>
+                </div>
+                <div class="card-body">
+                    {% if iso_stats %}
+                        <div class="iso-stats">
+                            {% for iso in iso_stats %}
+                                <div class="iso-item">
+                                    <div class="iso-info">
+                                        <span class="iso-value">ISO {{ iso.iso }}</span>
+                                        <span class="iso-count">{{ iso.count }} photos</span>
+                                    </div>
+                                    <div class="iso-bar">
+                                        <div class="iso-bar-fill" style="width: {% widthratio iso.count total_photos 100 %}%"></div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="no-data">
+                            <i class="fas fa-sliders-h"></i>
+                            <p>No ISO data available</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6 mb-3">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-circle"></i> Aperture Usage</h5>
+                </div>
+                <div class="card-body">
+                    {% if aperture_stats %}
+                        <div class="aperture-stats">
+                            {% for aperture in aperture_stats %}
+                                <div class="aperture-item">
+                                    <div class="aperture-info">
+                                        <span class="aperture-value">f/{{ aperture.aperture }}</span>
+                                        <span class="aperture-count">{{ aperture.count }} photos</span>
+                                    </div>
+                                    <div class="aperture-bar">
+                                        <div class="aperture-bar-fill" style="width: {% widthratio aperture.count total_photos 100 %}%"></div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="no-data">
+                            <i class="fas fa-circle"></i>
+                            <p>No aperture data available</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Format Distribution -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-file-image"></i> File Format Distribution</h5>
+                </div>
+                <div class="card-body">
+                    <div class="format-chart">
+                        <canvas id="formatChart" width="400" height="200"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{% static 'js/photo_stats.js' %}"></script>
+<script>
+    // Chart.js configuration and data
+    document.addEventListener('DOMContentLoaded', function() {
+        // Upload Trend Chart
+        {% if monthly_stats %}
+            const trendCtx = document.getElementById('uploadTrendChart').getContext('2d');
+            const trendData = {
+                labels: [{% for stat in monthly_stats %}'{{ stat.month }}'{% if not forloop.last %}, {% endif %}{% endfor %}],
+                datasets: [{
+                    label: 'Photos Uploaded',
+                    data: [{% for stat in monthly_stats %}{{ stat.count }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+                    borderColor: 'rgb(75, 192, 192)',
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    tension: 0.1
+                }]
+            };
+            
+            new Chart(trendCtx, {
+                type: 'line',
+                data: trendData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1
+                            }
+                        }
+                    }
+                }
+            });
+        {% endif %}
+
+        // Format Distribution Chart
+        const formatCtx = document.getElementById('formatChart').getContext('2d');
+        const formatData = {
+            labels: ['RAW Files', 'JPEG/PNG', 'TIFF'],
+            datasets: [{
+                data: [{{ raw_photos }}, {{ total_photos|add:"-"|add:raw_photos }}, 0],
+                backgroundColor: [
+                    'rgba(255, 193, 7, 0.8)',
+                    'rgba(13, 110, 253, 0.8)',
+                    'rgba(108, 117, 125, 0.8)'
+                ],
+                borderColor: [
+                    'rgba(255, 193, 7, 1)',
+                    'rgba(13, 110, 253, 1)',
+                    'rgba(108, 117, 125, 1)'
+                ],
+                borderWidth: 1
+            }]
+        };
+        
+        new Chart(formatCtx, {
+            type: 'doughnut',
+            data: formatData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}

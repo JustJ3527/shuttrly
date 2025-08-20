@@ -1,0 +1,873 @@
+@charset "UTF-8";
+/* ===== Fonts ===== */
+@import url("https://fonts.googleapis.com/css?family=Inter:700|Inter:400");
+@font-face {
+  font-family: "Tan_Nimbus";
+  src: url("../../assets/fonts/tan-nimbus/TAN-NIMBUS.ttf") format("truetype");
+  src: url("../../assets/fonts/tan-nimbus/TAN-NIMBUS.woff") format("woff");
+  src: url("../../assets/fonts/tan-nimbus/TAN-NIMBUS.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Garet";
+  font-weight: normal;
+  src: url("../../assets/fonts/garet/Garet-Book.otf") format("opentype");
+  src: url("../../assets/fonts/garet/Garet-Book.ttf") format("truetype");
+  src: url("../../assets/fonts/garet/Garet-Book.woff") format("woff");
+  src: url("../../assets/fonts/garet/Garet-Book.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Garet";
+  font-weight: bold;
+  src: url("../../assets/fonts/garet/Garet-Heavy.otf") format("opentype");
+  src: url("../../assets/fonts/garet/Garet-Heavy.ttf") format("truetype");
+  src: url("../../assets/fonts/garet/Garet-Heavy.woff") format("woff");
+  src: url("../../assets/fonts/garet/Garet-Heavy.woff2") format("woff2");
+}
+@font-face {
+  font-family: "The_Seasons";
+  font-weight: normal;
+  src: url("../../assets/fonts/the-seasons/TheSeasons-Regular.otf") format("opentype");
+}
+@font-face {
+  font-family: "The_Seasons";
+  font-weight: bold;
+  src: url("../../assets/fonts/the-seasons/TheSeasons-Bold.otf") format("opentype");
+}
+@font-face {
+  font-family: "The_Seasons";
+  font-weight: lighter;
+  src: url("../../assets/fonts/the-seasons/TheSeasons-Lighter.otf") format("opentype");
+}
+/* Variables par défaut (fallback) */
+:root {
+  --text: hsl(86, 17%, 8%);
+  --background: hsl(80, 5%, 88%);
+  --primary: hsl(81, 31%, 52%);
+  --secondary: hsl(112, 24%, 31%);
+  --accent: hsl(188, 31%, 50%);
+  /* New responsive variables */
+  --blur-amount: 20px;
+  --sidebar-width: 250px;
+  --navbar-height: 4.4rem;
+  --tablet-navbar-height: 3.5rem;
+  --mobile-sidebar-width: 5rem;
+  --mobile-navbar-height: 5rem;
+  --sidebar-transition-duration: 0.3s;
+  --opacity-background-before: 0.5;
+}
+
+/* Thème clair détaillé */
+:root[data-theme=light] {
+  --text-default: hsl(86, 17%, 8%);
+  --text-50: hsl(75, 15%, 95%);
+  --text-100: hsl(87, 18%, 90%);
+  --text-200: hsl(87, 18%, 80%);
+  --text-300: hsl(87, 18%, 70%);
+  --text-400: hsl(86, 17%, 60%);
+  --text-500: hsl(87, 17%, 50%);
+  --text-600: hsl(86, 17%, 40%);
+  --text-700: hsl(87, 18%, 30%);
+  --text-800: hsl(87, 18%, 20%);
+  --text-900: hsl(87, 18%, 10%);
+  --text-950: hsl(90, 15%, 5%);
+  --background-default: hsl(80, 5%, 88%);
+  --background-50: hsl(120, 4%, 95%);
+  --background-100: hsl(80, 6%, 90%);
+  --background-200: hsl(80, 6%, 80%);
+  --background-300: hsl(77, 5%, 70%);
+  --background-400: hsl(78, 5%, 60%);
+  --background-500: hsl(78, 5%, 50%);
+  --background-600: hsl(78, 5%, 40%);
+  --background-700: hsl(77, 5%, 30%);
+  --background-800: hsl(80, 6%, 20%);
+  --background-900: hsl(80, 6%, 10%);
+  --background-950: hsl(60, 4%, 5%);
+  --primary-default: hsl(81, 31%, 52%);
+  --primary-50: hsl(83, 31%, 95%);
+  --primary-100: hsl(80, 29%, 90%);
+  --primary-200: hsl(81, 31%, 80%);
+  --primary-300: hsl(80, 31%, 70%);
+  --primary-400: hsl(82, 31%, 60%);
+  --primary-500: hsl(81, 31%, 50%);
+  --primary-600: hsl(82, 31%, 40%);
+  --primary-700: hsl(80, 31%, 30%);
+  --primary-800: hsl(81, 31%, 20%);
+  --primary-900: hsl(80, 29%, 10%);
+  --primary-950: hsl(83, 31%, 5%);
+  --secondary-default: hsl(112, 24%, 69%);
+  --secondary-50: hsl(110, 23%, 95%);
+  --secondary-100: hsl(111, 25%, 90%);
+  --secondary-200: hsl(113, 24%, 80%);
+  --secondary-300: hsl(112, 24%, 70%);
+  --secondary-400: hsl(112, 24%, 60%);
+  --secondary-500: hsl(112, 24%, 50%);
+  --secondary-600: hsl(113, 24%, 40%);
+  --secondary-700: hsl(112, 24%, 30%);
+  --secondary-800: hsl(113, 24%, 20%);
+  --secondary-900: hsl(111, 25%, 10%);
+  --secondary-950: hsl(110, 23%, 5%);
+  --accent-default: hsl(188, 31%, 50%);
+  --accent-50: hsl(187, 31%, 95%);
+  --accent-100: hsl(188, 29%, 90%);
+  --accent-200: hsl(188, 31%, 80%);
+  --accent-300: hsl(188, 31%, 70%);
+  --accent-400: hsl(188, 31%, 60%);
+  --accent-500: hsl(188, 31%, 50%);
+  --accent-600: hsl(188, 31%, 40%);
+  --accent-700: hsl(188, 31%, 30%);
+  --accent-800: hsl(188, 31%, 20%);
+  --accent-900: hsl(188, 29%, 10%);
+  --accent-950: hsl(188, 31%, 5%);
+  --opacity-background-before: 0.3;
+  /* Variables principales */
+  --text: var(--text-default);
+  --background: var(--background-default);
+  --primary: var(--primary-default);
+  --secondary: var(--secondary-default);
+  --accent: var(--accent-default);
+}
+
+/* Thème sombre détaillé */
+:root[data-theme=dark] {
+  --text-default: hsl(86, 17%, 92%);
+  --text-50: hsl(90, 15%, 5%);
+  --text-100: hsl(87, 18%, 10%);
+  --text-200: hsl(87, 18%, 20%);
+  --text-300: hsl(87, 18%, 30%);
+  --text-400: hsl(86, 17%, 40%);
+  --text-500: hsl(87, 17%, 50%);
+  --text-600: hsl(86, 17%, 60%);
+  --text-700: hsl(87, 18%, 70%);
+  --text-800: hsl(87, 18%, 80%);
+  --text-900: hsl(87, 18%, 90%);
+  --text-950: hsl(75, 15%, 95%);
+  --background-default: hsl(80, 5%, 12%);
+  --background-50: hsl(60, 4%, 5%);
+  --background-100: hsl(80, 6%, 10%);
+  --background-200: hsl(80, 6%, 20%);
+  --background-300: hsl(77, 5%, 30%);
+  --background-400: hsl(78, 5%, 40%);
+  --background-500: hsl(78, 5%, 50%);
+  --background-600: hsl(78, 5%, 60%);
+  --background-700: hsl(77, 5%, 70%);
+  --background-800: hsl(80, 6%, 80%);
+  --background-900: hsl(80, 6%, 90%);
+  --background-950: hsl(120, 4%, 95%);
+  --primary-default: hsl(81, 31%, 48%);
+  --primary-50: hsl(83, 31%, 5%);
+  --primary-100: hsl(80, 29%, 10%);
+  --primary-200: hsl(81, 31%, 20%);
+  --primary-300: hsl(80, 31%, 30%);
+  --primary-400: hsl(82, 31%, 40%);
+  --primary-500: hsl(81, 31%, 50%);
+  --primary-600: hsl(82, 31%, 60%);
+  --primary-700: hsl(80, 31%, 70%);
+  --primary-800: hsl(81, 31%, 80%);
+  --primary-900: hsl(80, 29%, 90%);
+  --primary-950: hsl(83, 31%, 95%);
+  --secondary-default: hsl(112, 24%, 31%);
+  --secondary-50: hsl(110, 23%, 5%);
+  --secondary-100: hsl(111, 25%, 10%);
+  --secondary-200: hsl(113, 24%, 20%);
+  --secondary-300: hsl(112, 24%, 30%);
+  --secondary-400: hsl(113, 24%, 40%);
+  --secondary-500: hsl(112, 24%, 50%);
+  --secondary-600: hsl(112, 24%, 60%);
+  --secondary-700: hsl(112, 24%, 70%);
+  --secondary-800: hsl(113, 24%, 80%);
+  --secondary-900: hsl(111, 25%, 90%);
+  --secondary-950: hsl(110, 23%, 95%);
+  --accent-default: hsl(188, 31%, 50%);
+  --accent-50: hsl(188, 31%, 5%);
+  --accent-100: hsl(188, 29%, 10%);
+  --accent-200: hsl(188, 31%, 20%);
+  --accent-300: hsl(188, 31%, 30%);
+  --accent-400: hsl(188, 31%, 40%);
+  --accent-500: hsl(188, 31%, 50%);
+  --accent-600: hsl(188, 31%, 60%);
+  --accent-700: hsl(188, 31%, 70%);
+  --accent-800: hsl(188, 31%, 80%);
+  --accent-900: hsl(188, 29%, 90%);
+  --accent-950: hsl(187, 31%, 95%);
+  --opacity-background-before: 0.3;
+  --text: var(--text-default);
+  --background: var(--background-default);
+  --primary: var(--primary-default);
+  --accent: var(--accent-default);
+}
+
+html {
+  font-size: 100%;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--text);
+  margin: 0;
+  padding: 0;
+  font-family: "Garet";
+  font-weight: 400;
+  transition: background-color 0.3s, color 0.3s;
+  min-height: 150vh;
+}
+
+h1 {
+  font-family: "Tan_Nimbus";
+  font-size: 3.366rem;
+  letter-spacing: 0.2rem;
+}
+
+h2 {
+  font-size: 2.525rem;
+  font-family: "The_Seasons";
+  font-weight: bold;
+}
+
+h3 {
+  font-size: 1.894rem;
+  font-family: "Garet";
+  font-weight: normal;
+}
+
+.subtitle {
+  font-size: 2rem;
+  font-weight: bold;
+  color: var(--primary);
+  font-family: "The_Seasons";
+  letter-spacing: 0.05rem;
+}
+
+.description {
+  font-size: 1.5rem;
+  font-weight: 400;
+  color: var(--accent);
+}
+
+.gradient-text {
+  background: linear-gradient(120deg, var(--primary), var(--accent));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+select#theme-select {
+  margin-top: 2rem;
+  padding: 0.5rem 1rem;
+  font-size: 1rem;
+  cursor: pointer;
+  border-radius: 0.5rem;
+  border: 1px solid var(--primary);
+  background: var(--background);
+  color: var(--text);
+}
+
+/* Horizontal navbar at the top - fixed height */
+nav.navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--navbar-height);
+  z-index: 1000;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 2rem;
+  background: rgba(255, 255, 255, 0.15);
+  -webkit-backdrop-filter: blur(var(--blur-amount));
+  backdrop-filter: blur(var(--blur-amount));
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* Sidebar navigation on the left - fixed height */
+.sidebar-nav {
+  position: fixed;
+  top: 70px; /* Start after navbar */
+  left: 0;
+  width: 250px;
+  height: calc(100vh - 70px); /* Total height minus navbar */
+  background: rgba(255, 255, 255, 0.1);
+  -webkit-backdrop-filter: blur(var(--blur-amount));
+  backdrop-filter: blur(var(--blur-amount));
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  z-index: 999;
+  padding: 1.5rem 0;
+  overflow-y: auto;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* Sidebar content */
+.sidebar-content {
+  padding: 0 1rem;
+}
+
+.sidebar-section {
+  margin-bottom: 2rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.sidebar-section h3 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-600);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0 0 1rem 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--accent-default);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  display: block;
+}
+
+.sidebar-section h3 i {
+  font-size: 0.75rem;
+  color: var(--primary);
+}
+
+.sidebar-section ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.sidebar-section li {
+  margin: 0.25rem 0;
+}
+
+.sidebar-section a {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  color: var(--text);
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 0.875rem;
+  border-radius: 0.5rem;
+}
+.sidebar-section a .icon-container {
+  width: 1.5rem;
+  height: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar-section a span {
+  white-space: nowrap;
+  overflow: hidden;
+  display: block;
+  margin-left: 0.4rem;
+}
+
+.sidebar-section a:hover {
+  background: var(--text-200);
+  color: var(--primary);
+}
+
+.sidebar-section a i {
+  font-size: 0.875rem;
+  width: 16px;
+  text-align: center;
+  color: var(--text-500);
+  flex-shrink: 0;
+}
+
+.sidebar-section a:hover i {
+  color: var(--primary);
+}
+
+.sidebar-header {
+  padding: 0 1.5rem 1.5rem 1.5rem;
+}
+
+.sidebar-header h2 {
+  margin: 0 0 0.5rem 0;
+}
+
+.sidebar-subtitle {
+  margin: 0;
+}
+
+/* Structure of the navbar */
+.navbar-logo {
+  font-size: 1.5rem;
+  font-weight: 700;
+  text-decoration: none;
+  flex-shrink: 0;
+  font-family: "Tan_Nimbus";
+  letter-spacing: 0.05rem;
+}
+
+.navbar-menu {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+
+.navbar-menu ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  gap: 1rem;
+}
+
+.navbar-menu a {
+  color: var(--text);
+  text-decoration: none;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  transition: all 0.3s ease;
+  position: relative;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: "Garet";
+  letter-spacing: 0.05rem;
+  font-size: 1.2rem;
+}
+
+.navbar-menu a i {
+  font-size: 0.875rem;
+  width: 16px;
+  text-align: center;
+}
+
+.navbar-menu a:hover,
+.navbar-menu a.active {
+  color: var(--primary);
+}
+
+.navbar-menu a.active::after {
+  content: "";
+  position: absolute;
+  bottom: -2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 20px;
+  height: 2px;
+  background: var(--primary);
+  border-radius: 1px;
+}
+
+.navbar-actions {
+  flex-shrink: 0;
+}
+
+.navbar-actions ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  gap: 1rem;
+}
+
+.navbar-actions a {
+  color: var(--text);
+  text-decoration: none;
+  font-weight: 500;
+  border-radius: 0.5rem;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  aspect-ratio: 1/1;
+  padding: 0.2rem;
+}
+
+.navbar-actions a:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--primary);
+  transform: scale(1.1);
+}
+
+.navbar-actions a i {
+  font-size: 1rem;
+}
+
+/* Main content with padding for navbar and sidebar */
+.main-content {
+  padding-top: calc(var(--navbar-height) + 2rem);
+  padding-left: calc(var(--sidebar-width) + 2rem);
+  padding-right: 2rem;
+}
+
+/* Add content in the background to test the blur effect */
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(circle at 20% 80%, var(--primary-200) 0%, transparent 50%), radial-gradient(circle at 80% 20%, var(--accent-200) 0%, transparent 50%), radial-gradient(circle at 40% 40%, var(--secondary-200) 0%, transparent 50%);
+  z-index: -2;
+  pointer-events: none;
+  opacity: var(--opacity-background-before);
+}
+
+/* Responsive design with a max-width of 768px */
+@media (max-width: 768px) {
+  nav.navbar {
+    padding: 1rem;
+  }
+  .navbar-menu ul {
+    gap: 1rem;
+  }
+  .sidebar-nav {
+    transform: translateX(-100%);
+  }
+  .main-content {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  /* Toggle button for mobile */
+  .sidebar-toggle {
+    display: block;
+    background: none;
+    border: none;
+    color: var(--text);
+    font-size: 1.5rem;
+    cursor: pointer;
+  }
+}
+/* Hide the toggle button on desktop */
+.sidebar-toggle {
+  display: none;
+}
+
+/* Mobile menu overlay - hidden by default, only visible on mobile */
+.mobile-menu-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--background);
+  -webkit-backdrop-filter: blur(var(--blur-amount));
+  backdrop-filter: blur(var(--blur-amount));
+  z-index: 998;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+  display: none; /* Hidden by default */
+  flex-direction: column;
+  padding-top: calc(var(--mobile-navbar-height) + 2rem);
+  padding-left: 1rem;
+  padding-right: 1rem;
+  padding-bottom: 2rem;
+  overflow-y: auto;
+}
+
+.mobile-menu-overlay.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Mobile menu content */
+.mobile-menu-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  max-width: 400px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.mobile-menu-section {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.mobile-menu-section h3 {
+  color: var(--primary);
+  font-size: 1.125rem;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.mobile-menu-section h3 i {
+  font-size: 1rem;
+}
+
+.mobile-menu-section ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.mobile-menu-section a {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  color: var(--text);
+  text-decoration: none;
+  border-radius: 0.5rem;
+  transition: all 0.3s ease;
+  font-weight: 500;
+}
+
+.mobile-menu-section a:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--primary);
+}
+
+.mobile-menu-section a i {
+  font-size: 1.125rem;
+  width: 20px;
+  text-align: center;
+  color: var(--text-500);
+}
+
+.mobile-menu-section a:hover i {
+  color: var(--primary);
+}
+
+.navbar-toggle {
+  display: none;
+}
+
+/* Responsive design - Tablet (icons only for sidebar) */
+@media (max-width: 1024px) and (min-width: 769px) {
+  .navbar-menu a {
+    font-size: 1rem;
+    letter-spacing: normal;
+  }
+  .navbar-actions a {
+    font-size: 0.875rem;
+  }
+  .navbar-logo {
+    font-size: 1.25rem;
+  }
+  .sidebar-nav {
+    width: var(--mobile-sidebar-width);
+    transition: width var(--sidebar-transition-duration) ease, padding var(--sidebar-transition-duration) ease, box-shadow var(--sidebar-transition-duration) ease;
+    overflow: hidden; /* Hide overflow content */
+  }
+  .sidebar-header {
+    opacity: 0;
+    transform: translateX(-0.2rem);
+    transition: opacity var(--sidebar-transition-duration) ease, transform var(--sidebar-transition-duration) ease;
+  }
+  .sidebar-section h3 {
+    opacity: 0;
+    transform: translateX(-1rem);
+    transition: opacity var(--sidebar-transition-duration) ease, transform var(--sidebar-transition-duration) ease;
+    white-space: nowrap;
+  }
+  .sidebar-section a {
+    border-left: none;
+    border-radius: 0.5rem;
+    transition: justify-content var(--sidebar-transition-duration) ease, padding var(--sidebar-transition-duration) ease;
+  }
+  .sidebar-section a span {
+    opacity: 0;
+    transform: translateX(-0.2rem);
+    transition: opacity var(--sidebar-transition-duration) ease, transform var(--sidebar-transition-duration) ease;
+    white-space: nowrap;
+    position: absolute;
+    left: 3rem; /* Position text to the right of icon */
+  }
+  .sidebar-section a i {
+    font-size: 1.125rem;
+    width: auto;
+    transition: all var(--sidebar-transition-duration) ease;
+  }
+  /* Hover effect on tablet - expand to full desktop size */
+  .sidebar-nav:hover {
+    width: var(--sidebar-width);
+    padding: 1.5rem 0;
+    z-index: 999; /* Ensure it's above main content */
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.1); /* Add shadow for better visibility */
+  }
+  .sidebar-nav:hover .sidebar-header {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  .sidebar-nav:hover .sidebar-section h3 {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  .sidebar-nav:hover .sidebar-section a {
+    justify-content: flex-start;
+  }
+  .sidebar-nav:hover .sidebar-section a span {
+    opacity: 1;
+    transform: translateX(1rem);
+  }
+  .main-content {
+    padding-left: calc(var(--mobile-sidebar-width) + 2rem);
+    transition: padding-left var(--sidebar-transition-duration) ease;
+  }
+}
+/* Responsive design - Mobile */
+@media (max-width: 768px) {
+  /* Show mobile menu overlay on mobile */
+  .mobile-menu-overlay {
+    display: flex;
+  }
+  /* Top navbar mobile layout */
+  nav.navbar {
+    height: var(--mobile-navbar-height);
+    padding: 0 1rem;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 999;
+  }
+  nav.navbar .navbar-logo-container {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+  .navbar-logo {
+    order: 2; /* Move logo to center */
+    font-size: 1.25rem;
+    flex: 1;
+    text-align: center;
+    margin-top: 0.2rem;
+  }
+  .navbar-menu {
+    display: none; /* Hide horizontal menu */
+  }
+  .navbar-actions {
+    order: 3; /* Move actions to right */
+    display: flex;
+  }
+  /* Hamburger button styling */
+  .navbar-toggle {
+    display: flex !important;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    width: 3rem;
+    height: 3rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.5rem;
+    z-index: 1001;
+    order: 1; /* Position to the left */
+    display: block;
+  }
+  .hamburger-line {
+    display: block;
+    width: 24px;
+    height: 2px;
+    background: var(--text);
+    margin: 3px 0;
+    transition: all 0.3s ease;
+    border-radius: 1px;
+  }
+  /* Hamburger animation */
+  .navbar-toggle.active .hamburger-line:nth-child(1) {
+    transform: rotate(45deg) translate(5px, 5px);
+  }
+  .navbar-toggle.active .hamburger-line:nth-child(2) {
+    opacity: 0;
+  }
+  .navbar-toggle.active .hamburger-line:nth-child(3) {
+    transform: rotate(-45deg) translate(7px, -6px);
+  }
+  /* Hide sidebar on mobile - we'll use overlay instead */
+  .sidebar-nav {
+    display: none;
+  }
+  /* Mobile menu overlay using CSS variables */
+  .mobile-menu-overlay {
+    background: var(--background);
+    -webkit-backdrop-filter: blur(var(--blur-amount));
+    backdrop-filter: blur(var(--blur-amount));
+  }
+  .mobile-menu-section {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  .mobile-menu-section h3 {
+    color: var(--primary);
+  }
+  .mobile-menu-section a {
+    color: var(--text);
+  }
+  .mobile-menu-section a:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--primary);
+  }
+  .mobile-menu-section a i {
+    color: var(--text-500);
+  }
+  .mobile-menu-section a:hover i {
+    color: var(--primary);
+  }
+  /* Main content adjustment for mobile */
+  .main-content {
+    padding-top: calc(var(--mobile-navbar-height) + 2rem);
+    padding-left: 1rem;
+    padding-right: 1rem;
+    padding-bottom: 2rem;
+  }
+}
+/* Extra small devices */
+@media (max-width: 480px) {
+  .navbar-logo {
+    font-size: 1.125rem;
+  }
+  .navbar-actions a {
+    width: 30px;
+    height: 30px;
+    padding: 0;
+  }
+  .mobile-menu-overlay {
+    padding-top: calc(var(--mobile-navbar-height) + 2rem);
+    padding-left: 1rem;
+    padding-right: 1rem;
+    padding-bottom: 2rem;
+  }
+  .mobile-menu-content {
+    gap: 1.5rem;
+  }
+  .mobile-menu-section {
+    padding: 1rem;
+  }
+}
+/* Landscape orientation adjustments for mobile */
+@media (max-width: 768px) and (orientation: landscape) {
+  .mobile-menu-overlay {
+    padding: 1rem;
+  }
+  .mobile-menu-content {
+    gap: 1rem;
+  }
+  .mobile-menu-section {
+    padding: 1rem;
+  }
+}
+
+/*# sourceMappingURL=style-navbar.css.map */

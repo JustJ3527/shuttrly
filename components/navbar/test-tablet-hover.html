@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="style-navbar.css">
+<script src="https://kit.fontawesome.com/48953ba2ad.js" crossorigin="anonymous"></script>
+<title>Test Tablet Hover - Navbar</title>
+<style>
+/* Additional test styles */
+.test-info {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 1rem;
+  border-radius: 0.5rem;
+  margin: 1rem 0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.test-info h4 {
+  margin: 0 0 0.5rem 0;
+  color: var(--primary);
+}
+
+.test-info p {
+  margin: 0.25rem 0;
+  font-size: 0.875rem;
+}
+
+/* Responsive test container */
+@media (max-width: 1024px) and (min-width: 769px) {
+  .test-container {
+    padding-left: calc(var(--mobile-sidebar-width) + 2rem);
+  }
+}
+</style>
+</head>
+<body>
+<!-- Top Navbar - Navigation principale -->
+<nav class="navbar">
+  <div class="navbar-logo-container">
+    <button class="navbar-toggle" aria-label="Toggle navigation">
+      <span class="hamburger-line"></span>
+      <span class="hamburger-line"></span>
+      <span class="hamburger-line"></span>
+    </button>
+    
+    <div class="gradient-text navbar-logo">Shuttrly</div>
+  </div>
+  <div class="navbar-menu">
+    <ul>
+      <li><a href="#" class="active"><span>Home</span></a></li>
+      <li><a href="#"><span>Discover</span></a></li>
+      <li><a href="#"><span>Search</span></a></li>
+      <li><a href="#"><span>Gallery</span></a></li>
+      <li><a href="#"><span>Upload</span></a></li>
+    </ul>
+  </div>
+  <div class="navbar-actions">
+    <ul>
+      <li><a href="#"><i class="fas fa-user"></i></a></li>
+      <li><a href="#" title="Settings"><i class="fas fa-cog"></i></a></li>
+      <li><a href="#" title="Logout"><i class="fas fa-sign-out-alt"></i></a></li>
+    </ul>
+  </div>
+</nav>
+
+<!-- Sidebar contextuelle selon la catégorie -->
+<aside class="sidebar-nav">
+  <div class="sidebar-content">
+    <div class="sidebar-section">
+      <h3><i class="fas fa-folder"></i> Collections</h3>
+      <ul>
+        <li><a href="#"><i class="fas fa-city"></i> <span>Urban</span></a></li>
+        <li><a href="#"><i class="fas fa-portrait"></i> <span>Portraits</span></a></li>
+        <li><a href="#"><i class="fas fa-plus"></i> <span>New Collection</span></a></li>
+      </ul>
+    </div>
+    
+    <div class="sidebar-section">
+      <h3><i class="fas fa-tools"></i> Gallery Tools</h3>
+      <ul>
+        <li><a href="#"><i class="fas fa-sort"></i> <span>Sort Photos</span></a></li>
+        <li><a href="#"><i class="fas fa-filter"></i> <span>Filter</span></a></li>
+        <li><a href="#"><i class="fas fa-tags"></i> <span>Tags</span></a></li>
+        <li><a href="#"><i class="fas fa-share"></i> <span>Share</span></a></li>
+      </ul>
+    </div>
+    
+    <div class="sidebar-section">
+      <h3><i class="fas fa-clock"></i> Recent</h3>
+      <ul>
+        <li><a href="#"><i class="fas fa-calendar"></i> <span>This Week</span></a></li>
+        <li><a href="#"><i class="fas fa-calendar-alt"></i> <span>This Month</span></a></li>
+        <li><a href="#"><i class="fas fa-star"></i> <span>Favorites</span></a></li>
+      </ul>
+    </div>
+  </div>
+</aside>
+
+<div class="main-content">
+  <h1><span class="gradient-text">Test Tablet Hover</span></h1>
+  <h2 class="subtitle">Testing sidebar hover behavior</h2>
+  
+  <div class="test-info">
+    <h4>Test Instructions:</h4>
+    <p>1. Resize your browser to tablet width (769px - 1024px)</p>
+    <p>2. Hover over the left sidebar to see it expand</p>
+    <p>3. The sidebar should expand to full width with smooth transitions</p>
+    <p>4. Text and headers should fade in with opacity and translateX</p>
+    <p>5. The sidebar should be positioned absolutely (above content)</p>
+  </div>
+  
+  <div class="test-info">
+    <h4>Expected Behavior:</h4>
+    <p>• Sidebar starts at 60px width (icons only)</p>
+    <p>• On hover: expands to 250px width</p>
+    <p>• Smooth transitions for all properties</p>
+    <p>• Text appears with opacity and translateX animations</p>
+    <p>• No layout shift in main content</p>
+  </div>
+  
+  <div class="test-info">
+    <h4>CSS Variables Used:</h4>
+    <p>• --mobile-sidebar-width: 60px</p>
+    <p>• --sidebar-width: 250px</p>
+    <p>• --sidebar-transition-duration: 0.3s</p>
+  </div>
+  
+  <div class="test-info">
+    <h4>Current Viewport:</h4>
+    <p id="viewport-info">Loading...</p>
+  </div>
+</div>
+
+<script>
+// Display current viewport information
+function updateViewportInfo() {
+  const width = window.innerWidth;
+  const height = window.innerHeight;
+  const isTablet = width >= 769 && width <= 1024;
+  const isMobile = width <= 768;
+  const isDesktop = width > 1024;
+  
+  let mode = 'Unknown';
+  if (isMobile) mode = 'Mobile';
+  else if (isTablet) mode = 'Tablet';
+  else if (isDesktop) mode = 'Desktop';
+  
+  document.getElementById('viewport-info').innerHTML = 
+    `Width: ${width}px, Height: ${height}px<br>` +
+    `Mode: ${mode}<br>` +
+    `Sidebar width: ${isTablet ? '60px (hover to expand)' : '250px'}`;
+}
+
+// Update on load and resize
+window.addEventListener('load', updateViewportInfo);
+window.addEventListener('resize', updateViewportInfo);
+
+// Theme management
+const root = document.documentElement;
+let theme = localStorage.getItem("theme") || "device";
+
+function applyTheme(value) {
+  if(value === "device") {
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    root.dataset.theme = prefersDark ? "dark" : "light";
+  } else {
+    root.dataset.theme = value;
+  }
+  localStorage.setItem("theme", value);
+}
+
+applyTheme(theme);
+
+// System theme change if "device" option
+window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", e => {
+  if(localStorage.getItem("theme") === "device") {
+    applyTheme("device");
+  }
+});
+</script>
+<script src="script-navbar.js"></script>
+</body>
+</html>

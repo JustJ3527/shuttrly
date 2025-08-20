@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="style-navbar.css">
+<script src="https://kit.fontawesome.com/48953ba2ad.js" crossorigin="anonymous"></script>
+<title>Navbar</title>
+</head>
+<body>
+<!-- Top Navbar - Navigation principale -->
+<nav class="navbar">
+  <div class="navbar-logo-container">
+  <!-- Hamburger button for mobile -->
+    <button class="navbar-toggle" aria-label="Toggle navigation">
+      <span class="hamburger-line"></span>
+      <span class="hamburger-line"></span>
+      <span class="hamburger-line"></span>
+    </button>
+    
+    <div class="gradient-text navbar-logo">Shuttrly</div>
+  </div>
+  <div class="navbar-menu">
+    <ul>
+      <li><a href="#" class="active"><span>Home</span></a></li>
+      <li><a href="#"><span>Discover</span></a></li>
+      <li><a href="#"><span>Search</span></a></li>
+      <li><a href="#"><span>Gallery</span></a></li>
+      <li><a href="#"><span>Upload</span></a></li>
+    </ul>
+  </div>
+  <div class="navbar-actions">
+    <ul>
+      <li><a href="#"><i class="fas fa-user"></i></a></li>
+      <li><a href="#" title="Settings"><i class="fas fa-cog"></i></a></li>
+      <li><a href="#" title="Logout"><i class="fas fa-sign-out-alt"></i></a></li>
+    </ul>
+  </div>
+</nav>
+
+<!-- Mobile menu overlay -->
+<div class="mobile-menu-overlay">
+  <div class="mobile-menu-content">
+    <!-- Main Navigation Section -->
+    <div class="mobile-menu-section">
+      <h3><i class="fas fa-compass"></i> Navigation</h3>
+      <ul>
+        <li><a href="#"><i class="fas fa-home"></i> <span>Home</span></a></li>
+        <li><a href="#"><i class="fas fa-compass"></i> <span>Discover</span></a></li>
+        <li><a href="#"><i class="fas fa-search"></i> <span>Search</span></a></li>
+        <li><a href="#"><i class="fas fa-images"></i> <span>Gallery</span></a></li>
+        <li><a href="#"><i class="fas fa-cloud-upload-alt"></i> <span>Upload</span></a></li>
+      </ul>
+    </div>
+    
+    <!-- Collections Section -->
+    <div class="mobile-menu-section">
+      <h3><i class="fas fa-folder"></i> Collections</h3>
+      <ul>
+        <li><a href="#"><i class="fas fa-city"></i> <span>Urban</span></a></li>
+        <li><a href="#"><i class="fas fa-portrait"></i> <span>Portraits</span></a></li>
+        <li><a href="#"><i class="fas fa-plus"></i> <span>New Collection</span></a></li>
+      </ul>
+    </div>
+    
+    <!-- Gallery Tools Section -->
+    <div class="mobile-menu-section">
+      <h3><i class="fas fa-tools"></i> Gallery Tools</h3>
+      <ul>
+        <li><a href="#"><i class="fas fa-sort"></i> <span>Sort Photos</span></a></li>
+        <li><a href="#"><i class="fas fa-filter"></i> <span>Filter</span></a></li>
+        <li><a href="#"><i class="fas fa-tags"></i> <span>Tags</span></a></li>
+        <li><a href="#"><i class="fas fa-share"></i> <span>Share</span></a></li>
+      </ul>
+    </div>
+    
+    <!-- Recent Section -->
+    <div class="mobile-menu-section">
+      <h3><i class="fas fa-clock"></i> Recent</h3>
+      <ul>
+        <li><a href="#"><i class="fas fa-calendar"></i> <span>This Week</span></a></li>
+        <li><a href="#"><i class="fas fa-calendar-alt"></i> <span>This Month</span></a></li>
+        <li><a href="#"><i class="fas fa-star"></i> <span>Favorites</span></a></li>
+      </ul>
+    </div>
+    
+    <!-- User Actions Section -->
+    <div class="mobile-menu-section">
+      <h3><i class="fas fa-user"></i> Account</h3>
+      <ul>
+        <li><a href="#"><div class="icon-container"><i class="fas fa-user"></i></div> <span>Profile</span></a></li>
+        <li><a href="#"><div class="icon-container"><i class="fas fa-cog"></i></div> <span>Settings</span></a></li>
+        <li><a href="#"><div class="icon-container"><i class="fas fa-sign-out-alt"></i></div> <span>Logout</span></a></li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- Sidebar contextuelle selon la catégorie -->
+<aside class="sidebar-nav">
+  <div class="sidebar-content">
+    <div class="sidebar-section">
+      <h3><i class="fas fa-folder"></i> Collections</h3>
+      <ul>
+        <li><a href="#"><div class="icon-container"><i class="fas fa-city"></i></div> <span>Urban</span></a></li>
+        <li><a href="#"><div class="icon-container"><i class="fas fa-portrait"></i></div> <span>Portraits</span></a></li>
+        <li><a href="#"><div class="icon-container"><i class="fas fa-plus"></i></div> <span>New Collection</span></a></li>
+      </ul>
+    </div>
+    
+    <div class="sidebar-section">
+      <h3><i class="fas fa-tools"></i> Gallery Tools</h3>
+      <ul>
+        <li><a href="#"><div class="icon-container"><i class="fas fa-sort"></i></div> <span>Sort Photos</span></a></li>
+        <li><a href="#"><div class="icon-container"><i class="fas fa-filter"></i></div> <span>Filter</span></a></li>
+        <li><a href="#"><div class="icon-container"><i class="fas fa-tags"></i></div> <span>Tags</span></a></li>
+        <li><a href="#"><div class="icon-container"><i class="fas fa-share"></i></div> <span>Share</span></a></li>
+      </ul>
+    </div>
+    
+    <div class="sidebar-section">
+      <h3><i class="fas fa-clock"></i> Recent</h3>
+      <ul>
+        <li><a href="#"><div class="icon-container"><i class="fas fa-calendar"></i></div> <span>This Week</span></a></li>
+        <li><a href="#"><div class="icon-container"><i class="fas fa-calendar-alt"></i></div> <span>This Month</span></a></li>
+        <li><a href="#"><div class="icon-container"><i class="fas fa-star"></i></div> <span>Favorites</span></a></li>
+      </ul>
+    </div>
+  </div>
+</aside>
+
+<div class="main-content">
+  <h1><span class="gradient-text">Shuttrly</span></h1>
+  <h2 class="subtitle">Your travel companion</h2>
+  <h3 class="description">Discover the world with Shuttrly, your travel companion.</h3>
+
+  <label for="theme-select">Choisir le thème:</label>
+  <select id="theme-select">
+    <option value="device">Device theme</option>
+    <option value="light">Light</option>
+    <option value="dark">Dark</option>
+  </select>
+</div>
+
+<script src="script-navbar.js"></script>
+</body>
+</html>

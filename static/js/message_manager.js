@@ -8,6 +8,7 @@ class MessageManager {
         this.messagesContainer = null;
         this.alerts = [];
         this.removalTimers = new Map();
+        this.debugMode = false; // Debug mode for logging
         this.init();
     }
 
@@ -15,11 +16,15 @@ class MessageManager {
         this.messagesContainer = document.getElementById('django-messages');
         if (this.messagesContainer) {
             this.alerts = this.messagesContainer.querySelectorAll('.alert');
-            console.log(`MessageManager: Found ${this.alerts.length} messages`);
+            if (this.debugMode) {
+                console.log(`MessageManager: Found ${this.alerts.length} messages`);
+            }
             this.setupEventListeners();
             this.startAutoRemoval();
         } else {
-            console.log('MessageManager: No messages container found');
+            if (this.debugMode) {
+                console.log('MessageManager: No messages container found');
+            }
         }
     }
 
@@ -34,17 +39,23 @@ class MessageManager {
 
         // Page navigation events - only remove on actual navigation
         window.addEventListener('beforeunload', () => {
-            console.log('MessageManager: Page unloading, removing all alerts');
+            if (this.debugMode) {
+                console.log('MessageManager: Page unloading, removing all alerts');
+            }
             this.removeAllAlerts(false);
         });
         
         // Page visibility change - be more conservative
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) {
-                console.log('MessageManager: Page hidden, pausing timers');
+                if (this.debugMode) {
+                    console.log('MessageManager: Page hidden, pausing timers');
+                }
                 this.pauseTimers();
             } else {
-                console.log('MessageManager: Page visible, resuming timers');
+                if (this.debugMode) {
+                    console.log('MessageManager: Page visible, resuming timers');
+                }
                 this.resumeTimers();
             }
         });
@@ -53,7 +64,9 @@ class MessageManager {
         document.addEventListener('submit', (e) => {
             const form = e.target;
             if (form.tagName === 'FORM' && !form.hasAttribute('data-ajax')) {
-                console.log('MessageManager: Form submission detected, removing alerts');
+                if (this.debugMode) {
+                    console.log('MessageManager: Form submission detected, removing alerts');
+                }
                 this.removeAllAlerts(false);
             }
         });
@@ -69,12 +82,16 @@ class MessageManager {
         const urlCheckInterval = setInterval(() => {
             if (currentUrl !== window.location.href) {
                 urlChangeCount++;
-                console.log(`MessageManager: URL change detected (${urlChangeCount})`);
+                if (this.debugMode) {
+                    console.log(`MessageManager: URL change detected (${urlChangeCount})`);
+                }
                 
                 // Only remove messages after multiple URL changes to avoid false positives
                 if (urlChangeCount >= 2) {
                     currentUrl = window.location.href;
-                    console.log('MessageManager: Multiple URL changes, removing alerts');
+                    if (this.debugMode) {
+                        console.log('MessageManager: Multiple URL changes, removing alerts');
+                    }
                     this.removeAllAlerts(false);
                     clearInterval(urlCheckInterval);
                 }
@@ -85,10 +102,14 @@ class MessageManager {
     startAutoRemoval() {
         this.alerts.forEach((alert, index) => {
             const delay = 15000 + (index * 1000); // 15 seconds + 1 second per message
-            console.log(`MessageManager: Setting timer for message ${index + 1} to ${delay}ms`);
+            if (this.debugMode) {
+                console.log(`MessageManager: Setting timer for message ${index + 1} to ${delay}ms`);
+            }
             
             const timer = setTimeout(() => {
-                console.log(`MessageManager: Auto-removing message ${index + 1}`);
+                if (this.debugMode) {
+                    console.log(`MessageManager: Auto-removing message ${index + 1}`);
+                }
                 this.removeAlert(alert);
             }, delay);
             
@@ -128,7 +149,9 @@ class MessageManager {
     }
 
     removeAlert(alert, animate = true) {
-        console.log('MessageManager: Removing alert', alert);
+        if (this.debugMode) {
+            console.log('MessageManager: Removing alert', alert);
+        }
         
         // Clear the timer if it exists
         if (this.removalTimers.has(alert)) {
@@ -164,7 +187,9 @@ class MessageManager {
     }
 
     removeAllAlerts(animate = true) {
-        console.log(`MessageManager: Removing all ${this.alerts.length} alerts`);
+        if (this.debugMode) {
+            console.log(`MessageManager: Removing all ${this.alerts.length} alerts`);
+        }
         this.alerts.forEach(alert => this.removeAlert(alert, animate));
     }
 
@@ -184,11 +209,107 @@ class MessageManager {
             typeAlerts.forEach(alert => manager.removeAlert(alert, false));
         }
     }
+    
+    // Method to enable/disable debug mode
+    setDebugMode(enabled) {
+        this.debugMode = enabled;
+        if (enabled) {
+            console.log('MessageManager: Debug mode enabled');
+        }
+        
+        // Sync debug mode with PhotoGallery if it exists
+        if (window.photoGallery && window.photoGallery.setDebugMode) {
+            window.photoGallery.setDebugMode(enabled);
+        }
+    }
+    
+    // Method to get debug mode status
+    getDebugMode() {
+        return this.debugMode;
+    }
 }
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
-    new MessageManager();
+    window.messageManager = new MessageManager();
+    
+    // Add global methods for debugging
+    window.enableMessageManagerDebug = () => {
+        if (window.messageManager) {
+            window.messageManager.setDebugMode(true);
+            console.log('MessageManager debug mode enabled. Use window.messageManager.setDebugMode(false) to disable.');
+        }
+        // Also enable PhotoGallery debug mode if it exists
+        if (window.photoGallery && window.photoGallery.setDebugMode) {
+            window.photoGallery.setDebugMode(true);
+            console.log('PhotoGallery debug mode also enabled.');
+        }
+    };
+    
+    window.disableMessageManagerDebug = () => {
+        if (window.messageManager) {
+            window.messageManager.setDebugMode(false);
+            console.log('MessageManager debug mode disabled.');
+        }
+        // Also disable PhotoGallery debug mode if it exists
+        if (window.photoGallery && window.photoGallery.setDebugMode) {
+            window.photoGallery.setDebugMode(false);
+            console.log('PhotoGallery debug mode also disabled.');
+        }
+    };
+    
+    window.showMessageManagerDebugStatus = () => {
+        console.log('=== MessageManager Debug Status ===');
+        if (window.messageManager) {
+            console.log(`MessageManager debug mode: ${window.messageManager.getDebugMode() ? 'ENABLED' : 'DISABLED'}`);
+        } else {
+            console.log('MessageManager: Not initialized');
+        }
+        console.log('==================================');
+    };
+    
+    // Global method to enable/disable debug for all components
+    window.enableAllDebug = () => {
+        console.log('Enabling debug mode for all components...');
+        if (window.messageManager) {
+            window.messageManager.setDebugMode(true);
+        }
+        if (window.photoGallery) {
+            window.photoGallery.setDebugMode(true);
+        }
+        if (window.lazyLoader) {
+            window.lazyLoader.debugMode = true;
+        }
+        console.log('Debug mode enabled for all components');
+    };
+    
+    window.disableAllDebug = () => {
+        console.log('Disabling debug mode for all components...');
+        if (window.messageManager) {
+            window.messageManager.setDebugMode(false);
+        }
+        if (window.photoGallery) {
+            window.photoGallery.setDebugMode(false);
+        }
+        if (window.lazyLoader) {
+            window.lazyLoader.debugMode = false;
+        }
+        console.log('Debug mode disabled for all components');
+    };
+    
+    window.showAllDebugStatus = () => {
+        console.log('=== All Components Debug Status ===');
+        if (window.messageManager) {
+            console.log(`MessageManager: ${window.messageManager.getDebugMode() ? 'ENABLED' : 'DISABLED'}`);
+        }
+        if (window.photoGallery) {
+            console.log(`PhotoGallery: ${window.photoGallery.debugMode ? 'ENABLED' : 'DISABLED'}`);
+        }
+        if (window.lazyLoader) {
+            console.log(`LazyImageLoader: ${window.lazyLoader.debugMode ? 'ENABLED' : 'DISABLED'}`);
+        }
+        console.log('==================================');
+    };
 });
 
 // Global functions for external use

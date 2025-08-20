@@ -1,0 +1,884 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Test Gallery - Shuttrly{% endblock %}
+
+{% block head %}
+{{ block.super }}
+<style>
+/* Responsive asymmetric grid styles inspired by gallery.html */
+.test-gallery {
+    padding: 20px;
+    background: #f8f9fa;
+}
+
+.test-grid {
+    display: flex;
+    gap: 20px;
+    margin: 0 auto;
+    max-width: 100%;
+}
+
+.test-column {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.test-photo-item {
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    display: block;
+    width: 100%;
+}
+
+.test-photo-item:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+}
+
+.test-photo-item img {
+    width: 100%; /* Full width of column */
+    height: auto; /* Maintain original aspect ratio */
+    display: block;
+    transition: all 0.3s ease;
+    transform: scale(1.01);
+}
+
+.test-photo-item:hover .photo-image {
+    transform: scale(1.05);
+}
+
+/* Hover Overlay - Same as gallery.html */
+.test-photo-overlay {
+    height: 100%;
+    width: 100%;
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    opacity: 0;
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.test-photo-item:hover .test-photo-overlay {
+    opacity: 1;
+}
+
+.test-overlay-header {
+    width: 100%;
+    transition: all 0.3s ease;
+    transform: translateY(-2rem);
+}
+
+.test-overlay-footer {
+    width: 100%;
+    transition: all 0.3s ease;
+    transform: translateY(2rem);
+}
+
+.test-photo-item:hover .test-overlay-header, 
+.test-photo-item:hover .test-overlay-footer {
+    transform: translateY(0);
+}
+
+.test-exposure-info {
+    background: linear-gradient(
+        180deg,
+        rgba(0, 0, 0, 0.7) 40%,
+        rgba(0, 0, 0, 0.5) 100%
+    );
+    width: 100%;
+    padding: 1rem 1rem 0 1rem;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+}
+
+.test-exposure-item {
+    text-align: center;
+}
+
+.test-exposure-item .label {
+    display: block;
+    font-size: 0.8rem;
+    opacity: 0.7;
+    margin-bottom: 0.25rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #ffffff;
+}
+
+.test-exposure-item .value {
+    display: block;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #84A98D;
+}
+
+.test-shadow-header,
+.test-shadow-footer {
+    height: 2rem;
+}
+
+.test-shadow-footer {
+    background: linear-gradient(
+        0deg,
+        rgba(0, 0, 0, 0.5) 0%,
+        rgba(0, 0, 0, 0) 100%
+    );
+}
+
+.test-shadow-header {
+    background: linear-gradient(
+        180deg,
+        rgba(0, 0, 0, 0.5) 0%,
+        rgba(0, 0, 0, 0) 100%
+    );
+}
+
+.test-photo-info {
+    background: linear-gradient(
+        0deg,
+        rgba(0, 0, 0, 0.7) 40%,
+        rgba(0, 0, 0, 0.5) 100%
+    );
+    width: 100%;
+    padding: 0 1rem 1rem 1rem;
+}
+
+.test-photo-actions {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.test-photo-actions .btn {
+    border-radius: 20px;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+}
+
+.test-photo-actions .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+/* Badges */
+.test-raw-badge,
+.test-public-badge {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: rgba(0, 0, 0, 0.5);
+    color: white;
+    padding: 0.5rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    z-index: 10;
+}
+
+.test-raw-badge {
+    background: linear-gradient(135deg, #ffc107 0%, #ff8c00 100%);
+    color: #333;
+}
+
+.test-public-badge {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    top: 15px;
+    right: 80px;
+}
+
+/* Photo title and date styles */
+.test-photo-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+    color: white;
+}
+
+.test-photo-date {
+    color: #e9ecef;
+    margin: 0.5rem 0;
+    font-size: 0.9rem;
+}
+
+/* Loading indicator styles */
+.test-loading-indicator {
+    text-align: center;
+    padding: 2rem;
+    color: #6c757d;
+    grid-column: 1 / -1;
+    margin: 2rem 0;
+}
+
+.test-loading-indicator .spinner-border {
+    width: 3rem;
+    height: 3rem;
+    border-width: 0.25em;
+}
+
+.test-loading-indicator .loading-progress {
+    margin-top: 1rem;
+    font-size: 0.9rem;
+    color: #495057;
+}
+
+/* Photo item loading states - Optimized for performance */
+.test-photo-item {
+    contain: layout style paint;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: transform, opacity;
+    transform: translateZ(0); /* Force hardware acceleration */
+}
+
+.test-photo-item.loading {
+    opacity: 0;
+    transform: translate3d(0, 20px, 0) scale(0.95);
+}
+
+.test-photo-item.loaded {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+}
+
+/* Loading animation for photo items - Optimized */
+@keyframes photoLoadIn {
+    from {
+        opacity: 0;
+        transform: translate3d(0, 20px, 0) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translate3d(0, 0, 0) scale(1);
+    }
+}
+
+.test-photo-item.loaded {
+    animation: photoLoadIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Staggered loading animation - Reduced delays for better performance */
+.test-photo-item.loaded:nth-child(1) { animation-delay: 0.05s; }
+.test-photo-item.loaded:nth-child(2) { animation-delay: 0.1s; }
+.test-photo-item.loaded:nth-child(3) { animation-delay: 0.15s; }
+.test-photo-item.loaded:nth-child(4) { animation-delay: 0.2s; }
+.test-photo-item.loaded:nth-child(5) { animation-delay: 0.25s; }
+.test-photo-item.loaded:nth-child(6) { animation-delay: 0.3s; }
+.test-photo-item.loaded:nth-child(7) { animation-delay: 0.35s; }
+.test-photo-item.loaded:nth-child(8) { animation-delay: 0.4s; }
+.test-photo-item.loaded:nth-child(9) { animation-delay: 0.45s; }
+.test-photo-item.loaded:nth-child(10) { animation-delay: 0.5s; }
+.test-photo-item.loaded:nth-child(11) { animation-delay: 0.55s; }
+.test-photo-item.loaded:nth-child(12) { animation-delay: 0.6s; }
+
+/* Responsive breakpoints */
+@media (max-width: 1200px) {
+    .test-column {
+        flex: 1;
+    }
+}
+
+@media (max-width: 768px) {
+    .test-grid {
+        flex-direction: column;
+    }
+    
+    .test-column {
+        flex: none;
+    }
+    
+    .test-loading-indicator .spinner-border {
+        width: 2rem;
+        height: 2rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .test-grid {
+        flex-direction: column;
+    }
+}
+
+.test-photo-id {
+    font-weight: bold;
+    color: #0d6efd;
+    font-size: 12px;
+}
+
+.test-photo-date {
+    color: #e9ecef;
+    margin: 2px 0;
+}
+
+.test-photo-title {
+    font-weight: 600;
+    color: white;
+    margin: 2px 0;
+}
+
+.test-header {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    border: 2px solid #dee2e6;
+}
+
+.test-controls {
+    display: flex;
+    gap: 10px;
+    margin: 20px 0;
+    flex-wrap: wrap;
+}
+
+.test-controls button {
+    padding: 8px 16px;
+    border: 1px solid #dee2e6;
+    border-radius: 5px;
+    background: white;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.test-controls button:hover {
+    background: #e9ecef;
+    border-color: #adb5bd;
+}
+
+.test-controls button.active {
+    background: #0d6efd;
+    color: white;
+    border-color: #0d6efd;
+}
+
+.test-stats {
+    background: #e9ecef;
+    padding: 15px;
+    border-radius: 8px;
+    margin: 20px 0;
+    font-family: monospace;
+}
+
+.test-stats h4 {
+    margin: 0 0 10px 0;
+    color: #495057;
+}
+
+.test-stats p {
+    margin: 5px 0;
+    font-size: 14px;
+}
+
+.test-debug {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 5px;
+    padding: 15px;
+    margin: 20px 0;
+    font-family: monospace;
+    font-size: 12px;
+}
+
+.test-debug h5 {
+    margin: 0 0 10px 0;
+    color: #495057;
+}
+
+.test-debug pre {
+    background: white;
+    padding: 10px;
+    border-radius: 3px;
+    overflow-x: auto;
+    margin: 0;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="test-gallery">
+    <div class="test-header" id="test-header">
+        <h1>🧪 Test Gallery - Grille Asymétrique</h1>
+        <p>Grille responsive et asymétrique qui respecte les ratios des photos</p>
+        
+        <div class="test-stats">
+            <h4>📊 Statistiques</h4>
+            <p><strong>Total photos:</strong> {{ total_photos }}</p>
+            <p><strong>Photos avec EXIF:</strong> {{ photos_with_exif }}</p>
+            <p><strong>Tri appliqué:</strong> <span id="sort-info">{{ sort_by }}</span></p>
+            <p><strong>Ordre affiché:</strong> <span id="order-info">Chargement...</span></p>
+        </div>
+        
+        <div class="test-controls">
+            <button class="active" onclick="changeSort('-date_taken')">📅 Plus récent → Plus ancien</button>
+            <button onclick="changeSort('date_taken')">📅 Plus ancien → Plus récent</button>
+            <button onclick="changeSort('-created_at')">🆕 Plus récent upload</button>
+            <button onclick="changeSort('created_at')">🆕 Plus ancien upload</button>
+            <button onclick="changeSort('-id')">🆔 Plus grand ID</button>
+            <button onclick="changeSort('id')">🆔 Plus petit ID</button>
+        </div>
+    </div>
+
+    <div class="test-grid" id="test-grid">
+        {% for photo in photos %}
+        <div class="test-photo-item" data-photo-id="{{ photo.id }}" data-date-taken="{{ photo.date_taken|date:'Y-m-d H:i:s'|default:'None' }}" data-created-at="{{ photo.created_at|date:'Y-m-d H:i:s' }}">
+            <img src="{{ photo.thumbnail.url|default:photo.original_file.url }}" 
+                 alt="{{ photo.title|default:'Untitled' }}"
+                 class="photo-image"
+                 onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 200 200\'%3E%3Crect width=\'200\' height=\'200\' fill=\'%23f0f0f0\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' text-anchor=\'middle\' dy=\'.3em\' fill=\'%23999\' font-size=\'12\'%3ENo Image%3C/text%3E%3C/svg%3E'">
+            
+            <div class="test-photo-overlay">
+                <div class="test-overlay-header">
+                    <div class="test-exposure-info">
+                        <div class="test-exposure-item">
+                            <span class="label">ISO</span>
+                            <span class="value">{{ photo.iso|default:'N/A' }}</span>
+                        </div>
+                        <div class="test-exposure-item">
+                            <span class="label">F</span>
+                            <span class="value">{{ photo.aperture|default:'N/A' }}</span>
+                        </div>
+                        <div class="test-exposure-item">
+                            <span class="label">T</span>
+                            <span class="value">{{ photo.shutter_speed|default:'N/A' }}</span>
+                        </div>
+                    </div>
+                    <div class="test-shadow-header"></div>
+                </div>
+                
+                <div class="test-overlay-footer">
+                    <div class="test-shadow-footer"></div>
+                    <div class="test-photo-info">
+                        
+                        <div class="test-photo-actions">
+                            <a href="{% url 'photos:detail' photo.id %}" class="btn btn-sm btn-outline-light">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            <a href="{% url 'photos:edit' photo.id %}" class="btn btn-sm btn-outline-light">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <button class="btn btn-sm btn-outline-light delete-photo" data-photo-id="{{ photo.id }}">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RAW Badge -->
+            {% if photo.is_raw %}
+            <div class="test-raw-badge">
+                <i class="fas fa-film"></i> RAW
+            </div>
+            {% endif %}
+
+            <!-- Public Badge -->
+            {% if photo.is_public %}
+            <div class="test-public-badge">
+                <i class="fas fa-globe"></i>
+            </div>
+            {% endif %}
+        </div>
+        {% empty %}
+        <div class="test-photo-item" style="grid-column: 1 / -1; text-align: center; padding: 40px;">
+            <h3>❌ Aucune photo trouvée</h3>
+            <p>Vérifiez que vous avez des photos dans votre base de données.</p>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="test-debug">
+        <h5>🐛 Debug Info</h5>
+        <pre id="debug-info">Chargement des informations de debug...</pre>
+    </div>
+</div>
+
+<script>
+// Test sorting functionality
+function changeSort(sortBy) {
+    // Update active button
+    document.querySelectorAll('.test-controls button').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    event.target.classList.add('active');
+    
+    // Update sort info
+    document.getElementById('sort-info').textContent = sortBy;
+    
+    // Reload page with new sort
+    const url = new URL(window.location);
+    url.searchParams.set('sort_by', sortBy);
+    window.location.href = url.toString();
+}
+
+// Create asymmetric column layout
+function createAsymmetricLayout() {
+    const grid = document.getElementById('test-grid');
+    const photoItems = Array.from(document.querySelectorAll('.test-photo-item[data-photo-id]'));
+    
+    if (photoItems.length === 0) return;
+    
+    // Clear existing grid
+    grid.innerHTML = '';
+    
+    // Determine column count based on container width (same logic as photo_gallery.js)
+    const containerWidth = grid.offsetWidth;
+    let columnCount = 2; // Default
+    
+    if (containerWidth >= 1400) columnCount = 5;
+    else if (containerWidth >= 1200) columnCount = 4;
+    else if (containerWidth >= 992) columnCount = 3;
+    else if (containerWidth >= 768) columnCount = 3;
+    else if (containerWidth >= 576) columnCount = 2;
+    else columnCount = 2;
+    
+    // Create columns dynamically
+    const columns = [];
+    for (let i = 0; i < columnCount; i++) {
+        const column = document.createElement('div');
+        column.className = 'test-column';
+        column.setAttribute('data-column', i + 1);
+        columns.push(column);
+        grid.appendChild(column);
+    }
+    
+    // Initialize lazy loading for photo items
+    initializeLazyLoading(photoItems, columns, columnCount);
+    
+    // Update debug info with current column count
+    updateColumnInfo(columnCount);
+}
+
+// Lazy loading system for photo items - Improved version inspired by photo_gallery.js
+function initializeLazyLoading(photoItems, columns, columnCount) {
+    const itemsPerBatch = 12; // Increased batch size for better performance
+    let currentIndex = 0;
+    let isLoading = false;
+    let observer = null;
+    
+    // Load initial batch
+    loadNextBatch();
+    
+    // Enhanced Intersection Observer for infinite scroll
+    if ('IntersectionObserver' in window) {
+        observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting && !isLoading && currentIndex < photoItems.length) {
+                    // Use requestAnimationFrame for better performance
+                    requestAnimationFrame(() => {
+                        loadNextBatch();
+                    });
+                }
+            });
+        }, {
+            rootMargin: '300px 0px', // Increased margin for earlier loading
+            threshold: 0.01 // Lower threshold for better detection
+        });
+        
+        // Observe the loading indicator
+        const loadingIndicator = createLoadingIndicator();
+        if (loadingIndicator) {
+            observer.observe(loadingIndicator);
+        }
+    } else {
+        // Fallback for older browsers
+        window.addEventListener('scroll', throttle(() => {
+            if (!isLoading && currentIndex < photoItems.length) {
+                const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+                const windowHeight = window.innerHeight;
+                const documentHeight = document.documentElement.scrollHeight;
+                
+                if (scrollTop + windowHeight >= documentHeight - 500) {
+                    loadNextBatch();
+                }
+            }
+        }, 100));
+    }
+    
+    function loadNextBatch() {
+        if (isLoading || currentIndex >= photoItems.length) return;
+        
+        isLoading = true;
+        
+        // Use requestAnimationFrame for smooth loading
+        requestAnimationFrame(() => {
+            const endIndex = Math.min(currentIndex + itemsPerBatch, photoItems.length);
+            const batchItems = photoItems.slice(currentIndex, endIndex);
+            
+            // Create document fragment for better performance
+            const fragment = document.createDocumentFragment();
+            const columnFragments = Array.from({ length: columnCount }, () => document.createDocumentFragment());
+            
+            // Distribute photos to create asymmetric effect
+            batchItems.forEach((photo, batchIndex) => {
+                const globalIndex = currentIndex + batchIndex;
+                const columnIndex = globalIndex % columnCount;
+                const photoClone = photo.cloneNode(true);
+                
+                // Add loading animation class
+                photoClone.classList.add('loading');
+                
+                // Add to appropriate column fragment
+                columnFragments[columnIndex].appendChild(photoClone);
+            });
+            
+            // Append all fragments at once for better performance
+            columnFragments.forEach((colFragment, colIndex) => {
+                if (colFragment.children.length > 0) {
+                    columns[colIndex].appendChild(colFragment);
+                }
+            });
+            
+            // Animate photos in with staggered timing
+            setTimeout(() => {
+                const newPhotos = document.querySelectorAll('.test-photo-item.loading');
+                newPhotos.forEach((photo, index) => {
+                    requestAnimationFrame(() => {
+                        photo.classList.remove('loading');
+                        photo.classList.add('loaded');
+                    });
+                });
+            }, 50);
+            
+            currentIndex = endIndex;
+            isLoading = false;
+            
+            // Reattach event listeners for new items
+            attachPhotoEventListeners();
+            
+            // Update loading indicator
+            updateLoadingProgress(currentIndex, photoItems.length);
+            
+            // Remove loading indicator if all photos are loaded
+            if (currentIndex >= photoItems.length) {
+                const loadingIndicator = document.querySelector('.test-loading-indicator');
+                if (loadingIndicator) {
+                    loadingIndicator.remove();
+                }
+                if (observer) {
+                    observer.disconnect();
+                }
+            }
+        });
+    }
+}
+
+// Throttle function for scroll events
+function throttle(func, limit) {
+    let inThrottle;
+    return function() {
+        const args = arguments;
+        const context = this;
+        if (!inThrottle) {
+            func.apply(context, args);
+            inThrottle = true;
+            setTimeout(() => inThrottle = false, limit);
+        }
+    };
+}
+
+// Create loading indicator with better positioning
+function createLoadingIndicator() {
+    const loadingIndicator = document.createElement('div');
+    loadingIndicator.className = 'test-loading-indicator';
+    loadingIndicator.innerHTML = `
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mt-2 text-muted">Loading more photos...</p>
+        <div class="loading-progress">
+            <span class="loaded-count">0</span>/<span class="total-count">0</span> photos loaded
+        </div>
+    `;
+    
+    // Append to the grid container for proper positioning
+    document.getElementById('test-grid').appendChild(loadingIndicator);
+    
+    // Initialize total count
+    const totalCountElement = loadingIndicator.querySelector('.total-count');
+    if (totalCountElement) {
+        totalCountElement.textContent = document.querySelectorAll('.test-photo-item[data-photo-id]').length;
+    }
+    
+    return loadingIndicator;
+}
+
+// Update loading progress
+function updateLoadingProgress(loaded, total) {
+    const loadedCountElement = document.querySelector('.test-loading-indicator .loaded-count');
+    const totalCountElement = document.querySelector('.test-loading-indicator .total-count');
+    
+    if (loadedCountElement) {
+        loadedCountElement.textContent = loaded;
+    }
+    if (totalCountElement) {
+        totalCountElement.textContent = total;
+    }
+}
+
+// Update column information in debug
+function updateColumnInfo(columnCount) {
+    const debugInfo = document.getElementById('debug-info');
+    if (debugInfo) {
+        try {
+            // Try to parse existing JSON, fallback to empty object if it fails
+            let currentInfo = {};
+            const existingText = debugInfo.textContent;
+            
+            if (existingText && existingText !== 'Chargement des informations de debug...') {
+                try {
+                    currentInfo = JSON.parse(existingText);
+                } catch (e) {
+                    // If parsing fails, start with empty object
+                    currentInfo = {};
+                }
+            }
+            
+            // Update layout information
+            currentInfo.layout = {
+                ...currentInfo.layout,
+                columns: columnCount,
+                containerWidth: document.getElementById('test-grid').offsetWidth
+            };
+            
+            debugInfo.textContent = JSON.stringify(currentInfo, null, 2);
+        } catch (error) {
+            // Fallback: just show basic column info
+            debugInfo.textContent = JSON.stringify({
+                layout: {
+                    columns: columnCount,
+                    containerWidth: document.getElementById('test-grid').offsetWidth,
+                    layoutType: 'custom_columns',
+                    asymmetric: true
+                }
+            }, null, 2);
+        }
+    }
+}
+
+// Attach event listeners to photo items
+function attachPhotoEventListeners() {
+    document.querySelectorAll('.test-photo-item').forEach(item => {
+        item.addEventListener('click', function() {
+            const photoId = this.dataset.photoId;
+            console.log(`Photo clicked: ID ${photoId}`);
+            
+            // Highlight clicked item with subtle effect
+            document.querySelectorAll('.test-photo-item').forEach(i => {
+                i.style.transform = 'translateY(0)';
+                i.style.boxShadow = 'none';
+            });
+            this.style.transform = 'translateY(-8px)';
+            this.style.boxShadow = '0 12px 40px rgba(0,0,0,0.2)';
+            
+            setTimeout(() => {
+                this.style.transform = 'translateY(-5px)';
+                this.style.boxShadow = '0 8px 30px rgba(0,0,0,0.15)';
+            }, 200);
+        });
+    });
+}
+
+// Analyze current order
+function analyzeOrder() {
+    const photoItems = document.querySelectorAll('.test-photo-item[data-photo-id]');
+    const order = [];
+    
+    photoItems.forEach((item, index) => {
+        const photoId = item.dataset.photoId;
+        const dateTaken = item.dataset.dateTaken;
+        const createdAt = item.dataset.createdAt;
+        
+        order.push({
+            position: index + 1,
+            id: photoId,
+            dateTaken: dateTaken,
+            createdAt: createdAt
+        });
+    });
+    
+    // Update order info
+    const orderText = order.map(item => 
+        `${item.position}. ID:${item.id} | EXIF:${item.dateTaken} | Upload:${item.createdAt}`
+    ).join('\n');
+    
+    document.getElementById('order-info').textContent = `${order.length} photos`;
+    
+    // Update debug info
+    const debugInfo = {
+        totalPhotos: order.length,
+        sortApplied: document.getElementById('sort-info').textContent,
+        order: order,
+        analysis: analyzeOrderLogic(order),
+        layout: {
+            columns: 4, // This will be updated by createAsymmetricLayout
+            layoutType: 'custom_columns',
+            asymmetric: true,
+            distribution: 'modulo_4'
+        }
+    };
+    
+    document.getElementById('debug-info').textContent = JSON.stringify(debugInfo, null, 2);
+}
+
+function analyzeOrderLogic(order) {
+    if (order.length < 2) return "Pas assez de photos pour analyser";
+    
+    const analysis = {
+        byId: checkOrder(order, 'id', (a, b) => parseInt(a) - parseInt(b)),
+        byDateTaken: checkOrder(order, 'dateTaken', (a, b) => new Date(a) - new Date(b)),
+        byCreatedAt: checkOrder(order, 'createdAt', (a, b) => new Date(a) - new Date(b))
+    };
+    
+    return analysis;
+}
+
+function checkOrder(order, field, comparator) {
+    let isAscending = true;
+    let isDescending = true;
+    
+    for (let i = 1; i < order.length; i++) {
+        const prev = order[i-1][field];
+        const curr = order[i][field];
+        
+        if (prev === 'None' || curr === 'None') continue;
+        
+        const comp = comparator(prev, curr);
+        if (comp > 0) isAscending = false;
+        if (comp < 0) isDescending = false;
+    }
+    
+    if (isAscending) return "ASC";
+    if (isDescending) return "DESC";
+    return "MIXED";
+}
+
+// Initialize when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    // First analyze order to initialize debug info
+    analyzeOrder();
+    
+    // Then create asymmetric column layout
+    createAsymmetricLayout();
+    
+    // Add resize listener to adjust columns dynamically
+    let resizeTimeout;
+    window.addEventListener('resize', function() {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(function() {
+            createAsymmetricLayout();
+        }, 250); // Debounce resize events
+    });
+});
+</script>
+{% endblock %}

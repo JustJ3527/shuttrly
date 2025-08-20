@@ -8,6 +8,7 @@ urlpatterns = [
     path("upload/", views.photo_upload, name="upload"),
     # Photo gallery and management
     path("gallery/", views.photo_gallery, name="gallery"),
+    path("gallery-test/", views.photo_gallery_test, name="gallery_test"),
     path("stats/", views.photo_stats, name="stats"),
     # Individual photo views
     path("photo/<int:photo_id>/", views.photo_detail, name="detail"),

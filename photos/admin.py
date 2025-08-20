@@ -172,7 +172,7 @@ class PhotoAdmin(admin.ModelAdmin):
         """Display exposure information"""
         parts = []
         if obj.shutter_speed:
-            parts.append(f"1/{obj.shutter_speed}s")
+            parts.append(f"{obj.shutter_speed}s")
         if obj.aperture:
             parts.append(f"f/{obj.aperture}")
         if obj.iso:

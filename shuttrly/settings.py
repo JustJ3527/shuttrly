@@ -36,6 +36,7 @@ ALLOWED_HOSTS = [
     "localhost",
     "127.0.0.1",
     "21632b3c9aba.ngrok-free.app",
+    "10.101.4.216",
 ]
 
 AUTH_USER_MODEL = "users.CustomUser"

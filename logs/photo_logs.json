@@ -1,0 +1,1256 @@
+[
+{
+  "log_id": "098e1687-e608-423c-8a02-6d4bd613a68c",
+  "user": "jul_atn",
+  "user_id": 2,
+  "action": "test_action",
+  "timestamp": "2025-08-19T21:56:30.960780+00:00",
+  "ip_address": null,
+  "user_agent": null,
+  "location": {
+    "city": null,
+    "region": null,
+    "country": null
+  },
+  "photo_info": null,
+  "extra_info": {
+    "test": true,
+    "message": "Test log entry"
+  },
+  "restored": false
+}
+,
+{
+  "log_id": "11ff820c-9ca9-45cf-bcef-a85a88bb9f84",
+  "user": "jul_atn",
+  "user_id": 2,
+  "action": "photo_upload",
+  "timestamp": "2025-08-19T21:56:30.961343+00:00",
+  "ip_address": null,
+  "user_agent": null,
+  "location": {
+    "city": null,
+    "region": null,
+    "country": null
+  },
+  "photo_info": {
+    "photo_id": 999,
+    "filename": "test_photo.jpg",
+    "file_size_mb": 1.0,
+    "file_extension": "jpg",
+    "is_raw": false,
+    "dimensions": "1920x1080",
+    "camera": "Canon EOS R10"
+  },
+  "extra_info": {
+    "upload_method": "test_upload",
+    "upload_details": {
+      "batch_number": 1,
+      "photo_number_in_batch": 1,
+      "total_photos": 1,
+      "file_original_name": "test_photo.jpg",
+      "processing_errors": null
+    },
+    "processing_status": {
+      "has_dimensions": true,
+      "has_thumbnail": true,
+      "has_camera_info": true,
+      "has_exposure_info": false,
+      "has_location": false,
+      "has_date": false
+    }
+  },
+  "restored": false
+}
+,
+{
+  "log_id": "098f0824-e203-4ad9-92e9-9a1343496e0e",
+  "user": "jul_atn",
+  "user_id": 2,
+  "action": "bulk_test_bulk",
+  "timestamp": "2025-08-19T21:56:30.961447+00:00",
+  "ip_address": null,
+  "user_agent": null,
+  "location": {
+    "city": null,
+    "region": null,
+    "country": null
+  },
+  "photo_info": null,
+  "extra_info": {
+    "bulk_action_type": "test",
+    "test": true,
+    "photo_ids": [
+      100,
+      101,
+      102
+    ],
+    "photo_count": 3,
+    "results": {
+      "test_count": 3
+    }
+  },
+  "restored": false
+}
+,
+{
+  "log_id": "a47f612e-15b9-4c47-a2b9-2ecd7f357bb2",
+  "user": "jul_atn",
+  "user_id": 2,
+  "action": "photo_upload",
+  "timestamp": "2025-08-19T21:57:31.587667+00:00",
+  "ip_address": null,
+  "user_agent": null,
+  "location": {
+    "city": null,
+    "region": null,
+    "country": null
+  },
+  "photo_info": {
+    "photo_id": 284,
+    "filename": "7bc262c5-9b9a-4b93-b316-76d5f89b3064.jpg",
+    "file_size_mb": 7.92,
+    "file_extension": "jpg",
+    "is_raw": false,
+    "dimensions": "3024x4032",
+    "camera": "Apple iPhone 14 Pro"
+  },
+  "extra_info": {
+    "upload_method": "real_test_upload",
+    "test": true,
+    "upload_details": {
+      "batch_number": 1,
+      "photo_number_in_batch": 1,
+      "total_photos": 1,
+      "file_original_name": "7bc262c5-9b9a-4b93-b316-76d5f89b3064.jpg",
+      "processing_errors": null
+    },
+    "processing_status": {
+      "has_dimensions": true,
+      "has_thumbnail": true,
+      "has_camera_info": true,
+      "has_exposure_info": true,
+      "has_location": true,
+      "has_date": true
+    }
+  },
+  "restored": false
+}
+,
+{
+  "log_id": "f59073b1-ebbd-4807-a1b1-d3b35973aafd",
+  "user": "jpa",
+  "user_id": 4,
+  "action": "photo_upload",
+  "timestamp": "2025-08-19T21:59:46.850449+00:00",
+  "ip_address": "127.0.0.1",
+  "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+  "location": {
+    "city": null,
+    "region": null,
+    "country": null
+  },
+  "photo_info": {
+    "photo_id": 337,
+    "filename": "9d9d8a76-78f2-461f-a7d2-af9895309f06.CR3",
+    "file_size_mb": 28.94,
+    "file_extension": "cr3",
+    "is_raw": true,
+    "dimensions": "6000x4000",
+    "camera": "Canon Canon EOS R10"
+  },
+  "extra_info": {
+    "upload_method": "batch_upload",
+    "validation_errors": null,
+    "upload_details": {
+      "batch_number": 1,
+      "photo_number_in_batch": 1,
+      "total_photos": 1,
+      "file_original_name": "IMG_1521.CR3",
+      "processing_errors": null
+    },
+    "processing_status": {
+      "has_dimensions": true,
+      "has_thumbnail": true,
+      "has_camera_info": true,
+      "has_exposure_info": true,
+      "has_location": false,
+      "has_date": true
+    }
+  },
+  "restored": false
+}
+,
+{
+  "log_id": "ef68c764-cc83-403f-920e-70cb169455b5",
+  "user": "jpa",
+  "user_id": 4,
+  "action": "photo_upload",
+  "timestamp": "2025-08-19T22:13:59.909490+00:00",
+  "ip_address": "127.0.0.1",
+  "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+  "location": {
+    "city": null,
+    "region": null,
+    "country": null
+  },
+  "photo_info": {
+    "photo_id": 338,
+    "filename": "75c1d776-2786-4c5b-a955-57a69bcdcca5.jpg",
+    "file_size_mb": 9.36,
+    "file_extension": "jpg",
+    "is_raw": false,
+    "dimensions": "6048x4536",
+    "camera": "Apple iPhone 14 Pro"
+  },
+  "extra_info": {
+    "upload_method": "batch_upload",
+    "validation_errors": null,
+    "upload_details": {
+      "batch_number": 1,
+      "photo_number_in_batch": 1,
+      "total_photos": 22,
+      "file_original_name": "IMG_1840.jpg",
+      "processing_errors": null
+    },
+    "processing_status": {
+      "has_dimensions": true,
+      "has_thumbnail": true,
+      "has_camera_info": true,
+      "has_exposure_info": true,
+      "has_location": true,
+      "has_date": true
+    }
+  }
+}
+,
+{
+  "log_id": "a8161a8a-ef4d-451a-a6bc-976c715b1119",
+  "user": "jpa",
+  "user_id": 4,
+  "action": "photo_upload",
+  "timestamp": "2025-08-19T22:14:00.343295+00:00",
+  "ip_address": "127.0.0.1",
+  "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+  "location": {
+    "city": null,
+    "region": null,
+    "country": null
+  },
+  "photo_info": {
+    "photo_id": 339,
+    "filename": "118358c9-68ae-423d-878c-be6baaa24e03.jpg",
+    "file_size_mb": 9.29,
+    "file_extension": "jpg",
+    "is_raw": false,
+    "dimensions": "3239x4859",
+    "camera": "Canon Canon EOS R10"
+  },
+  "extra_info": {
+    "upload_method": "batch_upload",
+    "validation_errors": null,
+    "upload_details": {
+      "batch_number": 1,
+      "photo_number_in_batch": 2,
+      "total_photos": 22,
+      "file_original_name": "IMG_2247.jpg",
+      "processing_errors": null
+    },
+    "processing_status": {
+      "has_dimensions": true,
+      "has_thumbnail": true,
+      "has_camera_info": true,
+      "has_exposure_info": true,
+      "has_location": false,
+      "has_date": true
+    }
+  }
+}
+,
+{
+  "log_id": "3dec88e5-8627-4bd5-82b3-b5e605e9b771",
+  "user": "jpa",
+  "user_id": 4,
+  "action": "photo_upload",
+  "timestamp": "2025-08-19T22:14:00.751455+00:00",
+  "ip_address": "127.0.0.1",
+  "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+  "location": {
+    "city": null,
+    "region": null,
+    "country": null
+  },
+  "photo_info": {
+    "photo_id": 340,
+    "filename": "b6f91a02-a7b8-4097-abe3-36d689e69155.jpg",
+    "file_size_mb": 9.23,
+    "file_extension": "jpg",
+    "is_raw": false,
+    "dimensions": "5807x3871",
+    "camera": "Canon Canon EOS R10"
+  },
+  "extra_info": {
+    "upload_method": "batch_upload",
+    "validation_errors": null,
+    "upload_details": {
+      "batch_number": 1,
+      "photo_number_in_batch": 3,
+      "total_photos": 22,
+      "file_original_name": "IMG_2244.jpg",
+      "processing_errors": null
+    },
+    "processing_status": {
+      "has_dimensions": true,
+      "has_thumbnail": true,
+      "has_camera_info": true,
+      "has_exposure_info": true,
+      "has_location": false,
+      "has_date": true
+    }
+  }
+}
+,
+{
+  "log_id": "09415f84-5ce6-4a54-8502-a77724844db2",
+  "user": "jpa",
+  "user_id": 4,
+  "action": "photo_upload",
+  "timestamp": "2025-08-19T22:14:01.114252+00:00",
+  "ip_address": "127.0.0.1",
+  "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+  "location": {
+    "city": null,
+    "region": null,
+    "country": null
+  },
+  "photo_info": {
+    "photo_id": 341,
+    "filename": "63d7e4ce-9cae-40d1-aeaa-7a286402ce04.jpg",
+    "file_size_mb": 8.19,
+    "file_extension": "jpg",
+    "is_raw": false,
+    "dimensions": "3747x4996",
+    "camera": "Canon Canon EOS R10"
+  },
+  "extra_info": {
+    "upload_method": "batch_upload",
+    "validation_errors": null,
+    "upload_details": {
+      "batch_number": 1,
+      "photo_number_in_batch": 4,
+      "total_photos": 22,
+      "file_original_name": "IMG_2116.jpg",
+      "processing_errors": null
+    },
+    "processing_status": {
+      "has_dimensions": true,
+      "has_thumbnail": true,
+      "has_camera_info": true,
+      "has_exposure_info": true,
+      "has_location": false,
+      "has_date": true
+    }
+  }
+}
+,
+{
+  "log_id": "d425325e-07ce-4b6d-9ff3-b110950e7ae6",
+  "user": "jpa",
+  "user_id": 4,
+  "action": "photo_upload",
+  "timestamp": "2025-08-19T22:14:01.489109+00:00",
+  "ip_address": "127.0.0.1",
+  "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+  "location": {
+    "city": null,
+    "region": null,
+    "country": null
+  },
+  "photo_info": {
+    "photo_id": 342,
+    "filename": "7d061a83-cfe0-403f-ba5d-a54fff0e0e1a.jpg",
+    "file_size_mb": 9.38,
+    "file_extension": "jpg",
+    "is_raw": false,
+    "dimensions": "5705x3803",
+    "camera": "Canon Canon EOS R10"
+  },
+  "extra_info": {
+    "upload_method": "batch_upload",
+    "validation_errors": null,
+    "upload_details": {
+      "batch_number": 1,
+      "photo_number_in_batch": 5,
+      "total_photos": 22,
+      "file_original_name": "IMG_2084.jpg",
+      "processing_errors": null
+    },
+    "processing_status": {
+      "has_dimensions": true,
+      "has_thumbnail": true,
+      "has_camera_info": true,
+      "has_exposure_info": true,
+      "has_location": false,
+      "has_date": true
+    }
+  }
+}
+,
+{
+  "log_id": "70865eb7-a138-469e-bac0-533ce4d18ef8",
+  "user": "jpa",
+  "user_id": 4,
+  "action": "photo_upload",
+  "timestamp": "2025-08-19T22:14:01.877486+00:00",
+  "ip_address": "127.0.0.1",
+  "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+  "location": {
+    "city": null,
+    "region": null,
+    "country": null
+  },
+  "photo_info": {
+    "photo_id": 343,
+    "filename": "88bdef6f-e69d-437f-ad7b-61631731e0dd.jpg",
+    "file_size_mb": 10.85,
+    "file_extension": "jpg",
+    "is_raw": false,
+    "dimensions": "5433x3622",
+    "camera": "Canon Canon EOS R10"
+  },
+  "extra_info": {
+    "upload_method": "batch_upload",
+    "validation_errors": null,
+    "upload_details": {
+      "batch_number": 1,
+      "photo_number_in_batch": 6,
+      "total_photos": 22,
+      "file_original_name": "IMG_2052.jpg",
+      "processing_errors": null
+    },
+    "processing_status": {
+      "has_dimensions": true,
+      "has_thumbnail": true,
+      "has_camera_info": true,
+      "has_exposure_info": true,
+      "has_location": false,
+      "has_date": true
+    }
+  }
+}
+,
+{
+  "log_id": "cd34b8c5-2111-4f36-af87-3433a363a89d",
+  "user": "jpa",
+  "user_id": 4,
+  "action": "photo_upload",
+  "timestamp": "2025-08-19T22:14:02.219430+00:00",
+  "ip_address": "127.0.0.1",
+  "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+  "location": {
+    "city": null,
+    "region": null,
+    "country": null
+  },
+  "photo_info": {
+    "photo_id": 344,
+    "filename": "a43b45bf-3591-4853-beaf-3196ebfe06ed.jpeg",
+    "file_size_mb": 6.01,
+    "file_extension": "jpeg",
+    "is_raw": false,
+    "dimensions": "6000x4000",
+    "camera": "Canon Canon EOS R10"
+  },
+  "extra_info": {
+    "upload_method": "batch_upload",
+    "validation_errors": null,
+    "upload_details": {
+      "batch_number": 1,
+      "photo_number_in_batch": 7,
+      "total_photos": 22,
+      "file_original_name": "IMG_2059.jpeg",
+      "processing_errors": null
+    },
+    "processing_status": {
+      "has_dimensions": true,
+      "has_thumbnail": true,
+      "has_camera_info": true,
+      "has_exposure_info": true,
+      "has_location": false,
+      "has_date": true
+    }
+  }
+}
+,
+{
+  "log_id": "341960d2-eb5f-4929-97a7-66c8e4517d6f",
+  "user": "jpa",
+  "user_id": 4,
+  "action": "photo_upload",
+  "timestamp": "2025-08-19T22:14:03.959625+00:00",
+  "ip_address": "127.0.0.1",
+  "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+  "location": {
+    "city": null,
+    "region": null,
+    "country": null
+  },
+  "photo_info": {
+    "photo_id": 345,
+    "filename": "64b0fa07-0743-463f-b463-4c2dc5dd760a.jpeg",
+    "file_size_mb": 5.94,
+    "file_extension": "jpeg",
+    "is_raw": false,
+    "dimensions": "6000x4000",
+    "camera": "Canon Canon EOS R10"
+  },
+  "extra_info": {
+    "upload_method": "batch_upload",
+    "validation_errors": null,
+    "upload_details": {
+      "batch_number": 1,
+      "photo_number_in_batch": 8,
+      "total_photos": 22,
+      "file_original_name": "IMG_2058.jpeg",
+      "processing_errors": null
+    },
+    "processing_status": {
+      "has_dimensions": true,
+      "has_thumbnail": true,
+      "has_camera_info": true,
+      "has_exposure_info": true,
+      "has_location": false,
+      "has_date": true
+    }
+  }
+}
+,
+{
+  "log_id": "93fb5bc7-73b6-423b-bd8c-f1f4e5850982",
+  "user": "jpa",
+  "user_id": 4,
+  "action": "photo_upload",
+  "timestamp": "2025-08-19T22:14:04.320358+00:00",
+  "ip_address": "127.0.0.1",
+  "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+  "location": {
+    "city": null,
+    "region": null,
+    "country": null
+  },
+  "photo_info": {
+    "photo_id": 346,
+    "filename": "580734d8-04f3-4508-8ed7-862b772b4db8.jpg",
+    "file_size_mb": 5.45,
+    "file_extension": "jpg",
+    "is_raw": false,
+    "dimensions": "3099x4132",
+    "camera": "Canon Canon EOS R10"
+  },
+  "extra_info": {
+    "upload_method": "batch_upload",
+    "validation_errors": null,
+    "upload_details": {
+      "batch_number": 1,
+      "photo_number_in_batch": 9,
+      "total_photos": 22,
+      "file_original_name": "IMG_2014.jpg",
+      "processing_errors": null
+    },
+    "processing_status": {
+      "has_dimensions": true,
+      "has_thumbnail": true,
+      "has_camera_info": true,
+      "has_exposure_info": true,
+      "has_location": false,
+      "has_date": true
+    }
+  }
+}
+,
+{
+  "log_id": "246c2b12-b4b7-445e-9b16-0927850cbd3c",
+  "user": "jpa",
+  "user_id": 4,
+  "action": "photo_upload",
+  "timestamp": "2025-08-19T22:14:04.706041+00:00",
+  "ip_address": "127.0.0.1",
+  "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+  "location": {
+    "city": null,
+    "region": null,
+    "country": null
+  },
+  "photo_info": {
+    "photo_id": 347,
+    "filename": "4f1867ca-ade5-4a4f-9c04-4b44fd017d8b.jpg",
+    "file_size_mb": 11.66,
+    "file_extension": "jpg",
+    "is_raw": false,
+    "dimensions": "3799x5065",
+    "camera": "Canon Canon EOS R10"
+  },
+  "extra_info": {
+    "upload_method": "batch_upload",
+    "validation_errors": null,
+    "upload_details": {
+      "batch_number": 1,
+      "photo_number_in_batch": 10,
+      "total_photos": 22,
+      "file_original_name": "IMG_2004.jpg",
+      "processing_errors": null
+    },
+    "processing_status": {
+      "has_dimensions": true,
+      "has_thumbnail": true,
+      "has_camera_info": true,
+      "has_exposure_info": true,
+      "has_location": false,
+      "has_date": true
+    }
+  }
+}
+,
+{
+  "log_id": "69b1a395-ae9e-48cc-ba0c-8c99fe1f4135",
+  "user": "jpa",
+  "user_id": 4,
+  "action": "photo_upload",
+  "timestamp": "2025-08-19T22:14:05.061781+00:00",
+  "ip_address": "127.0.0.1",
+  "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+  "location": {
+    "city": null,
+    "region": null,
+    "country": null
+  },
+  "photo_info": {
+    "photo_id": 348,
+    "filename": "b3ef0113-6b76-4e4a-a90d-62ae7a332b4f.jpg",
+    "file_size_mb": 3.99,
+    "file_extension": "jpg",
+    "is_raw": false,
+    "dimensions": "2432x3648",
+    "camera": "Apple iPhone 14 Pro"
+  },
+  "extra_info": {
+    "upload_method": "batch_upload",
+    "validation_errors": null,
+    "upload_details": {
+      "batch_number": 1,
+      "photo_number_in_batch": 11,
+      "total_photos": 22,
+      "file_original_name": "IMG_1156.jpg",
+      "processing_errors": null
+    },
+    "processing_status": {
+      "has_dimensions": true,
+      "has_thumbnail": true,
+      "has_camera_info": true,
+      "has_exposure_info": true,
+      "has_location": true,
+      "has_date": true
+    }
+  }
+}
+,
+{
+  "log_id": "ad9d747e-fe08-4568-a81a-28cc9b822212",
+  "user": "jpa",
+  "user_id": 4,
+  "action": "photo_upload",
+  "timestamp": "2025-08-19T22:14:05.546430+00:00",
+  "ip_address": "127.0.0.1",
+  "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+  "location": {
+    "city": null,
+    "region": null,
+    "country": null
+  },
+  "photo_info": {
+    "photo_id": 349,
+    "filename": "65684fbb-0e51-499b-b84a-68e5f1e9d4d4.jpg",
+    "file_size_mb": 26.56,
+    "file_extension": "jpg",
+    "is_raw": false,
+    "dimensions": "7955x5303",
+    "camera": "Apple iPhone 14 Pro"
+  },
+  "extra_info": {
+    "upload_method": "batch_upload",
+    "validation_errors": null,
+    "upload_details": {
+      "batch_number": 1,
+      "photo_number_in_batch": 12,
+      "total_photos": 22,
+      "file_original_name": "IMG_1080.jpg",
+      "processing_errors": null
+    },
+    "processing_status": {
+      "has_dimensions": true,
+      "has_thumbnail": true,
+      "has_camera_info": true,
+      "has_exposure_info": true,
+      "has_location": true,
+      "has_date": true
+    }
+  }
+}
+,
+{
+  "log_id": "9ef42464-cbaf-434b-adc8-9f8f3f9b31be",
+  "user": "jpa",
+  "user_id": 4,
+  "action": "photo_upload",
+  "timestamp": "2025-08-19T22:14:06.139898+00:00",
+  "ip_address": "127.0.0.1",
+  "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+  "location": {
+    "city": null,
+    "region": null,
+    "country": null
+  },
+  "photo_info": {
+    "photo_id": 350,
+    "filename": "8f56fb8d-fb27-4beb-9aa7-2f1abcdb0265.jpg",
+    "file_size_mb": 27.74,
+    "file_extension": "jpg",
+    "is_raw": false,
+    "dimensions": "7955x5303",
+    "camera": "Apple iPhone 14 Pro"
+  },
+  "extra_info": {
+    "upload_method": "batch_upload",
+    "validation_errors": null,
+    "upload_details": {
+      "batch_number": 1,
+      "photo_number_in_batch": 13,
+      "total_photos": 22,
+      "file_original_name": "IMG_1067.jpg",
+      "processing_errors": null
+    },
+    "processing_status": {
+      "has_dimensions": true,
+      "has_thumbnail": true,
+      "has_camera_info": true,
+      "has_exposure_info": true,
+      "has_location": true,
+      "has_date": true
+    }
+  }
+}
+,
+{
+  "log_id": "d1bae6ef-b2bf-473a-9b1c-84a72b2090b8",
+  "user": "jpa",
+  "user_id": 4,
+  "action": "photo_upload",
+  "timestamp": "2025-08-19T22:14:06.630740+00:00",
+  "ip_address": "127.0.0.1",
+  "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+  "location": {
+    "city": null,
+    "region": null,
+    "country": null
+  },
+  "photo_info": {
+    "photo_id": 351,
+    "filename": "d7e9cddf-04c3-4b95-b73a-88f0ce9a7439.jpg",
+    "file_size_mb": 19.53,
+    "file_extension": "jpg",
+    "is_raw": false,
+    "dimensions": "6000x4000",
+    "camera": "Canon Canon EOS R10"
+  },
+  "extra_info": {
+    "upload_method": "batch_upload",
+    "validation_errors": null,
+    "upload_details": {
+      "batch_number": 1,
+      "photo_number_in_batch": 14,
+      "total_photos": 22,
+      "file_original_name": "IMG_1923.jpg",
+      "processing_errors": null
+    },
+    "processing_status": {
+      "has_dimensions": true,
+      "has_thumbnail": true,
+      "has_camera_info": true,
+      "has_exposure_info": true,
+      "has_location": false,
+      "has_date": true
+    }
+  }
+}
+,
+{
+  "log_id": "16ad668d-b497-4c7b-a3e4-c7d9d4a01e57",
+  "user": "jpa",
+  "user_id": 4,
+  "action": "photo_upload",
+  "timestamp": "2025-08-19T22:14:07.029197+00:00",
+  "ip_address": "127.0.0.1",
+  "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+  "location": {
+    "city": null,
+    "region": null,
+    "country": null
+  },
+  "photo_info": {
+    "photo_id": 352,
+    "filename": "f064c777-dff5-4160-8184-c37494d03d7d.jpg",
+    "file_size_mb": 11.35,
+    "file_extension": "jpg",
+    "is_raw": false,
+    "dimensions": "4032x3024",
+    "camera": "Apple iPhone 14 Pro"
+  },
+  "extra_info": {
+    "upload_method": "batch_upload",
+    "validation_errors": null,
+    "upload_details": {
+      "batch_number": 1,
+      "photo_number_in_batch": 15,
+      "total_photos": 22,
+      "file_original_name": "IMG_0990.jpg",
+      "processing_errors": null
+    },
+    "processing_status": {
+      "has_dimensions": true,
+      "has_thumbnail": true,
+      "has_camera_info": true,
+      "has_exposure_info": true,
+      "has_location": true,
+      "has_date": true
+    }
+  }
+}
+,
+{
+  "log_id": "0897a046-e392-4681-bef5-d3e857db5040",
+  "user": "jpa",
+  "user_id": 4,
+  "action": "photo_upload",
+  "timestamp": "2025-08-19T22:14:07.941526+00:00",
+  "ip_address": "127.0.0.1",
+  "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+  "location": {
+    "city": null,
+    "region": null,
+    "country": null
+  },
+  "photo_info": {
+    "photo_id": 353,
+    "filename": "69873f59-fda8-46fa-bb10-388979b75d66.jpg",
+    "file_size_mb": 11.63,
+    "file_extension": "jpg",
+    "is_raw": false,
+    "dimensions": "3024x4032",
+    "camera": "Apple iPhone 14 Pro"
+  },
+  "extra_info": {
+    "upload_method": "batch_upload",
+    "validation_errors": null,
+    "upload_details": {
+      "batch_number": 2,
+      "photo_number_in_batch": 1,
+      "total_photos": 22,
+      "file_original_name": "IMG_0991.jpg",
+      "processing_errors": null
+    },
+    "processing_status": {
+      "has_dimensions": true,
+      "has_thumbnail": true,
+      "has_camera_info": true,
+      "has_exposure_info": true,
+      "has_location": true,
+      "has_date": true
+    }
+  }
+}
+,
+{
+  "log_id": "f1df03ea-b81c-48c2-8ea2-688093d223ff",
+  "user": "jpa",
+  "user_id": 4,
+  "action": "photo_upload",
+  "timestamp": "2025-08-19T22:14:08.299565+00:00",
+  "ip_address": "127.0.0.1",
+  "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+  "location": {
+    "city": null,
+    "region": null,
+    "country": null
+  },
+  "photo_info": {
+    "photo_id": 354,
+    "filename": "3c71e36c-7e81-4221-8cf3-5084fa3da6ad.jpg",
+    "file_size_mb": 6.61,
+    "file_extension": "jpg",
+    "is_raw": false,
+    "dimensions": "3977x2651",
+    "camera": "Apple iPhone 14 Pro"
+  },
+  "extra_info": {
+    "upload_method": "batch_upload",
+    "validation_errors": null,
+    "upload_details": {
+      "batch_number": 2,
+      "photo_number_in_batch": 2,
+      "total_photos": 22,
+      "file_original_name": "IMG_0946.jpg",
+      "processing_errors": null
+    },
+    "processing_status": {
+      "has_dimensions": true,
+      "has_thumbnail": true,
+      "has_camera_info": true,
+      "has_exposure_info": true,
+      "has_location": true,
+      "has_date": true
+    }
+  }
+}
+,
+{
+  "log_id": "7a643409-78e6-4767-90c6-199230f2e2cb",
+  "user": "jpa",
+  "user_id": 4,
+  "action": "photo_upload",
+  "timestamp": "2025-08-19T22:14:08.647566+00:00",
+  "ip_address": "127.0.0.1",
+  "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+  "location": {
+    "city": null,
+    "region": null,
+    "country": null
+  },
+  "photo_info": {
+    "photo_id": 355,
+    "filename": "c1303cbc-688c-4f78-8f88-25db3f7bf288.jpg",
+    "file_size_mb": 8.15,
+    "file_extension": "jpg",
+    "is_raw": false,
+    "dimensions": "3977x2651",
+    "camera": "Apple iPhone 14 Pro"
+  },
+  "extra_info": {
+    "upload_method": "batch_upload",
+    "validation_errors": null,
+    "upload_details": {
+      "batch_number": 2,
+      "photo_number_in_batch": 3,
+      "total_photos": 22,
+      "file_original_name": "IMG_0976.jpg",
+      "processing_errors": null
+    },
+    "processing_status": {
+      "has_dimensions": true,
+      "has_thumbnail": true,
+      "has_camera_info": true,
+      "has_exposure_info": true,
+      "has_location": true,
+      "has_date": true
+    }
+  }
+}
+,
+{
+  "log_id": "0f638e36-637b-4364-b3a8-c9b3d2617056",
+  "user": "jpa",
+  "user_id": 4,
+  "action": "photo_upload",
+  "timestamp": "2025-08-19T22:14:08.983140+00:00",
+  "ip_address": "127.0.0.1",
+  "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+  "location": {
+    "city": null,
+    "region": null,
+    "country": null
+  },
+  "photo_info": {
+    "photo_id": 356,
+    "filename": "6ddab020-c43f-4a95-9c8f-575d8afba1bf.jpg",
+    "file_size_mb": 5.7,
+    "file_extension": "jpg",
+    "is_raw": false,
+    "dimensions": "2742x3656",
+    "camera": "Apple iPhone 14 Pro"
+  },
+  "extra_info": {
+    "upload_method": "batch_upload",
+    "validation_errors": null,
+    "upload_details": {
+      "batch_number": 2,
+      "photo_number_in_batch": 4,
+      "total_photos": 22,
+      "file_original_name": "IMG_0836.jpg",
+      "processing_errors": null
+    },
+    "processing_status": {
+      "has_dimensions": true,
+      "has_thumbnail": true,
+      "has_camera_info": true,
+      "has_exposure_info": true,
+      "has_location": true,
+      "has_date": true
+    }
+  }
+}
+,
+{
+  "log_id": "586dd7f2-6743-41f7-a84e-aa1a1aa61462",
+  "user": "jpa",
+  "user_id": 4,
+  "action": "photo_upload",
+  "timestamp": "2025-08-19T22:14:09.483245+00:00",
+  "ip_address": "127.0.0.1",
+  "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+  "location": {
+    "city": null,
+    "region": null,
+    "country": null
+  },
+  "photo_info": {
+    "photo_id": 357,
+    "filename": "7e0b2460-05a3-4998-9b03-d31f2312fbfa.jpg",
+    "file_size_mb": 24.23,
+    "file_extension": "jpg",
+    "is_raw": false,
+    "dimensions": "7955x5303",
+    "camera": "Apple iPhone 14 Pro"
+  },
+  "extra_info": {
+    "upload_method": "batch_upload",
+    "validation_errors": null,
+    "upload_details": {
+      "batch_number": 2,
+      "photo_number_in_batch": 5,
+      "total_photos": 22,
+      "file_original_name": "IMG_0937.jpg",
+      "processing_errors": null
+    },
+    "processing_status": {
+      "has_dimensions": true,
+      "has_thumbnail": true,
+      "has_camera_info": true,
+      "has_exposure_info": true,
+      "has_location": true,
+      "has_date": true
+    }
+  }
+}
+,
+{
+  "log_id": "64181d26-0089-463e-8710-bff41236e382",
+  "user": "jpa",
+  "user_id": 4,
+  "action": "photo_upload",
+  "timestamp": "2025-08-19T22:14:09.900339+00:00",
+  "ip_address": "127.0.0.1",
+  "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+  "location": {
+    "city": null,
+    "region": null,
+    "country": null
+  },
+  "photo_info": {
+    "photo_id": 358,
+    "filename": "7c101308-657c-4179-856c-a5a8de070bb9.jpg",
+    "file_size_mb": 7.39,
+    "file_extension": "jpg",
+    "is_raw": false,
+    "dimensions": "3787x2525",
+    "camera": "Apple iPhone 14 Pro"
+  },
+  "extra_info": {
+    "upload_method": "batch_upload",
+    "validation_errors": null,
+    "upload_details": {
+      "batch_number": 2,
+      "photo_number_in_batch": 6,
+      "total_photos": 22,
+      "file_original_name": "IMG_0897.jpg",
+      "processing_errors": null
+    },
+    "processing_status": {
+      "has_dimensions": true,
+      "has_thumbnail": true,
+      "has_camera_info": true,
+      "has_exposure_info": true,
+      "has_location": true,
+      "has_date": true
+    }
+  }
+}
+,
+{
+  "log_id": "3fe43a90-a57d-4453-b1d2-c311d14aab7f",
+  "user": "jpa",
+  "user_id": 4,
+  "action": "photo_upload",
+  "timestamp": "2025-08-19T22:14:10.234420+00:00",
+  "ip_address": "127.0.0.1",
+  "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+  "location": {
+    "city": null,
+    "region": null,
+    "country": null
+  },
+  "photo_info": {
+    "photo_id": 359,
+    "filename": "566fbc8d-9503-4ca6-9342-45ac5795957c.jpg",
+    "file_size_mb": 3.07,
+    "file_extension": "jpg",
+    "is_raw": false,
+    "dimensions": "5352x3568",
+    "camera": "Canon Canon EOS R10"
+  },
+  "extra_info": {
+    "upload_method": "batch_upload",
+    "validation_errors": null,
+    "upload_details": {
+      "batch_number": 2,
+      "photo_number_in_batch": 7,
+      "total_photos": 22,
+      "file_original_name": "IMG_0864.jpg",
+      "processing_errors": null
+    },
+    "processing_status": {
+      "has_dimensions": true,
+      "has_thumbnail": true,
+      "has_camera_info": true,
+      "has_exposure_info": true,
+      "has_location": false,
+      "has_date": true
+    }
+  }
+}
+,
+{
+  "log_id": "0772f957-ff0b-4967-b37e-f882980d6039",
+  "user": "jpa",
+  "user_id": 4,
+  "action": "photo_delete",
+  "timestamp": "2025-08-19T23:33:48.121981+00:00",
+  "ip_address": "127.0.0.1",
+  "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+  "location": {
+    "city": null,
+    "region": null,
+    "country": null
+  },
+  "photo_info": {
+    "photo_id": 327,
+    "filename": "bad0103c-36a3-4ec2-832b-dff7dc3f48b0.CR3",
+    "file_size_mb": 34.36,
+    "file_extension": "cr3",
+    "is_raw": true,
+    "dimensions": "6000x4000",
+    "camera": null
+  },
+  "extra_info": {
+    "photo_title": "Untitled",
+    "delete_method": "single_delete"
+  }
+}
+,
+{
+  "log_id": "c5f3f58a-52a8-4a17-9b4e-8754cfada0c9",
+  "user": "jpa",
+  "user_id": 4,
+  "action": "photo_delete",
+  "timestamp": "2025-08-19T23:33:59.512032+00:00",
+  "ip_address": "127.0.0.1",
+  "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+  "location": {
+    "city": null,
+    "region": null,
+    "country": null
+  },
+  "photo_info": {
+    "photo_id": 329,
+    "filename": "ec55938e-3ec3-4f17-bd1a-2bacc5173c7b.CR3",
+    "file_size_mb": 34.36,
+    "file_extension": "cr3",
+    "is_raw": true,
+    "dimensions": "6000x4000",
+    "camera": null
+  },
+  "extra_info": {
+    "photo_title": "Untitled",
+    "delete_method": "single_delete"
+  }
+}
+,
+{
+  "log_id": "9a7412a2-d37d-4848-a309-110bd12d6f9f",
+  "user": "jpa",
+  "user_id": 4,
+  "action": "photo_delete",
+  "timestamp": "2025-08-19T23:33:59.517603+00:00",
+  "ip_address": "127.0.0.1",
+  "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+  "location": {
+    "city": null,
+    "region": null,
+    "country": null
+  },
+  "photo_info": {
+    "photo_id": 329,
+    "filename": "ec55938e-3ec3-4f17-bd1a-2bacc5173c7b.CR3",
+    "file_size_mb": 34.36,
+    "file_extension": "cr3",
+    "is_raw": true,
+    "dimensions": "6000x4000",
+    "camera": null
+  },
+  "extra_info": {
+    "photo_title": "Untitled",
+    "delete_method": "single_delete"
+  }
+}
+,
+{
+  "log_id": "955138f9-fd50-4559-9031-7db5faaa4287",
+  "user": "jpa",
+  "user_id": 4,
+  "action": "photo_upload",
+  "timestamp": "2025-08-20T00:24:00.141030+00:00",
+  "ip_address": "10.101.1.116",
+  "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Mobile/15E148 Safari/604.1",
+  "location": {
+    "city": null,
+    "region": null,
+    "country": null
+  },
+  "photo_info": {
+    "photo_id": 360,
+    "filename": "ca920f97-75b0-4c45-ab23-9c826499b64c.jpeg",
+    "file_size_mb": 12.91,
+    "file_extension": "jpeg",
+    "is_raw": false,
+    "dimensions": "4000x6000",
+    "camera": "Canon Canon EOS R10"
+  },
+  "extra_info": {
+    "upload_method": "batch_upload",
+    "validation_errors": null,
+    "upload_details": {
+      "batch_number": 1,
+      "photo_number_in_batch": 1,
+      "total_photos": 1,
+      "file_original_name": "IMG_1780.jpeg",
+      "processing_errors": null
+    },
+    "processing_status": {
+      "has_dimensions": true,
+      "has_thumbnail": true,
+      "has_camera_info": true,
+      "has_exposure_info": true,
+      "has_location": false,
+      "has_date": true
+    }
+  }
+}
+]

@@ -1502,7 +1502,7 @@
 .posts-grid-fluid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 4px;
+    gap: 0.2500rem;
     max-width: 600px;
     margin: 0 auto;
 }
@@ -1591,7 +1591,7 @@
     
     .profile-header-fluid {
         flex-direction: column;
-        gap: 32px;
+        gap: 2rem;
         padding: 24px;
         text-align: center;
     }
@@ -1612,7 +1612,7 @@
     
     .profile-stats-fluid {
         justify-content: center;
-        gap: 24px;
+        gap: 1.5000rem;
     }
     
     .posts-grid-fluid {
@@ -1637,7 +1637,7 @@
     
     .profile-stats-fluid {
         flex-direction: column;
-        gap: 16px;
+        gap: 1rem;
     }
     
     .posts-grid-fluid {

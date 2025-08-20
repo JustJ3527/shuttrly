@@ -9,6 +9,9 @@
 {% endblock %}
 
 {% block content %}
+<!-- CSRF Token for AJAX requests -->
+{% csrf_token %}
+
 <div class="container-fluid">
     <!-- Gallery Header -->
     <div class="">
@@ -31,6 +34,10 @@
                         <i class="fas fa-globe"></i>
                         {{ public_photos }} public
                     </span>
+                    <span class="stat-item">
+                        <i class="fas fa-rocket"></i>
+                        <span id="loaded-count">0</span>/{{ total_photos }} loaded
+                    </span>
                 </div>
             </div>
             <div class="col-lg-4 text-end">
@@ -46,6 +53,7 @@
         <div class="card">
             <div class="card-body">
                 <form method="get" class="row g-3">
+                    {% csrf_token %}
                     <div class="col-md-4">
                         <input type="text" 
                                name="query" 
@@ -89,13 +97,13 @@
     <!-- Gallery Grid -->
     <div class="gallery-container">
         <div class="masonry-grid" id="masonry-grid">
-            {% for photo in page_obj %}
+            {% for photo in photos %}
             <div class="photo-item" data-photo-id="{{ photo.id }}">
                 <div class="photo-wrapper">
-                    <img src="{{ photo.thumbnail.url|default:photo.original_file.url }}" 
+                    <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 300'%3E%3Crect width='300' height='300' fill='%23f0f0f0'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%23999' font-size='14'%3ELoading...%3C/text%3E%3C/svg%3E" 
+                         data-src="{{ photo.thumbnail.url|default:photo.original_file.url }}"
                          alt="{{ photo.title|default:'Untitled' }}"
-                         class="photo-image"
-                         loading="lazy"
+                         class="photo-image lazy-image"
                          data-original="{{ photo.original_file.url }}"
                          data-title="{{ photo.title|default:'Untitled' }}"
                          data-description="{{ photo.description|default:'' }}"
@@ -173,52 +181,13 @@
         </div>
     </div>
 
-    <!-- Pagination -->
-    {% if page_obj.has_other_pages %}
-    <div class="pagination-container">
-        <nav aria-label="Photo gallery pagination">
-            <ul class="pagination justify-content-center">
-                {% if page_obj.has_previous %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page=1{% if request.GET.query %}&query={{ request.GET.query }}{% endif %}{% if request.GET.camera_make %}&camera_make={{ request.GET.camera_make }}{% endif %}{% if request.GET.is_raw %}&is_raw={{ request.GET.is_raw }}{% endif %}">
-                            <i class="fas fa-angle-double-left"></i>
-                        </a>
-                    </li>
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.query %}&query={{ request.GET.query }}{% endif %}{% if request.GET.camera_make %}&camera_make={{ request.GET.camera_make }}{% endif %}{% if request.GET.is_raw %}&is_raw={{ request.GET.is_raw }}{% endif %}">
-                            <i class="fas fa-angle-left"></i>
-                        </a>
-                    </li>
-                {% endif %}
-
-                {% for num in page_obj.paginator.page_range %}
-                    {% if page_obj.number == num %}
-                        <li class="page-item active">
-                            <span class="page-link">{{ num }}</span>
-                        </li>
-                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
-                        <li class="page-item">
-                            <a class="page-link" href="?page={{ num }}{% if request.GET.query %}&query={{ request.GET.query }}{% endif %}{% if request.GET.camera_make %}&camera_make={{ request.GET.camera_make }}{% endif %}{% if request.GET.is_raw %}&is_raw={{ request.GET.is_raw }}{% endif %}">{{ num }}</a>
-                        </li>
-                    {% endif %}
-                {% endfor %}
-
-                {% if page_obj.has_next %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.query %}&query={{ request.GET.query }}{% endif %}{% if request.GET.camera_make %}&camera_make={{ request.GET.camera_make }}{% endif %}{% if request.GET.is_raw %}&is_raw={{ request.GET.is_raw }}{% endif %}">
-                            <i class="fas fa-angle-right"></i>
-                        </a>
-                    </li>
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.query %}&query={{ request.GET.query }}{% endif %}{% if request.GET.camera_make %}&camera_make={{ request.GET.camera_make }}{% endif %}{% if request.GET.is_raw %}&is_raw={{ request.GET.is_raw }}{% endif %}">
-                            <i class="fas fa-angle-double-right"></i>
-                        </a>
-                    </li>
-                {% endif %}
-            </ul>
-        </nav>
+    <!-- Loading indicator for lazy loading -->
+    <div class="loading-indicator" id="loading-indicator" style="display: none;">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mt-2 text-muted">Loading more photos...</p>
     </div>
-    {% endif %}
 </div>
 
 <!-- Delete Confirmation Modal -->

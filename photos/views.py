@@ -26,6 +26,11 @@ from django.conf import settings
 
 from .models import Photo
 from .forms import PhotoUploadForm, PhotoEditForm, PhotoSearchForm
+from logs.utils import (
+    log_photo_upload_json,
+    log_photo_delete_json,
+    log_photo_bulk_action_json,
+)
 
 
 @login_required
@@ -133,15 +138,77 @@ def photo_upload(request):
 
                         # Now extract EXIF and generate thumbnail after file is saved
                         try:
+                            print(
+                                f"Processing photo {photo_file.name} (RAW: {photo.is_raw})"
+                            )
+
+                            # Extract EXIF data first
                             print(f"Extracting EXIF for {photo_file.name}")
                             photo.extract_exif_data()
+
+                            # Generate thumbnail
                             print(f"Generating thumbnail for {photo_file.name}")
                             photo.generate_thumbnail()
-                            photo.save()  # Save again with EXIF data and thumbnail
-                            uploaded_count += 1
-                            print(f"Photo {photo_file.name} processed successfully")
+
+                            # Save again with EXIF data and thumbnail
+                            photo.save()
+
+                            # Verify the photo was processed correctly
+                            validation_errors = photo.validate_photo_processing()
+                            if validation_errors:
+                                print(
+                                    f"Warning: Photo {photo_file.name} has processing issues: {validation_errors}"
+                                )
+                                # Still count as uploaded but log the issues
+                                uploaded_count += 1
+                            else:
+                                print(
+                                    f"Photo {photo_file.name} processed successfully with all data"
+                                )
+                                uploaded_count += 1
+
+                            # Log processing status for debugging
+                            status = photo.get_processing_status()
+                            print(f"Processing status for {photo_file.name}: {status}")
+
+                            # Log photo upload to photo_logs.json
+                            try:
+                                upload_details = {
+                                    "batch_number": batch_num // batch_size + 1,
+                                    "photo_number_in_batch": i + 1,
+                                    "total_photos": total_photos,
+                                    "file_original_name": photo_file.name,
+                                    "processing_errors": (
+                                        validation_errors if validation_errors else None
+                                    ),
+                                }
+
+                                log_photo_upload_json(
+                                    user=request.user,
+                                    photo=photo,
+                                    request=request,
+                                    upload_details=upload_details,
+                                    processing_status=status,
+                                    extra_info={
+                                        "upload_method": "batch_upload",
+                                        "validation_errors": (
+                                            validation_errors
+                                            if validation_errors
+                                            else None
+                                        ),
+                                    },
+                                )
+                                print(f"Photo upload logged for {photo_file.name}")
+                            except Exception as log_error:
+                                print(
+                                    f"Warning: Failed to log photo upload for {photo_file.name}: {log_error}"
+                                )
+
                         except Exception as e:
                             print(f"Error processing photo {photo_file.name}: {e}")
+                            import traceback
+
+                            traceback.print_exc()
                             processing_errors.append(f"{photo_file.name}: {str(e)}")
                             failed_count += 1
                             # Continue with other photos even if one fails
@@ -276,17 +343,33 @@ def photo_gallery(request):
 
         # Sort photos
         sort_by = search_form.cleaned_data.get("sort_by") or "-date_taken"
-        photos = photos.order_by(sort_by)
+    else:
+        # Default sort when no search form is provided
+        sort_by = "-date_taken"
 
-    # Pagination
-    paginator = Paginator(photos, 24)  # 24 photos per page (6x4 grid)
-    page_number = request.GET.get("page")
-    page_obj = paginator.get_page(page_number)
+    # Always apply sorting with fallback
+    if sort_by == "-date_taken":
+        # Sort by date_taken with fallback to created_at for photos without EXIF date
+        # Add id as final sort to ensure consistent ordering
+        photos = photos.order_by("-date_taken", "-created_at", "-id")
+    elif sort_by == "date_taken":
+        photos = photos.order_by("date_taken", "created_at", "id")
+    else:
+        photos = photos.order_by(sort_by, "-id")
 
-    # Get statistics
+    # Debug: Print sorting info
+    print(f"DEBUG: Photos sorted by: {sort_by}")
+
+    # Calculate statistics BEFORE applying slice
     total_photos = photos.count()
     raw_photos = photos.filter(is_raw=True).count()
     public_photos = photos.filter(is_public=True).count()
+
+    # For lazy loading, get all photos without pagination
+    # But limit to a reasonable number to prevent memory issues
+    # Apply slice after ordering to maintain sort order
+    photos = photos[:1000]
+    photos_list = list(photos)  # Convert to list to avoid QuerySet issues
 
     # Get unique cameras and lenses for filter suggestions
     # Use all user photos for filter options, not filtered photos
@@ -309,7 +392,7 @@ def photo_gallery(request):
     print(f"DEBUG: Cameras count: {len(cameras)}")
 
     context = {
-        "page_obj": page_obj,
+        "photos": photos_list,  # List instead of QuerySet
         "search_form": search_form,
         "total_photos": total_photos,
         "raw_photos": raw_photos,
@@ -385,12 +468,55 @@ def photo_delete(request, photo_id):
 
     try:
         photo_title = photo.title or "Untitled"
+
+        # Log photo deletion before deleting
+        try:
+            log_photo_delete_json(
+                user=request.user,
+                photo=photo,
+                request=request,
+                extra_info={
+                    "photo_title": photo_title,
+                    "delete_method": "single_delete",
+                },
+            )
+            print(f"Photo deletion logged for {photo_title}")
+        except Exception as log_error:
+            print(
+                f"Warning: Failed to log photo deletion for {photo_title}: {log_error}"
+            )
+
         photo.delete()
-        messages.success(request, f'Photo "{photo_title}" deleted successfully!')
-        return redirect("photos:gallery")
+
+        # Check if this is an AJAX request
+        if (
+            request.headers.get("X-Requested-With") == "XMLHttpRequest"
+            or request.content_type == "application/json"
+        ):
+            return JsonResponse(
+                {
+                    "success": True,
+                    "message": f'Photo "{photo_title}" deleted successfully!',
+                }
+            )
+        else:
+            messages.success(request, f'Photo "{photo_title}" deleted successfully!')
+            return redirect("photos:gallery")
+
     except Exception as e:
-        messages.error(request, f"Error deleting photo: {str(e)}")
-        return redirect("photos:detail", photo_id=photo.id)
+        error_message = f"Error deleting photo: {str(e)}"
+
+        # Check if this is an AJAX request
+        if (
+            request.headers.get("X-Requested-With") == "XMLHttpRequest"
+            or request.content_type == "application/json"
+        ):
+            return JsonResponse(
+                {"success": False, "message": error_message}, status=500
+            )
+        else:
+            messages.error(request, error_message)
+            return redirect("photos:detail", photo_id=photo.id)
 
 
 @login_required
@@ -557,18 +683,111 @@ def bulk_actions(request):
 
         if action == "delete":
             count = photos.count()
+            photo_list = list(photos)  # Convert to list before deleting
+
+            # Log bulk deletion
+            try:
+                log_photo_bulk_action_json(
+                    user=request.user,
+                    action="delete",
+                    photo_ids=[photo.id for photo in photo_list],
+                    request=request,
+                    results={"deleted_count": count},
+                    extra_info={
+                        "bulk_action_type": "delete",
+                        "photo_titles": [
+                            photo.title or "Untitled" for photo in photo_list
+                        ],
+                    },
+                )
+                print(f"Bulk photo deletion logged for {count} photos")
+            except Exception as log_error:
+                print(f"Warning: Failed to log bulk photo deletion: {log_error}")
+
             photos.delete()
             messages.success(request, f"{count} photo(s) deleted successfully!")
+
         elif action == "make_public":
+            count = photos.count()
+            photo_list = list(photos)
+
+            # Log bulk make public
+            try:
+                log_photo_bulk_action_json(
+                    user=request.user,
+                    action="make_public",
+                    photo_ids=[photo.id for photo in photo_list],
+                    request=request,
+                    results={"updated_count": count},
+                    extra_info={
+                        "bulk_action_type": "make_public",
+                        "photo_titles": [
+                            photo.title or "Untitled" for photo in photo_list
+                        ],
+                    },
+                )
+                print(f"Bulk photo make public logged for {count} photos")
+            except Exception as log_error:
+                print(f"Warning: Failed to log bulk photo make public: {log_error}")
+
             photos.update(is_public=True)
-            messages.success(request, f"{photos.count()} photo(s) made public!")
+            messages.success(request, f"{count} photo(s) made public!")
+
         elif action == "make_private":
+            count = photos.count()
+            photo_list = list(photos)
+
+            # Log bulk make private
+            try:
+                log_photo_bulk_action_json(
+                    user=request.user,
+                    action="make_private",
+                    photo_ids=[photo.id for photo in photo_list],
+                    request=request,
+                    results={"updated_count": count},
+                    extra_info={
+                        "bulk_action_type": "make_private",
+                        "photo_titles": [
+                            photo.title or "Untitled" for photo in photo_list
+                        ],
+                    },
+                )
+                print(f"Bulk photo make private logged for {count} photos")
+            except Exception as log_error:
+                print(f"Warning: Failed to log bulk photo make private: {log_error}")
+
             photos.update(is_public=False)
-            messages.success(request, f"{photos.count()} photo(s) made private!")
+            messages.success(request, f"{count} photo(s) made private!")
+
         elif action == "add_tags":
             tags_to_add = request.POST.get("tags_to_add", "").strip()
             if tags_to_add:
-                for photo in photos:
+                photo_list = list(photos)
+
+                # Log bulk add tags
+                try:
+                    log_photo_bulk_action_json(
+                        user=request.user,
+                        action="add_tags",
+                        photo_ids=[photo.id for photo in photo_list],
+                        request=request,
+                        results={
+                            "updated_count": len(photo_list),
+                            "tags_added": tags_to_add,
+                        },
+                        extra_info={
+                            "bulk_action_type": "add_tags",
+                            "photo_titles": [
+                                photo.title or "Untitled" for photo in photo_list
+                            ],
+                            "tags_added": tags_to_add,
+                        },
+                    )
+                    print(f"Bulk photo add tags logged for {len(photo_list)} photos")
+                except Exception as log_error:
+                    print(f"Warning: Failed to log bulk photo add tags: {log_error}")
+
+                for photo in photo_list:
                     current_tags = photo.get_tags_list()
                     new_tags = [
                         tag.strip() for tag in tags_to_add.split(",") if tag.strip()
@@ -576,8 +795,138 @@ def bulk_actions(request):
                     combined_tags = list(set(current_tags + new_tags))
                     photo.tags = ", ".join(combined_tags)
                     photo.save()
-                messages.success(request, f"Tags added to {photos.count()} photo(s)!")
+                messages.success(request, f"Tags added to {len(photo_list)} photo(s)!")
 
         return redirect("photos:gallery")
 
     return redirect("photos:gallery")
+
+
+@login_required
+def photo_gallery_test(request):
+    """Simple test gallery to verify photo sorting"""
+    # Get search form data
+    search_form = PhotoSearchForm(request.GET)
+
+    # Start with user's photos
+    photos = Photo.objects.filter(user=request.user)
+
+    # Apply search filters
+    if search_form.is_valid():
+        query = search_form.cleaned_data.get("query")
+        if query:
+            photos = photos.filter(
+                Q(title__icontains=query)
+                | Q(description__icontains=query)
+                | Q(tags__icontains=query)
+                | Q(camera_make__icontains=query)
+                | Q(camera_model__icontains=query)
+                | Q(lens_model__icontains=query)
+            )
+
+        # Filter by camera
+        camera_make = search_form.cleaned_data.get("camera_make")
+        if camera_make:
+            photos = photos.filter(camera_make__icontains=camera_make)
+
+        camera_model = search_form.cleaned_data.get("camera_model")
+        if camera_model:
+            photos = photos.filter(camera_model__icontains=camera_model)
+
+        lens_model = search_form.cleaned_data.get("lens_model")
+        if lens_model:
+            photos = photos.filter(lens_model__icontains=lens_model)
+
+        # Filter by date range
+        date_from = search_form.cleaned_data.get("date_from")
+        if date_from:
+            photos = photos.filter(date_taken__gte=date_from)
+
+        date_to = search_form.cleaned_data.get("date_to")
+        if date_to:
+            photos = photos.filter(date_taken__lte=date_to)
+
+        # Filter by tags
+        tags = search_form.cleaned_data.get("tags")
+        if tags:
+            tag_list = [tag.strip() for tag in tags.split(",") if tag.strip()]
+            for tag in tag_list:
+                photos = photos.filter(tags__icontains=tag)
+
+        # Filter by format
+        is_raw = search_form.cleaned_data.get("is_raw")
+        if is_raw == "true":
+            photos = photos.filter(is_raw=True)
+        elif is_raw == "false":
+            photos = photos.filter(is_raw=False)
+
+        # Sort photos
+        sort_by = search_form.cleaned_data.get("sort_by") or "-date_taken"
+    else:
+        # Default sort when no search form is provided
+        sort_by = request.GET.get("sort_by", "-date_taken")
+
+    # Always apply sorting with fallback
+    if sort_by == "-date_taken":
+        # Sort by date_taken with fallback to created_at for photos without EXIF date
+        # Add id as final sort to ensure consistent ordering
+        photos = photos.order_by("-date_taken", "-created_at", "-id")
+    elif sort_by == "date_taken":
+        photos = photos.order_by("date_taken", "created_at", "id")
+    elif sort_by == "-created_at":
+        photos = photos.order_by("-created_at", "-id")
+    elif sort_by == "created_at":
+        photos = photos.order_by("created_at", "id")
+    elif sort_by == "-id":
+        photos = photos.order_by("-id")
+    elif sort_by == "id":
+        photos = photos.order_by("id")
+    else:
+        photos = photos.order_by(sort_by, "-id")
+
+    # Debug: Print sorting info
+    print(f"TEST GALLERY: Photos sorted by: {sort_by}")
+
+    # Calculate statistics BEFORE applying slice
+    total_photos = photos.count()
+    photos_with_exif = photos.exclude(date_taken__isnull=True).count()
+    raw_photos = photos.filter(is_raw=True).count()
+    public_photos = photos.filter(is_public=True).count()
+
+    # For test gallery, get all photos without pagination
+    # Apply slice after ordering to maintain sort order
+    photos = photos[:1000]
+    photos_list = list(photos)  # Convert to list to avoid QuerySet issues
+
+    # Get unique cameras and lenses for filter suggestions
+    # Use all user photos for filter options, not filtered photos
+    all_user_photos = Photo.objects.filter(user=request.user)
+    cameras = list(
+        all_user_photos.values_list("camera_make", flat=True)
+        .distinct()
+        .exclude(camera_make="")
+        .exclude(camera_make__isnull=True)
+    )
+    lenses = list(
+        all_user_photos.values_list("lens_model", flat=True)
+        .distinct()
+        .exclude(lens_model="")
+        .exclude(lens_model__isnull=True)
+    )
+
+    # Debug: Print cameras list to console
+    print(f"TEST GALLERY: Cameras list: {cameras}")
+    print(f"TEST GALLERY: Cameras count: {len(cameras)}")
+
+    context = {
+        "photos": photos_list,  # List instead of QuerySet
+        "search_form": search_form,
+        "total_photos": total_photos,
+        "photos_with_exif": photos_with_exif,
+        "raw_photos": raw_photos,
+        "public_photos": public_photos,
+        "cameras": cameras,
+        "lenses": lenses,
+        "sort_by": sort_by,
+    }
+    return render(request, "photos/gallery_test.html", context)

@@ -43,7 +43,8 @@
 
                 <div class="profile-actions">
                     <div class="btn-group" role="group">
-                        <a href="{% url 'public_profile' %}" class="btn btn-primary">
+                        {# Link to the user's public profile using their username #}
+                        <a href="/user/{{ user.username }}" class="btn btn-primary">
                             <i class="fas fa-user-circle"></i> Public Profile
                         </a>
                         <a href="{% url 'photos:gallery' %}" class="btn btn-success">
@@ -150,17 +151,17 @@
                     <div class="col-12">
                         <div class="detail-card">
                             <h3><i class="fas fa-cog text-primary"></i> Account Actions</h3>
-                                                                   <div class="action-buttons">
-                                           <form action="{% url 'logout' %}" method="POST" style="display:inline;">
-                                               {% csrf_token %}
-                                               <button type="submit" class="btn btn-outline-secondary">
-                                                   <i class="fas fa-sign-out-alt"></i> Log out
-                                               </button>
-                                           </form>
-                                           <button type="button" class="btn btn-outline-danger" onclick="showDeleteConfirm()">
-                                               <i class="fas fa-trash"></i> Delete Account
-                                           </button>
-                                       </div>
+                            <div class="action-buttons">
+                                <form action="{% url 'logout' %}" method="POST" style="display:inline;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-outline-secondary">
+                                        <i class="fas fa-sign-out-alt"></i> Log out
+                                    </button>
+                                </form>
+                                <button type="button" class="btn btn-outline-danger" onclick="showDeleteConfirm()">
+                                    <i class="fas fa-trash"></i> Delete Account
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

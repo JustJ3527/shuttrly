@@ -14,7 +14,24 @@
         <div class="col-lg-8">
             <div class="photo-display-container">
                 <div class="photo-display">
-                    {% if photo.original_file %}
+                    {% if photo.is_raw and photo.thumbnail %}
+                        <!-- For RAW files, show thumbnail since browser can't display CR3/NEF/etc -->
+                        <img src="{{ photo.thumbnail.url }}" 
+                             alt="{{ photo.title|default:'Untitled' }}" 
+                             class="img-fluid main-photo"
+                             id="main-photo">
+                        <div class="raw-file-notice mt-2">
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle"></i> 
+                                This is a RAW photo ({{ photo.file_extension|upper }}). 
+                                The thumbnail is displayed above. 
+                                <a href="{{ photo.original_file.url }}" class="text-decoration-none">
+                                    <i class="fas fa-download"></i> Download original RAW file
+                                </a>
+                            </small>
+                        </div>
+                    {% elif photo.original_file %}
+                        <!-- For regular images (JPEG, PNG, etc.) -->
                         <img src="{{ photo.original_file.url }}" 
                              alt="{{ photo.title|default:'Untitled' }}" 
                              class="img-fluid main-photo"
@@ -145,7 +162,7 @@
                         {% if photo.shutter_speed %}
                             <div class="exif-item">
                                 <span class="exif-label">Shutter Speed:</span>
-                                <span class="exif-value">1/{{ photo.shutter_speed }}s</span>
+                                <span class="exif-value">{{ photo.shutter_speed }}s</span>
                             </div>
                         {% endif %}
                         {% if photo.aperture %}

@@ -139,6 +139,8 @@
 
   --opacity-background-before: 0.3;
 
+  --background-navbar: hsl(80deg 5% 88% / 54%);
+
   /* Variables principales */
   --text: var(--text-default);
   --background: var(--background-default);
@@ -225,9 +227,10 @@
 
   --opacity-background-before: 0.3;
 
+  --background-navbar: hsl(0deg 0% 25.88% / 74%);
+}
+:root {
   --gradient-primary: linear-gradient(120deg, var(--primary-default), var(--accent-default));
-
-
 }
 
 html { 
@@ -309,7 +312,7 @@ nav.navbar {
   justify-content: space-between;
   align-items: center;
   padding: 0 2rem;
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--background-navbar);
   -webkit-backdrop-filter: blur(var(--blur-amount));
   backdrop-filter: blur(var(--blur-amount));
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);

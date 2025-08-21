@@ -24,8 +24,8 @@ from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
 from django.conf import settings
 
-from .models import Photo
-from .forms import PhotoUploadForm, PhotoEditForm, PhotoSearchForm
+from .models import Photo, Collection, CollectionPhoto
+from .forms import PhotoUploadForm, PhotoEditForm, PhotoSearchForm, CollectionCreateForm, CollectionPhotoForm
 from logs.utils import (
     log_photo_upload_json,
     log_photo_delete_json,
@@ -930,3 +930,293 @@ def photo_gallery_test(request):
         "sort_by": sort_by,
     }
     return render(request, "photos/gallery_test.html", context)
+
+
+# ===============================
+# COLLECTIONS
+# ===============================
+
+@login_required
+def collection_list(request):
+    """Display user's collections"""
+    collections = Collection.objects.filter(
+        Q(owner=request.user) | Q(collaborators=request.user)
+    ).distinct().order_by('-updated_at')
+    
+    context = {
+        'collections': collections,
+    }
+    return render(request, 'photos/collection_list.html', context)
+
+
+@login_required
+def collection_detail(request, collection_id):
+    """Display a specific collection with its photos"""
+    collection = get_object_or_404(Collection, id=collection_id)
+    
+    # Check if user has access to this collection
+    if not collection.is_public and collection.owner != request.user and request.user not in collection.collaborators.all():
+        messages.error(request, "You don't have permission to view this collection.")
+        return redirect('photos:collection_list')
+    
+    # Get photos in the collection with proper ordering
+    photos = collection.photos.all().order_by('collection_photos__order', 'collection_photos__added_at')
+    
+    context = {
+        'collection': collection,
+        'photos': photos,
+    }
+    return render(request, 'photos/collection_detail.html', context)
+
+
+@login_required
+def collection_create(request):
+    """Create a new collection"""
+    if request.method == 'POST':
+        form = CollectionCreateForm(request.POST)
+        if form.is_valid():
+            collection = form.save(commit=False)
+            collection.owner = request.user
+            collection.save()
+            
+            # Handle collaborators if any
+            collaborators = request.POST.getlist('collaborators')
+            if collaborators:
+                collection.collaborators.set(collaborators)
+            
+            messages.success(request, f'Collection "{collection.name}" created successfully!')
+            return redirect('photos:collection_detail', collection_id=collection.id)
+    else:
+        form = CollectionCreateForm()
+    
+    # Get list of users for collaborators
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+    users = User.objects.exclude(id=request.user.id).order_by('username')
+    
+    context = {
+        'form': form,
+        'users': users,
+    }
+    return render(request, 'photos/collection_form.html', context)
+
+
+@login_required
+def collection_edit(request, collection_id):
+    """Edit an existing collection"""
+    collection = get_object_or_404(Collection, id=collection_id, owner=request.user)
+    
+    if request.method == 'POST':
+        form = CollectionCreateForm(request.POST, instance=collection)
+        if form.is_valid():
+            collection = form.save()
+            
+            # Handle collaborators
+            collaborators = request.POST.getlist('collaborators')
+            collection.collaborators.set(collaborators)
+            
+            messages.success(request, f'Collection "{collection.name}" updated successfully!')
+            return redirect('photos:collection_detail', collection_id=collection.id)
+    else:
+        form = CollectionCreateForm(instance=collection)
+    
+    # Get list of users for collaborators
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+    users = User.objects.exclude(id=request.user.id).order_by('username')
+    
+    context = {
+        'form': form,
+        'collection': collection,
+        'users': users,
+    }
+    return render(request, 'photos/collection_form.html', context)
+
+
+@login_required
+def collection_delete(request, collection_id):
+    """Delete a collection"""
+    collection = get_object_or_404(Collection, id=collection_id, owner=request.user)
+    
+    if request.method == 'POST':
+        name = collection.name
+        collection.delete()
+        messages.success(request, f'Collection "{name}" deleted successfully!')
+        return redirect('photos:collection_list')
+    
+    context = {
+        'collection': collection,
+    }
+    return render(request, 'photos/collection_confirm_delete.html', context)
+
+
+@login_required
+def collection_add_photos(request, collection_id):
+    """Add photos to a collection"""
+    collection = get_object_or_404(Collection, id=collection_id, owner=request.user)
+    
+    if request.method == 'POST':
+        photo_ids_str = request.POST.get('photo_ids', '')
+        if photo_ids_str:
+            # Split the comma-separated string into a list of integers
+            photo_ids = [int(pid.strip()) for pid in photo_ids_str.split(',') if pid.strip().isdigit()]
+            if photo_ids:
+                photos = Photo.objects.filter(id__in=photo_ids, user=request.user)
+            
+            for photo in photos:
+                # Check if photo is already in collection
+                if not collection.photos.filter(id=photo.id).exists():
+                    collection.add_photo(photo)
+            
+            messages.success(request, f'{len(photos)} photo(s) added to collection "{collection.name}"!')
+        else:
+            messages.warning(request, 'No photos selected.')
+        
+        return redirect('photos:collection_detail', collection_id=collection.id)
+    
+    # Get user's photos not in this collection
+    available_photos = Photo.objects.filter(user=request.user).exclude(
+        collections=collection
+    ).order_by('-created_at')
+    
+    context = {
+        'collection': collection,
+        'available_photos': available_photos,
+    }
+    return render(request, 'photos/collection_add_photos.html', context)
+
+
+@login_required
+def collection_remove_photo(request, collection_id, photo_id):
+    """Remove a photo from a collection"""
+    collection = get_object_or_404(Collection, id=collection_id, owner=request.user)
+    photo = get_object_or_404(Photo, id=photo_id)
+    
+    if request.method == 'POST':
+        collection.remove_photo(photo)
+        messages.success(request, f'Photo removed from collection "{collection.name}"!')
+        return redirect('photos:collection_detail', collection_id=collection.id)
+    
+    context = {
+        'collection': collection,
+        'photo': photo,
+    }
+    return render(request, 'photos/collection_remove_photo.html', context)
+
+
+@login_required
+def collection_reorder_photos(request, collection_id):
+    """Reorder photos in a collection via AJAX"""
+    if request.method == 'POST' and request.is_ajax():
+        collection = get_object_or_404(Collection, id=collection_id, owner=request.user)
+        
+        try:
+            photo_order = json.loads(request.POST.get('photo_order', '[]'))
+            collection.reorder_photos(photo_order)
+            return JsonResponse({'status': 'success'})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)})
+    
+    return JsonResponse({'status': 'error', 'message': 'Invalid request'})
+
+
+# ===============================
+# TAGS
+# ===============================
+
+@login_required
+def tag_list(request):
+    """Display all tags used by the user"""
+    # Get all photos by user and extract unique tags
+    user_photos = Photo.objects.filter(user=request.user)
+    user_collections = Collection.objects.filter(owner=request.user)
+    
+    # Collect all tags from photos
+    photo_tags = set()
+    for photo in user_photos:
+        if photo.tags:
+            photo_tags.update(photo.get_tags_list())
+    
+    # Collect all tags from collections
+    collection_tags = set()
+    for collection in user_collections:
+        if collection.tags:
+            collection_tags.update(collection.get_tags_list())
+    
+    # Combine and sort tags
+    all_tags = sorted(list(photo_tags | collection_tags))
+    
+    # Count usage for each tag
+    tag_counts = {}
+    for tag in all_tags:
+        photo_count = user_photos.filter(tags__icontains=f"#{tag}").count()
+        collection_count = user_collections.filter(tags__icontains=f"#{tag}").count()
+        tag_counts[tag] = {
+            'photo_count': photo_count,
+            'collection_count': collection_count,
+            'total_count': photo_count + collection_count
+        }
+    
+    context = {
+        'tags': all_tags,
+        'tag_counts': tag_counts,
+    }
+    return render(request, 'photos/tag_list.html', context)
+
+
+@login_required
+def tag_detail(request, tag_name):
+    """Display photos and collections with a specific tag"""
+    # Remove # if present
+    if tag_name.startswith('#'):
+        tag_name = tag_name[1:]
+    
+    # Get photos with this tag
+    photos = Photo.objects.filter(
+        user=request.user,
+        tags__icontains=f"#{tag_name}"
+    ).order_by('-created_at')
+    
+    # Get collections with this tag
+    collections = Collection.objects.filter(
+        owner=request.user,
+        tags__icontains=f"#{tag_name}"
+    ).order_by('-updated_at')
+    
+    context = {
+        'tag_name': tag_name,
+        'photos': photos,
+        'collections': collections,
+    }
+    return render(request, 'photos/tag_detail.html', context)
+
+
+@login_required
+def search_by_tags(request):
+    """Search photos and collections by multiple tags"""
+    if request.method == 'GET':
+        tags = request.GET.get('tags', '').strip()
+        if tags:
+            # Parse tags (remove # if present and split by space)
+            tag_list = [tag.strip().lstrip('#') for tag in tags.split() if tag.strip()]
+            
+            # Search photos
+            photos = Photo.objects.filter(user=request.user)
+            for tag in tag_list:
+                photos = photos.filter(tags__icontains=f"#{tag}")
+            
+            # Search collections
+            collections = Collection.objects.filter(owner=request.user)
+            for tag in tag_list:
+                collections = collections.filter(tags__icontains=f"#{tag}")
+            
+            context = {
+                'tags': tag_list,
+                'photos': photos.order_by('-created_at'),
+                'collections': collections.order_by('-updated_at'),
+                'search_query': tags,
+            }
+            return render(request, 'photos/tag_search_results.html', context)
+    
+    # If no search or empty search, redirect to tag list
+    return redirect('photos:tag_list')

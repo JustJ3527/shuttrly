@@ -1,0 +1,174 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load collection_filters %}
+
+{% block title %}My Collections - Shuttrly{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/photo_gallery.css' %}">
+<style>
+    .collection-card {
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        overflow: hidden;
+        transition: transform 0.2s, box-shadow 0.2s;
+        background: white;
+    }
+    
+    .collection-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    
+    .collection-cover {
+        height: 200px;
+        background-size: cover;
+        background-position: center;
+        background-color: #f8f9fa;
+        position: relative;
+    }
+    
+    .collection-info {
+        padding: 1rem;
+    }
+    
+    .collection-stats {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 0.5rem;
+        font-size: 0.9rem;
+        color: #6c757d;
+    }
+    
+    .collection-tags {
+        margin-top: 0.5rem;
+    }
+    
+    .tag {
+        display: inline-block;
+        background: #e9ecef;
+        color: #495057;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.8rem;
+        margin-right: 0.25rem;
+        margin-bottom: 0.25rem;
+    }
+    
+    .collection-actions {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: 1rem;
+    }
+    
+    .btn-sm {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.875rem;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 3rem;
+        color: #6c757d;
+    }
+    
+    .empty-state i {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>My Collections</h1>
+        <a href="{% url 'photos:collection_create' %}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Create Collection
+        </a>
+    </div>
+
+    {% if collections %}
+        <div class="row">
+            {% for collection in collections %}
+                <div class="col-md-6 col-lg-4 mb-4">
+                    <div class="collection-card">
+                        <div class="collection-cover" 
+                             style="background-image: url('{% if collection.get_cover_photo_url %}{{ collection.get_cover_photo_url }}{% else %}{% static 'images/default-collection.jpg' %}{% endif %}')">
+                            {% if collection.is_public %}
+                                <div class="position-absolute top-0 end-0 m-2">
+                                    <span class="badge bg-success">
+                                        <i class="fas fa-globe"></i> Public
+                                    </span>
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="collection-info">
+                            <h5 class="card-title mb-1">{{ collection.name }}</h5>
+                            <p class="text-muted mb-2">{{ collection.description|default:"No description"|truncatechars:100 }}</p>
+                            
+                            {% if collection.tags %}
+                                <div class="collection-tags">
+                                    {% for tag in collection.get_tags_list %}
+                                        <a href="{% url 'photos:tag_detail' tag %}" class="tag">
+                                            #{{ tag }}
+                                        </a>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            
+                            <div class="collection-stats">
+                                <span>
+                                    <i class="fas fa-image"></i> {{ collection.get_photo_count }} photo{{ collection.get_photo_count|pluralize }}
+                                </span>
+                                <span>
+                                    <i class="fas fa-calendar"></i> {{ collection.updated_at|date:"M d, Y" }}
+                                </span>
+                            </div>
+                            
+                            <div class="collection-actions">
+                                <a href="{% url 'photos:collection_detail' collection.id %}" class="btn btn-outline-primary btn-sm">
+                                    <i class="fas fa-eye"></i> View
+                                </a>
+                                {% if collection.owner == user %}
+                                    <a href="{% url 'photos:collection_edit' collection.id %}" class="btn btn-outline-secondary btn-sm">
+                                        <i class="fas fa-edit"></i> Edit
+                                    </a>
+                                    <a href="{% url 'photos:collection_add_photos' collection.id %}" class="btn btn-outline-success btn-sm">
+                                        <i class="fas fa-plus"></i> Add Photos
+                                    </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <i class="fas fa-folder-open"></i>
+            <h3>No Collections Yet</h3>
+            <p>Start organizing your photos by creating your first collection.</p>
+            <a href="{% url 'photos:collection_create' %}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Create Your First Collection
+            </a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Add any JavaScript functionality here if needed
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize tooltips if using Bootstrap
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+    });
+</script>
+{% endblock %}

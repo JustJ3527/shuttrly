@@ -30,4 +30,17 @@ urlpatterns = [
         views.clear_upload_progress,
         name="clear_upload_progress",
     ),
+    # Collections
+    path("collections/", views.collection_list, name="collection_list"),
+    path("collections/create/", views.collection_create, name="collection_create"),
+    path("collections/<int:collection_id>/", views.collection_detail, name="collection_detail"),
+    path("collections/<int:collection_id>/edit/", views.collection_edit, name="collection_edit"),
+    path("collections/<int:collection_id>/delete/", views.collection_delete, name="collection_delete"),
+    path("collections/<int:collection_id>/add-photos/", views.collection_add_photos, name="collection_add_photos"),
+    path("collections/<int:collection_id>/remove-photo/<int:photo_id>/", views.collection_remove_photo, name="collection_remove_photo"),
+    path("collections/<int:collection_id>/reorder/", views.collection_reorder_photos, name="collection_reorder_photos"),
+    # Tags
+    path("tags/", views.tag_list, name="tag_list"),
+    path("tags/<str:tag_name>/", views.tag_detail, name="tag_detail"),
+    path("tags/search/", views.search_by_tags, name="search_by_tags"),
 ]

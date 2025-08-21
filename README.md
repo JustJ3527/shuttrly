@@ -211,7 +211,6 @@ shuttrly/
 
 ```bash
 git clone https://github.com/JustJ3527/shuttrly.git
-cd shuttrly
 ```
 
 2. **Create virtual environment**
@@ -226,6 +225,7 @@ env\Scripts\activate     # Windows
 3. **Install dependencies**
 
 ```bash
+cd shuttrly
 pip install -r requirements.txt
 ```
 
@@ -245,6 +245,7 @@ EMAIL_HOST_PASSWORD=your_email_password
 5. **Apply migrations**
 
 ```bash
+python manage.py check # Check if there are no errors
 python manage.py makemigrations
 python manage.py migrate
 ```
@@ -331,5 +332,4 @@ For any questions, issues, or suggestions:
 
 ---
 
-_Last updated: August 2025_
-# Test commit
+_Last updated: August 2025

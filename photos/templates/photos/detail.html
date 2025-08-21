@@ -96,7 +96,9 @@
                                     <strong>Tags:</strong>
                                     <div class="tags-container">
                                         {% for tag in photo.get_tags_list %}
-                                            <span class="tag">{{ tag }}</span>
+                                            <a href="{% url 'photos:tag_detail' tag %}" class="tag">
+                                                #{{ tag }}
+                                            </a>
                                         {% endfor %}
                                     </div>
                                 </div>

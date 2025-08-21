@@ -1,0 +1,147 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load collection_filters %}
+
+{% block title %}Remove Photo from Collection - Shuttrly{% endblock %}
+
+{% block extra_css %}
+<style>
+    .remove-confirmation {
+        background: white;
+        border-radius: 8px;
+        padding: 2rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        max-width: 600px;
+        margin: 0 auto;
+    }
+    
+    .photo-preview {
+        text-align: center;
+        margin: 2rem 0;
+    }
+    
+    .photo-preview img {
+        max-width: 100%;
+        max-height: 300px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    
+    .photo-info {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin: 1.5rem 0;
+    }
+    
+    .collection-info {
+        background: #e3f2fd;
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin: 1.5rem 0;
+        border-left: 4px solid #2196f3;
+    }
+    
+    .warning-box {
+        border: 2px solid #ff9800;
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin: 1.5rem 0;
+        background: #fff3e0;
+    }
+    
+    .warning-box h5 {
+        color: #f57c00;
+        margin-bottom: 1rem;
+    }
+    
+    .btn-group {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        margin-top: 2rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="remove-confirmation">
+                <div class="text-center">
+                    <h1>Remove Photo from Collection</h1>
+                    <p class="lead">Are you sure you want to remove this photo from the collection?</p>
+                </div>
+                
+                <!-- Photo Preview -->
+                <div class="photo-preview">
+                    <img src="{% if photo.thumbnail %}{{ photo.thumbnail.url }}{% else %}{{ photo.original_file.url }}{% endif %}" 
+                         alt="{{ photo.title|default:'Untitled' }}">
+                </div>
+                
+                <!-- Photo Information -->
+                <div class="photo-info">
+                    <h5><i class="fas fa-image"></i> Photo Details</h5>
+                    <p><strong>Title:</strong> {{ photo.title|default:"Untitled" }}</p>
+                    {% if photo.description %}
+                        <p><strong>Description:</strong> {{ photo.description }}</p>
+                    {% endif %}
+                    <p><strong>Uploaded:</strong> {{ photo.created_at|date:"M d, Y" }}</p>
+                    {% if photo.tags %}
+                        <p><strong>Tags:</strong>
+                            {% for tag in photo.get_tags_list %}
+                                <span class="badge bg-secondary me-1">#{{ tag }}</span>
+                            {% endfor %}
+                        </p>
+                    {% endif %}
+                </div>
+                
+                <!-- Collection Information -->
+                <div class="collection-info">
+                    <h5><i class="fas fa-folder"></i> Collection Details</h5>
+                    <p><strong>Collection:</strong> {{ collection.name }}</p>
+                    {% if collection.description %}
+                        <p><strong>Description:</strong> {{ collection.description }}</p>
+                    {% endif %}
+                    <p><strong>Current Photos:</strong> {{ collection.get_photo_count }} photo{{ collection.get_photo_count|pluralize }}</p>
+                    <p><strong>Collection Type:</strong> {{ collection.get_collection_type_display }}</p>
+                </div>
+                
+                <!-- Warning -->
+                <div class="warning-box">
+                    <h5><i class="fas fa-exclamation-triangle"></i> What happens when you remove this photo?</h5>
+                    <ul class="mb-0">
+                        <li>The photo will be removed from this collection</li>
+                        <li>The photo itself will NOT be deleted from your account</li>
+                        <li>The photo will remain in any other collections it belongs to</li>
+                        <li>You can add it back to this collection later if needed</li>
+                    </ul>
+                </div>
+                
+                <!-- Action Buttons -->
+                <div class="btn-group">
+                    <a href="{% url 'photos:collection_detail' collection.id %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-times"></i> Cancel
+                    </a>
+                    <form method="post" style="display: inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-warning">
+                            <i class="fas fa-minus"></i> Remove Photo
+                        </button>
+                    </form>
+                </div>
+                
+                <!-- Additional Actions -->
+                <div class="mt-4 text-center">
+                    <small class="text-muted">
+                        Need to make other changes? 
+                        <a href="{% url 'photos:collection_detail' collection.id %}">Go back to the collection</a> or
+                        <a href="{% url 'photos:detail' photo.id %}">view the photo details</a>.
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

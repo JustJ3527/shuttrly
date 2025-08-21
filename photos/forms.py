@@ -2,11 +2,14 @@ from django import forms
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
-from .models import Photo
+from .models import Photo, Collection, CollectionPhoto
 import os
 
 User = get_user_model()
 
+# ===============================
+# PHOTOS
+# ===============================
 
 class MultipleFileInput(forms.FileInput):
     allow_multiple_selected = True
@@ -58,11 +61,11 @@ class PhotoUploadForm(forms.Form):
         widget=forms.TextInput(
             attrs={
                 "class": "form-control",
-                "placeholder": _("Tags separated by commas (optional)"),
+                "placeholder": "Tags: #nature #travel (optional)",
             }
         ),
         label=_("Tags"),
-        help_text=_("Separate tags with commas"),
+        help_text=_("Enter tags with # symbol, separated by spaces (e.g, #nature #travel)"),
     )
 
     is_public = forms.BooleanField(
@@ -192,6 +195,24 @@ class PhotoUploadForm(forms.Form):
             saved_photos.append(photo)
 
         return saved_photos
+    
+    def clean_tags(self):
+        """Clean and format tags"""
+        tags = self.cleaned_data.get('tags', '')
+        if tags:
+            # Split by spaces and clean each tag
+            tag_list = [tag.strip() for tag in tags.split() if tag.strip()]
+            
+            # Ensure all tags start with #
+            formatted_tags = []
+            for tag in tag_list:
+                if not tag.startswith('#'):
+                    formatted_tags.append(f"#{tag}")
+                else:
+                    formatted_tags.append(tag)
+            
+            return " ".join(formatted_tags)
+        return ""
 
 
 class PhotoEditForm(forms.ModelForm):
@@ -321,3 +342,60 @@ class PhotoSearchForm(forms.Form):
         widget=forms.Select(attrs={"class": "form-control"}),
         label=_("Sort by"),
     )
+
+
+# ===============================
+# COLLECTIONS
+# ===============================
+
+class CollectionCreateForm(forms.ModelForm):
+    """Form for creating a new collection"""
+    tags = forms.CharField(
+        max_length=500,
+        required=False,
+        widget=forms.TextInput(attrs={
+            "class": "form-control", 
+            "placeholder": "Tags separated by commas"
+        }),
+        label=_("Tags"),
+        help_text=_("Enter tags with # symbol, separated by spaces (e.g, #nature #travel)"),
+    )
+
+    class Meta:
+        model = Collection
+        fields = ["name", "description", "tags", "collection_type", "is_public"]
+        widgets = {
+            "name": forms.TextInput(attrs={"class": "form-control", "placeholder": "Collection name"}),
+            "description": forms.Textarea(attrs={"class": "form-control", "rows": 3, "placeholder": "Description (optional)"}),
+            "collection_type": forms.Select(attrs={"class": "form-control"}),
+            "is_public": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+        }
+
+    def clean_tags(self):
+        """Clean and format tags"""
+        tags = self.cleaned_data.get("tags", "")
+        if tags:
+            # Split by spaces and clean each tag
+            tag_list = [tag.strip() for tag in tags.split() if tag.strip()]
+
+            # Ensure all tags start with #
+            formatted_tags = []
+            for tag in tag_list:
+                if not tag.startswith('#'):
+                    formatted_tags.append(f"#{tag}")
+                else:
+                    formatted_tags.append(tag)
+            
+            return " ".join(formatted_tags)
+        return ""
+
+
+class CollectionPhotoForm(forms.ModelForm):
+    """Form for managing photos in a collection"""
+
+    class Meta:
+        model = CollectionPhoto
+        fields = ["order"]
+        widgets = {
+            "order": forms.NumberInput(attrs={"class": "form-control", "min": 0}),
+        }

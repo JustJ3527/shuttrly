@@ -1,0 +1,467 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load collection_filters %}
+
+{% block title %}Search Results for "{{ search_query }}" - Shuttrly{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/photo_gallery.css' %}">
+<style>
+    .search-header {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        color: white;
+        padding: 3rem 0;
+        margin-bottom: 2rem;
+        text-align: center;
+    }
+    
+    .search-header h1 {
+        font-size: 2.5rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+    }
+    
+    .search-stats {
+        display: flex;
+        justify-content: center;
+        gap: 3rem;
+        margin-top: 2rem;
+        flex-wrap: wrap;
+    }
+    
+    .stat-item {
+        text-align: center;
+    }
+    
+    .stat-number {
+        font-size: 1.5rem;
+        font-weight: 600;
+        display: block;
+    }
+    
+    .stat-label {
+        font-size: 0.9rem;
+        opacity: 0.9;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .search-tags {
+        margin-top: 1rem;
+    }
+    
+    .search-tags .tag {
+        display: inline-block;
+        background: rgba(255,255,255,0.2);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-size: 0.9rem;
+        margin-right: 0.5rem;
+        margin-bottom: 0.5rem;
+        text-decoration: none;
+        transition: background-color 0.2s;
+    }
+    
+    .search-tags .tag:hover {
+        background: rgba(255,255,255,0.3);
+        color: white;
+        text-decoration: none;
+    }
+    
+    .content-tabs {
+        background: white;
+        border-radius: 8px;
+        margin-bottom: 2rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .nav-tabs {
+        border-bottom: none;
+        padding: 0 1.5rem;
+    }
+    
+    .nav-tabs .nav-link {
+        border: none;
+        color: #6c757d;
+        padding: 1rem 1.5rem;
+        font-weight: 500;
+    }
+    
+    .nav-tabs .nav-link.active {
+        color: #28a745;
+        background: none;
+        border-bottom: 3px solid #28a745;
+    }
+    
+    .tab-content {
+        padding: 2rem;
+    }
+    
+    .photo-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 1rem;
+    }
+    
+    .photo-item {
+        position: relative;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    .photo-item:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    }
+    
+    .photo-item img {
+        width: 100%;
+        height: 200px;
+        object-fit: cover;
+    }
+    
+    .photo-overlay {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: linear-gradient(transparent, rgba(0,0,0,0.8));
+        color: white;
+        padding: 1rem;
+        opacity: 0;
+        transition: opacity 0.2s;
+    }
+    
+    .photo-item:hover .photo-overlay {
+        opacity: 1;
+    }
+    
+    .photo-title {
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+    }
+    
+    .photo-tags {
+        font-size: 0.8rem;
+        opacity: 0.9;
+    }
+    
+    .collection-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 1.5rem;
+    }
+    
+    .collection-card {
+        background: white;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    .collection-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    }
+    
+    .collection-cover {
+        height: 150px;
+        background-size: cover;
+        background-position: center;
+        background-color: #f8f9fa;
+        position: relative;
+    }
+    
+    .collection-info {
+        padding: 1.5rem;
+    }
+    
+    .collection-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        color: #495057;
+    }
+    
+    .collection-description {
+        color: #6c757d;
+        margin-bottom: 1rem;
+        line-height: 1.5;
+    }
+    
+    .collection-meta {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.9rem;
+        color: #6c757d;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 3rem;
+        color: #6c757d;
+    }
+    
+    .empty-state i {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+    }
+    
+    .search-actions {
+        background: white;
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .search-form {
+        display: flex;
+        gap: 1rem;
+        align-items: end;
+    }
+    
+    .search-form .form-group {
+        flex: 1;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Search Header -->
+<div class="search-header">
+    <div class="container">
+        <h1>Search Results</h1>
+        <p class="lead">Found content tagged with: {{ search_query }}</p>
+        
+        <div class="search-stats">
+            <div class="stat-item">
+                <span class="stat-number">{{ photos.count }}</span>
+                <span class="stat-label">Photos</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-number">{{ collections.count }}</span>
+                <span class="stat-label">Collections</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-number">{{ photos.count|add:collections.count }}</span>
+                <span class="stat-label">Total Results</span>
+            </div>
+        </div>
+        
+        <div class="search-tags">
+            {% for tag in tags %}
+                <span class="tag">#{{ tag }}</span>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <!-- Search Actions -->
+    <div class="search-actions">
+        <h5><i class="fas fa-search"></i> Refine Your Search</h5>
+        <form method="get" action="{% url 'photos:search_by_tags' %}" class="search-form">
+            <div class="form-group">
+                <label for="tags-input" class="form-label">Search by Different Tags</label>
+                <input type="text" class="form-control" id="tags-input" name="tags" 
+                       value="{{ search_query }}" placeholder="Enter tags separated by spaces">
+                <div class="form-text">You can search for photos and collections that have multiple tags</div>
+            </div>
+            <button type="submit" class="btn btn-success">
+                <i class="fas fa-search"></i> Search
+            </button>
+        </form>
+    </div>
+
+    <!-- Content Tabs -->
+    <div class="content-tabs">
+        <ul class="nav nav-tabs" id="searchTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="photos-tab" data-bs-toggle="tab" data-bs-target="#photos" type="button" role="tab">
+                    <i class="fas fa-images"></i> Photos ({{ photos.count }})
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="collections-tab" data-bs-toggle="tab" data-bs-target="#collections" type="button" role="tab">
+                    <i class="fas fa-folder"></i> Collections ({{ collections.count }})
+                </button>
+            </li>
+        </ul>
+        
+        <div class="tab-content" id="searchTabsContent">
+            <!-- Photos Tab -->
+            <div class="tab-pane fade show active" id="photos" role="tabpanel">
+                {% if photos %}
+                    <div class="photo-grid">
+                        {% for photo in photos %}
+                            <div class="photo-item">
+                                <img src="{% if photo.thumbnail %}{{ photo.thumbnail.url }}{% else %}{{ photo.original_file.url }}{% endif %}" 
+                                     alt="{{ photo.title|default:'Untitled' }}"
+                                     loading="lazy">
+                                
+                                <div class="photo-overlay">
+                                    <div class="photo-title">
+                                        {{ photo.title|default:'Untitled' }}
+                                    </div>
+                                    {% if photo.tags %}
+                                        <div class="photo-tags">
+                                            {% for tag in photo.get_tags_list|slice:":3" %}
+                                                <span>#{{ tag }}</span>
+                                            {% endfor %}
+                                            {% if photo.get_tags_list|length > 3 %}
+                                                <span>+{{ photo.get_tags_list|length|add:"-3" }} more</span>
+                                            {% endif %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="photo-actions" style="position: absolute; top: 0.5rem; left: 0.5rem;">
+                                    <a href="{% url 'photos:detail' photo.id %}" class="btn btn-sm btn-outline-light">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <i class="fas fa-images"></i>
+                        <h3>No Photos Found</h3>
+                        <p>No photos match your tag search criteria.</p>
+                        <p class="text-muted">Try adjusting your search terms or browse all photos.</p>
+                        <a href="{% url 'photos:gallery' %}" class="btn btn-primary">
+                            <i class="fas fa-images"></i> Browse All Photos
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+            
+            <!-- Collections Tab -->
+            <div class="tab-pane fade" id="collections" role="tabpanel">
+                {% if collections %}
+                    <div class="collection-grid">
+                        {% for collection in collections %}
+                            <div class="collection-card">
+                                <div class="collection-cover" 
+                                     style="background-image: url('{% if collection.get_cover_photo_url %}{{ collection.get_cover_photo_url }}{% else %}{% static 'images/default-collection.jpg' %}{% endif %}')">
+                                    {% if collection.is_public %}
+                                        <div class="position-absolute top-0 end-0 m-2">
+                                            <span class="badge bg-success">
+                                                <i class="fas fa-globe"></i> Public
+                                            </span>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="collection-info">
+                                    <h5 class="collection-title">{{ collection.name }}</h5>
+                                    <p class="collection-description">
+                                        {{ collection.description|default:"No description"|truncatechars:100 }}
+                                    </p>
+                                    
+                                    <div class="collection-meta">
+                                        <span>
+                                            <i class="fas fa-image"></i> {{ collection.get_photo_count }} photos
+                                        </span>
+                                        <span>
+                                            <i class="fas fa-calendar"></i> {{ collection.updated_at|date:"M d, Y" }}
+                                        </span>
+                                    </div>
+                                    
+                                    <div class="mt-3">
+                                        <a href="{% url 'photos:collection_detail' collection.id %}" class="btn btn-outline-primary btn-sm">
+                                            <i class="fas fa-eye"></i> View Collection
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <i class="fas fa-folder"></i>
+                        <h3>No Collections Found</h3>
+                        <p>No collections match your tag search criteria.</p>
+                        <p class="text-muted">Try adjusting your search terms or browse all collections.</p>
+                        <a href="{% url 'photos:collection_list' %}" class="btn btn-primary">
+                            <i class="fas fa-folder"></i> Browse All Collections
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Navigation Actions -->
+    <div class="text-center mb-4">
+        <a href="{% url 'photos:tag_list' %}" class="btn btn-outline-secondary me-2">
+            <i class="fas fa-tags"></i> All Tags
+        </a>
+        <a href="{% url 'photos:gallery' %}" class="btn btn-outline-secondary me-2">
+            <i class="fas fa-images"></i> All Photos
+        </a>
+        <a href="{% url 'photos:collection_list' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-folder"></i> All Collections
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Bootstrap tabs if available
+    if (typeof bootstrap !== 'undefined') {
+        var triggerTabList = [].slice.call(document.querySelectorAll('#searchTabs button'));
+        triggerTabList.forEach(function (triggerEl) {
+            var tabTrigger = new bootstrap.Tab(triggerEl);
+            
+            triggerEl.addEventListener('click', function (event) {
+                event.preventDefault();
+                tabTrigger.show();
+            });
+        });
+    }
+    
+    // Auto-format tags in search input
+    const tagsInput = document.getElementById('tags-input');
+    
+    tagsInput.addEventListener('input', function() {
+        let value = this.value;
+        
+        // Add # to tags that don't have it
+        value = value.replace(/(?<!\s)#/g, ' #'); // Ensure space before #
+        value = value.replace(/(?<=\S)(?=#)/g, ' '); // Add space before # if no space
+        
+        // Remove multiple spaces
+        value = value.replace(/\s+/g, ' ').trim();
+        
+        this.value = value;
+    });
+    
+    // Format tags on blur
+    tagsInput.addEventListener('blur', function() {
+        let value = this.value;
+        
+        // Split by spaces and format each tag
+        const tags = value.split(/\s+/).filter(tag => tag.trim());
+        const formattedTags = tags.map(tag => {
+            if (tag.startsWith('#')) {
+                return tag;
+            } else {
+                return `#${tag}`;
+            }
+        });
+        
+        this.value = formattedTags.join(' ');
+    });
+});
+</script>
+{% endblock %}

@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.utils.html import format_html
 from django.urls import reverse
 from django.utils.safestring import mark_safe
-from .models import Photo
+from .models import Photo, Collection, CollectionPhoto
 
 
 @admin.register(Photo)
@@ -239,3 +239,25 @@ class PhotoAdmin(admin.ModelAdmin):
     class Media:
         css = {"all": ("admin/css/photo_admin.css",)}
         js = ("admin/js/photo_admin.js",)
+
+
+# ===============================
+# COLLECTIONS
+# ===============================
+@admin.register(Collection)
+class CollectionAdmin(admin.ModelAdmin):
+    list_display = ['name', 'owner', 'collection_type', 'is_public', 'get_photo_count', 'created_at']
+    list_filter = ['collection_type', 'is_public', 'created_at', 'owner']
+    search_fields = ['name', 'description', 'tags', 'owner__username']
+    readonly_fields = ['created_at', 'updated_at']
+    
+    def get_photo_count(self, obj):
+        return obj.get_photo_count()
+    get_photo_count.short_description = 'Photos'
+
+@admin.register(CollectionPhoto)
+class CollectionPhotoAdmin(admin.ModelAdmin):
+    list_display = ['collection', 'photo', 'order', 'added_at']
+    list_filter = ['collection', 'added_at']
+    search_fields = ['collection__name', 'photo__title']
+    ordering = ['collection', 'order']

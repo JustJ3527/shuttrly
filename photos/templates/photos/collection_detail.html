@@ -1,0 +1,372 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load collection_filters %}
+
+{% block title %}{{ collection.name }} - Shuttrly{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/photo_gallery.css' %}">
+<style>
+    .collection-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 3rem 0;
+        margin-bottom: 2rem;
+    }
+    
+    .collection-header h1 {
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+    }
+    
+    .collection-meta {
+        display: flex;
+        gap: 2rem;
+        margin-top: 1rem;
+        flex-wrap: wrap;
+    }
+    
+    .meta-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .collection-tags {
+        margin-top: 1rem;
+    }
+    
+    .tag {
+        display: inline-block;
+        background: rgba(255,255,255,0.2);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-size: 0.9rem;
+        margin-right: 0.5rem;
+        margin-bottom: 0.5rem;
+        text-decoration: none;
+        transition: background-color 0.2s;
+    }
+    
+    .tag:hover {
+        background: rgba(255,255,255,0.3);
+        color: white;
+    }
+    
+    .collection-actions {
+        margin-top: 1.5rem;
+    }
+    
+    .collection-actions .btn {
+        margin-right: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .photo-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 1rem;
+        margin-top: 2rem;
+    }
+    
+    .photo-item {
+        position: relative;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    .photo-item:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    }
+    
+    .photo-item img {
+        width: 100%;
+        height: 200px;
+        object-fit: cover;
+    }
+    
+    .photo-overlay {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: linear-gradient(transparent, rgba(0,0,0,0.8));
+        color: white;
+        padding: 1rem;
+        opacity: 0;
+        transition: opacity 0.2s;
+    }
+    
+    .photo-item:hover .photo-overlay {
+        opacity: 1;
+    }
+    
+    .photo-title {
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+    }
+    
+    .photo-tags {
+        font-size: 0.8rem;
+        opacity: 0.9;
+    }
+    
+    .empty-collection {
+        text-align: center;
+        padding: 4rem 2rem;
+        color: #6c757d;
+    }
+    
+    .empty-collection i {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+    }
+    
+    .drag-handle {
+        cursor: move;
+        position: absolute;
+        top: 0.5rem;
+        right: 0.5rem;
+        background: rgba(0,0,0,0.7);
+        color: white;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.8rem;
+    }
+    
+    .collection-info-card {
+        background: white;
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Collection Header -->
+<div class="collection-header">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-8">
+                <h1>{{ collection.name }}</h1>
+                {% if collection.description %}
+                    <p class="lead mb-0">{{ collection.description }}</p>
+                {% endif %}
+                
+                <div class="collection-meta">
+                    <div class="meta-item">
+                        <i class="fas fa-image"></i>
+                        <span>{{ collection.get_photo_count }} photo{{ collection.get_photo_count|pluralize }}</span>
+                    </div>
+                    <div class="meta-item">
+                        <i class="fas fa-calendar"></i>
+                        <span>Created {{ collection.created_at|date:"M d, Y" }}</span>
+                    </div>
+                    <div class="meta-item">
+                        <i class="fas fa-clock"></i>
+                        <span>Updated {{ collection.updated_at|date:"M d, Y" }}</span>
+                    </div>
+                    {% if collection.is_public %}
+                        <div class="meta-item">
+                            <i class="fas fa-globe"></i>
+                            <span>Public</span>
+                        </div>
+                    {% endif %}
+                </div>
+                
+                {% if collection.tags %}
+                    <div class="collection-tags">
+                        {% for tag in collection.get_tags_list %}
+                            <a href="{% url 'photos:tag_detail' tag %}" class="tag">
+                                #{{ tag }}
+                            </a>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+                
+                {% if collection.owner == user %}
+                    <div class="collection-actions">
+                        <a href="{% url 'photos:collection_edit' collection.id %}" class="btn btn-outline-light">
+                            <i class="fas fa-edit"></i> Edit Collection
+                        </a>
+                        <a href="{% url 'photos:collection_add_photos' collection.id %}" class="btn btn-outline-light">
+                            <i class="fas fa-plus"></i> Add Photos
+                        </a>
+                        <a href="{% url 'photos:collection_delete' collection.id %}" class="btn btn-outline-danger">
+                            <i class="fas fa-trash"></i> Delete Collection
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <!-- Collection Info -->
+    <div class="collection-info-card">
+        <div class="row">
+            <div class="col-md-6">
+                <h5><i class="fas fa-info-circle"></i> Collection Information</h5>
+                <p><strong>Type:</strong> {{ collection.get_collection_type_display }}</p>
+                <p><strong>Owner:</strong> {{ collection.owner.username }}</p>
+                {% if collection.collaborators.exists %}
+                    <p><strong>Collaborators:</strong> 
+                        {% for collaborator in collection.collaborators.all %}
+                            {{ collaborator.username }}{% if not forloop.last %}, {% endif %}
+                        {% endfor %}
+                    </p>
+                {% endif %}
+            </div>
+            <div class="col-md-6">
+                <h5><i class="fas fa-chart-bar"></i> Statistics</h5>
+                <p><strong>Total Size:</strong> {{ collection.get_total_size_mb }} MB</p>
+                <p><strong>Sort Order:</strong> {{ collection.get_sort_order_display }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Photos Grid -->
+    {% if photos %}
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h3>Photos in Collection</h3>
+            {% if collection.owner == user %}
+                <button class="btn btn-outline-primary" id="save-order-btn" style="display: none;">
+                    <i class="fas fa-save"></i> Save Order
+                </button>
+            {% endif %}
+        </div>
+        
+        <div class="photo-grid" id="photo-grid">
+            {% for photo in photos %}
+                <div class="photo-item" data-photo-id="{{ photo.id }}">
+                    {% if collection.owner == user %}
+                        <div class="drag-handle">
+                            <i class="fas fa-grip-vertical"></i>
+                        </div>
+                    {% endif %}
+                    
+                    <img src="{% if photo.thumbnail %}{{ photo.thumbnail.url }}{% else %}{{ photo.original_file.url }}{% endif %}" 
+                         alt="{{ photo.title|default:'Untitled' }}"
+                         loading="lazy">
+                    
+                    <div class="photo-overlay">
+                        <div class="photo-title">
+                            {{ photo.title|default:'Untitled' }}
+                        </div>
+                        {% if photo.tags %}
+                            <div class="photo-tags">
+                                {% for tag in photo.get_tags_list|slice:":3" %}
+                                    <span>#{{ tag }}</span>
+                                {% endfor %}
+                                {% if photo.get_tags_list|length > 3 %}
+                                    <span>+{{ photo.get_tags_list|length|add:"-3" }} more</span>
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="photo-actions" style="position: absolute; top: 0.5rem; left: 0.5rem;">
+                        <a href="{% url 'photos:detail' photo.id %}" class="btn btn-sm btn-outline-light">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                        {% if collection.owner == user %}
+                            <a href="{% url 'photos:collection_remove_photo' collection.id photo.id %}" 
+                               class="btn btn-sm btn-outline-danger"
+                               onclick="return confirm('Remove this photo from the collection?')">
+                                <i class="fas fa-times"></i>
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-collection">
+            <i class="fas fa-images"></i>
+            <h3>No Photos Yet</h3>
+            <p>This collection doesn't have any photos yet.</p>
+            {% if collection.owner == user %}
+                <a href="{% url 'photos:collection_add_photos' collection.id %}" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Add Photos
+                </a>
+            {% endif %}
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    {% if collection.owner == user and photos %}
+        // Initialize drag and drop for photo reordering
+        const photoGrid = document.getElementById('photo-grid');
+        const saveOrderBtn = document.getElementById('save-order-btn');
+        
+        if (photoGrid) {
+            const sortable = new Sortable(photoGrid, {
+                animation: 150,
+                ghostClass: 'sortable-ghost',
+                chosenClass: 'sortable-chosen',
+                dragClass: 'sortable-drag',
+                onStart: function() {
+                    saveOrderBtn.style.display = 'block';
+                },
+                onEnd: function() {
+                    // Order has changed, show save button
+                }
+            });
+            
+            // Save order functionality
+            saveOrderBtn.addEventListener('click', function() {
+                const photoItems = photoGrid.querySelectorAll('.photo-item');
+                const photoOrder = Array.from(photoItems).map(item => 
+                    item.getAttribute('data-photo-id')
+                );
+                
+                // Send order to server
+                fetch('{% url "photos:collection_reorder_photos" collection.id %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    },
+                    body: JSON.stringify({
+                        photo_order: photoOrder
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        saveOrderBtn.style.display = 'none';
+                        // Show success message
+                        const alert = document.createElement('div');
+                        alert.className = 'alert alert-success alert-dismissible fade show';
+                        alert.innerHTML = `
+                            <i class="fas fa-check"></i> Photo order saved successfully!
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        `;
+                        document.querySelector('.container').insertBefore(alert, document.querySelector('.photo-grid'));
+                    } else {
+                        alert('Error saving order: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error saving order. Please try again.');
+                });
+            });
+        }
+    {% endif %}
+});
+</script>
+{% endblock %}

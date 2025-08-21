@@ -1,0 +1,402 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load collection_filters %}
+
+{% block title %}Add Photos to {{ collection.name }} - Shuttrly{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/photo_gallery.css' %}">
+<style>
+    .photo-selection-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-top: 2rem;
+    }
+    
+    .photo-selection-item {
+        position: relative;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        transition: transform 0.2s, box-shadow 0.2s;
+        cursor: pointer;
+    }
+    
+    .photo-selection-item:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    }
+    
+    .photo-selection-item.selected {
+        border: 3px solid #007bff;
+        transform: scale(1.02);
+    }
+    
+    .photo-selection-item img {
+        width: 100%;
+        height: 150px;
+        object-fit: cover;
+    }
+    
+    .photo-checkbox {
+        position: absolute;
+        top: 0.5rem;
+        left: 0.5rem;
+        transform: scale(1.5);
+        z-index: 10;
+    }
+    
+    .photo-overlay {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: linear-gradient(transparent, rgba(0,0,0,0.8));
+        color: white;
+        padding: 0.75rem;
+        opacity: 0;
+        transition: opacity 0.2s;
+    }
+    
+    .photo-selection-item:hover .photo-overlay {
+        opacity: 1;
+    }
+    
+    .photo-title {
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 0.25rem;
+    }
+    
+    .photo-tags {
+        font-size: 0.75rem;
+        opacity: 0.9;
+    }
+    
+    .selection-summary {
+        position: sticky;
+        top: 1rem;
+        background: white;
+        border-radius: 8px;
+        padding: 1.5rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        margin-bottom: 2rem;
+    }
+    
+    .filter-section {
+        background: white;
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 3rem;
+        color: #6c757d;
+    }
+    
+    .empty-state i {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Add Photos to "{{ collection.name }}"</h1>
+        <a href="{% url 'photos:collection_detail' collection.id %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Collection
+        </a>
+    </div>
+
+    <!-- Selection Summary -->
+    <div class="selection-summary">
+        <div class="row align-items-center">
+            <div class="col-md-6">
+                <h5><i class="fas fa-info-circle"></i> Selection Summary</h5>
+                <p class="mb-0">
+                    <span id="selected-count">0</span> photo(s) selected
+                </p>
+            </div>
+            <div class="col-md-6 text-end">
+                <form method="post" id="add-photos-form">
+                    {% csrf_token %}
+                    <input type="hidden" name="photo_ids" id="photo-ids-input">
+                    <button type="submit" class="btn btn-primary" id="add-photos-btn" disabled>
+                        <i class="fas fa-plus"></i> Add Selected Photos
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="filter-section">
+        <h5><i class="fas fa-filter"></i> Filters</h5>
+        <div class="row">
+            <div class="col-md-4">
+                <label for="search-input" class="form-label">Search Photos</label>
+                <input type="text" class="form-control" id="search-input" placeholder="Search by title, description, or tags...">
+            </div>
+            <div class="col-md-4">
+                <label for="tag-filter" class="form-label">Filter by Tags</label>
+                <select class="form-control" id="tag-filter">
+                    <option value="">All Tags</option>
+                    <!-- Tags will be populated by JavaScript -->
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label for="sort-filter" class="form-label">Sort By</label>
+                <select class="form-control" id="sort-filter">
+                    <option value="-created_at">Newest First</option>
+                    <option value="created_at">Oldest First</option>
+                    <option value="title">Title A-Z</option>
+                    <option value="-title">Title Z-A</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Photos Grid -->
+    {% if available_photos %}
+        <div class="photo-selection-grid" id="photo-grid">
+            {% for photo in available_photos %}
+                <div class="photo-selection-item" data-photo-id="{{ photo.id }}" data-title="{{ photo.title|default:'' }}" data-tags="{{ photo.tags|default:'' }}">
+                    <input type="checkbox" class="photo-checkbox" value="{{ photo.id }}">
+                    
+                    <img src="{% if photo.thumbnail %}{{ photo.thumbnail.url }}{% else %}{{ photo.original_file.url }}{% endif %}" 
+                         alt="{{ photo.title|default:'Untitled' }}"
+                         loading="lazy">
+                    
+                    <div class="photo-overlay">
+                        <div class="photo-title">
+                            {{ photo.title|default:'Untitled' }}
+                        </div>
+                        {% if photo.tags %}
+                            <div class="photo-tags">
+                                {% for tag in photo.get_tags_list|slice:":2" %}
+                                    <span>#{{ tag }}</span>
+                                {% endfor %}
+                                {% if photo.get_tags_list|length > 2 %}
+                                    <span>+{{ photo.get_tags_list|length|add:"-2" }} more</span>
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <i class="fas fa-images"></i>
+            <h3>No Available Photos</h3>
+            <p>All your photos are already in this collection or you haven't uploaded any photos yet.</p>
+            <a href="{% url 'photos:upload' %}" class="btn btn-primary">
+                <i class="fas fa-upload"></i> Upload Photos
+            </a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ block.super }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const photoGrid = document.getElementById('photo-grid');
+    const selectedCount = document.getElementById('selected-count');
+    const photoIdsInput = document.getElementById('photo-ids-input');
+    const addPhotosBtn = document.getElementById('add-photos-btn');
+    const searchInput = document.getElementById('search-input');
+    const tagFilter = document.getElementById('tag-filter');
+    const sortFilter = document.getElementById('sort-filter');
+    
+    let selectedPhotos = new Set();
+    
+    console.log('=== Initializing Photo Selection ===');
+    console.log('Photo grid:', photoGrid);
+    console.log('Selected count element:', selectedCount);
+    console.log('Photo IDs input:', photoIdsInput);
+    console.log('Add photos button:', addPhotosBtn);
+    
+    // Initialize tag filter options
+    function initializeTagFilter() {
+        const photos = document.querySelectorAll('.photo-selection-item');
+        const tags = new Set();
+        
+        photos.forEach(photo => {
+            const photoTags = photo.getAttribute('data-tags');
+            if (photoTags) {
+                const tagList = photoTags.split(/\s+/).filter(tag => tag.trim());
+                tagList.forEach(tag => {
+                    if (tag.startsWith('#')) {
+                        tags.add(tag);
+                    }
+                });
+            }
+        });
+        
+        // Populate tag filter
+        const sortedTags = Array.from(tags).sort();
+        sortedTags.forEach(tag => {
+            const option = document.createElement('option');
+            option.value = tag;
+            option.textContent = tag;
+            tagFilter.appendChild(option);
+        });
+    }
+    
+    // Handle photo selection
+    function handlePhotoSelection(checkbox) {
+        const photoItem = checkbox.closest('.photo-selection-item');
+        const photoId = checkbox.value;
+        
+        console.log('Handling photo selection:', photoId, 'checked:', checkbox.checked);
+        
+        if (checkbox.checked) {
+            selectedPhotos.add(photoId);
+            photoItem.classList.add('selected');
+        } else {
+            selectedPhotos.delete(photoId);
+            photoItem.classList.remove('selected');
+        }
+        
+        updateSelectionSummary();
+    }
+    
+    // Update selection summary
+    function updateSelectionSummary() {
+        const count = selectedPhotos.size;
+        console.log('Updating selection summary. Count:', count, 'Selected IDs:', Array.from(selectedPhotos));
+        
+        if (selectedCount) {
+            selectedCount.textContent = count;
+        }
+        if (photoIdsInput) {
+            photoIdsInput.value = Array.from(selectedPhotos).join(',');
+        }
+        if (addPhotosBtn) {
+            addPhotosBtn.disabled = count === 0;
+        }
+    }
+    
+    // Filter and search functionality
+    function filterPhotos() {
+        const searchTerm = searchInput.value.toLowerCase();
+        const selectedTag = tagFilter.value;
+        const sortBy = sortFilter.value;
+        
+        const photos = Array.from(document.querySelectorAll('.photo-selection-item'));
+        
+        photos.forEach(photo => {
+            const title = photo.getAttribute('data-title').toLowerCase();
+            const tags = photo.getAttribute('data-tags').toLowerCase();
+            const matchesSearch = !searchTerm || title.includes(searchTerm) || tags.includes(searchTerm);
+            const matchesTag = !selectedTag || tags.includes(selectedTag);
+            
+            if (matchesSearch && matchesTag) {
+                photo.style.display = 'block';
+            } else {
+                photo.style.display = 'none';
+            }
+        });
+        
+        // Sort photos
+        const visiblePhotos = photos.filter(photo => photo.style.display !== 'none');
+        const sortedPhotos = visiblePhotos.sort((a, b) => {
+            if (sortBy === 'title') {
+                return a.getAttribute('data-title').localeCompare(b.getAttribute('data-title'));
+            } else if (sortBy === '-title') {
+                return b.getAttribute('data-title').localeCompare(a.getAttribute('data-title'));
+            } else if (sortBy === 'created_at') {
+                return parseInt(a.getAttribute('data-photo-id')) - parseInt(b.getAttribute('data-photo-id'));
+            } else {
+                return parseInt(b.getAttribute('data-photo-id')) - parseInt(a.getAttribute('data-photo-id'));
+            }
+        });
+        
+        // Reorder in DOM
+        sortedPhotos.forEach(photo => photoGrid.appendChild(photo));
+    }
+    
+    // Event listeners
+    if (photoGrid) {
+        console.log('Setting up event listeners for photo grid');
+        
+        // Photo selection - handle checkbox changes
+        photoGrid.addEventListener('change', function(e) {
+            if (e.target.classList.contains('photo-checkbox')) {
+                console.log('Checkbox change event:', e.target.value, 'checked:', e.target.checked);
+                handlePhotoSelection(e.target);
+            }
+        });
+        
+        // Click on photo item to select/deselect
+        photoGrid.addEventListener('click', function(e) {
+            // Don't handle clicks on checkboxes (they're handled by change event)
+            if (e.target.classList.contains('photo-checkbox')) {
+                return;
+            }
+            
+            const photoItem = e.target.closest('.photo-selection-item');
+            if (photoItem) {
+                const checkbox = photoItem.querySelector('.photo-checkbox');
+                if (checkbox) {
+                    checkbox.checked = !checkbox.checked;
+                    console.log('Photo clicked, toggling checkbox:', checkbox.value, 'new state:', checkbox.checked);
+                    handlePhotoSelection(checkbox);
+                }
+            }
+        });
+        
+        // Initialize tag filter
+        initializeTagFilter();
+        
+        // Initialize selection summary
+        updateSelectionSummary();
+        
+        // Test: manually trigger a selection to verify it works
+        setTimeout(() => {
+            const firstCheckbox = photoGrid.querySelector('.photo-checkbox');
+            if (firstCheckbox) {
+                console.log('Testing first checkbox selection...');
+                firstCheckbox.checked = true;
+                firstCheckbox.dispatchEvent(new Event('change'));
+            }
+        }, 1000);
+    }
+    
+    // Filter event listeners
+    if (searchInput) {
+        searchInput.addEventListener('input', filterPhotos);
+    }
+    if (tagFilter) {
+        tagFilter.addEventListener('change', filterPhotos);
+    }
+    if (sortFilter) {
+        sortFilter.addEventListener('change', filterPhotos);
+    }
+    
+    // Form submission
+    const addPhotosForm = document.getElementById('add-photos-form');
+    if (addPhotosForm) {
+        addPhotosForm.addEventListener('submit', function(e) {
+            if (selectedPhotos.size === 0) {
+                e.preventDefault();
+                alert('Please select at least one photo to add.');
+                return false;
+            }
+            console.log('Form submitted with photos:', Array.from(selectedPhotos));
+        });
+    }
+    
+    console.log('=== Photo Selection Manager Initialized ===');
+});
+</script>
+{% endblock %}

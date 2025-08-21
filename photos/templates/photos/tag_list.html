@@ -1,0 +1,265 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load collection_filters %}
+
+{% block title %}My Tags - Shuttrly{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/photo_gallery.css' %}">
+<style>
+    .tag-card {
+        background: white;
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        transition: transform 0.2s, box-shadow 0.2s;
+        border-left: 4px solid #007bff;
+    }
+    
+    .tag-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    
+    .tag-header {
+        display: flex;
+        justify-content-between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+    
+    .tag-name {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: #007bff;
+        text-decoration: none;
+    }
+    
+    .tag-name:hover {
+        color: #0056b3;
+        text-decoration: underline;
+    }
+    
+    .tag-stats {
+        display: flex;
+        gap: 2rem;
+        margin-bottom: 1rem;
+    }
+    
+    .stat-item {
+        text-align: center;
+    }
+    
+    .stat-number {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: #495057;
+    }
+    
+    .stat-label {
+        font-size: 0.875rem;
+        color: #6c757d;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .tag-actions {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+    
+    .btn-sm {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.875rem;
+    }
+    
+    .search-section {
+        background: white;
+        border-radius: 8px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .search-form {
+        display: flex;
+        gap: 1rem;
+        align-items: end;
+    }
+    
+    .search-form .form-group {
+        flex: 1;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        color: #6c757d;
+    }
+    
+    .empty-state i {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+    }
+    
+    .tag-cloud {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-top: 1rem;
+    }
+    
+    .tag-cloud .tag {
+        display: inline-block;
+        background: #e9ecef;
+        color: #495057;
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-size: 0.9rem;
+        text-decoration: none;
+        transition: background-color 0.2s;
+    }
+    
+    .tag-cloud .tag:hover {
+        background: #007bff;
+        color: white;
+        text-decoration: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>My Tags</h1>
+        <a href="{% url 'photos:gallery' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-images"></i> View Photos
+        </a>
+    </div>
+
+    <!-- Search Section -->
+    <div class="search-section">
+        <h5><i class="fas fa-search"></i> Search by Multiple Tags</h5>
+        <form method="get" action="{% url 'photos:search_by_tags' %}" class="search-form">
+            <div class="form-group">
+                <label for="tags-input" class="form-label">Enter Tags</label>
+                <input type="text" class="form-control" id="tags-input" name="tags" 
+                       placeholder="Enter tags separated by spaces (e.g., nature travel sunset)">
+                <div class="form-text">You can search for photos and collections that have multiple tags</div>
+            </div>
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-search"></i> Search
+            </button>
+        </form>
+    </div>
+
+    {% if tags %}
+        <!-- Tags List -->
+        <div class="row">
+            {% for tag in tags %}
+                <div class="col-lg-6">
+                    <div class="tag-card">
+                        <div class="tag-header">
+                            <a href="{% url 'photos:tag_detail' tag %}" class="tag-name">
+                                #{{ tag }}
+                            </a>
+                            <span class="badge bg-primary">{{ tag_counts|get_item:tag|get_item:'total_count' }}</span>
+                        </div>
+                        
+                        <div class="tag-stats">
+                            <div class="stat-item">
+                                <div class="stat-number">{{ tag_counts|get_item:tag|get_item:'photo_count' }}</div>
+                                <div class="stat-label">Photos</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-number">{{ tag_counts|get_item:tag|get_item:'collection_count' }}</div>
+                                <div class="stat-label">Collections</div>
+                            </div>
+                        </div>
+                        
+                        <div class="tag-actions">
+                            <a href="{% url 'photos:tag_detail' tag %}" class="btn btn-outline-primary btn-sm">
+                                <i class="fas fa-eye"></i> View All
+                            </a>
+                            <a href="{% url 'photos:gallery' %}?tags={{ tag }}" class="btn btn-outline-secondary btn-sm">
+                                <i class="fas fa-images"></i> View Photos
+                            </a>
+                            <a href="{% url 'photos:collection_list' %}" class="btn btn-outline-info btn-sm">
+                                <i class="fas fa-folder"></i> View Collections
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+        
+        <!-- Tag Cloud -->
+        <div class="mt-4">
+            <h5><i class="fas fa-cloud"></i> Tag Cloud</h5>
+            <div class="tag-cloud">
+                {% for tag in tags %}
+                    <a href="{% url 'photos:tag_detail' tag %}" class="tag">
+                        #{{ tag }} ({{ tag_counts|get_item:tag|get_item:'total_count' }})
+                    </a>
+                {% endfor %}
+            </div>
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <i class="fas fa-tags"></i>
+            <h3>No Tags Yet</h3>
+            <p>Start adding tags to your photos and collections to organize them better.</p>
+            <div class="mt-3">
+                <a href="{% url 'photos:upload' %}" class="btn btn-primary me-2">
+                    <i class="fas fa-upload"></i> Upload Photos
+                </a>
+                <a href="{% url 'photos:collection_create' %}" class="btn btn-outline-primary">
+                    <i class="fas fa-folder-plus"></i> Create Collection
+                </a>
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const tagsInput = document.getElementById('tags-input');
+    
+    // Auto-format tags as user types
+    tagsInput.addEventListener('input', function() {
+        let value = this.value;
+        
+        // Add # to tags that don't have it
+        value = value.replace(/(?<!\s)#/g, ' #'); // Ensure space before #
+        value = value.replace(/(?<=\S)(?=#)/g, ' '); // Add space before # if no space
+        
+        // Remove multiple spaces
+        value = value.replace(/\s+/g, ' ').trim();
+        
+        this.value = value;
+    });
+    
+    // Format tags on blur
+    tagsInput.addEventListener('blur', function() {
+        let value = this.value;
+        
+        // Split by spaces and format each tag
+        const tags = value.split(/\s+/).filter(tag => tag.trim());
+        const formattedTags = tags.map(tag => {
+            if (tag.startsWith('#')) {
+                return tag;
+            } else {
+                return `#${tag}`;
+            }
+        });
+        
+        this.value = formattedTags.join(' ');
+    });
+});
+</script>
+{% endblock %}

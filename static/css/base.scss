@@ -714,7 +714,7 @@ footer {
   justify-content: center;
   align-items: center;
   font-size: 1.4rem;
-  margin-left: calc(var(--sidebar-width));
+  padding-left: calc(var(--sidebar-width));
 
 
   p {
@@ -810,7 +810,7 @@ footer {
   }
 
   footer {
-    margin-left: var(--mobile-sidebar-width);
+    padding-left: var(--mobile-sidebar-width);
 }
 }
 

@@ -3,14 +3,31 @@ import uuid
 from datetime import datetime
 from django.db import models
 from django.contrib.auth import get_user_model
-from django.core.exceptions import ValidationError
-from django.utils import timezone
 from PIL import Image
 import exifread
 import rawpy
 from io import BytesIO
 
+COLLECTION_TYPES = [
+    ("personal", "Personal"),
+    ("shared", "Shared"),
+    ("group", "Group"),
+]
+
+SORT_OPTIONS = [
+    ("date_desc", "Newest First"),
+    ("date_asc", "Oldest First"),
+    ("alphabetical_asc", "A-Z"),
+    ("alphabetical_desc", "Z-A"),
+    ("random", "Random"),
+    ("custom", "Custom"),
+]
+
 User = get_user_model()
+
+# ===============================
+# PHOTOS
+# ===============================
 
 
 def photo_upload_path(instance, filename):
@@ -125,6 +142,45 @@ class Photo(models.Model):
         """Override save to handle basic photo creation"""
         # Don't extract EXIF or generate thumbnail here - do it manually after file is saved
         super().save(*args, **kwargs)
+
+    def get_tags_list(self):
+        """Return tags as a list of strings, extracting hashtags"""
+        if self.tags:
+            # Extract hashtags: split by space and filter those starting with #
+            hashtags = [tag.strip() for tag in self.tags.split() if tag.strip().startswith('#')]
+            # Remove the # symbol and return clean tags
+            return [tag[1:] for tag in hashtags]
+        return []
+
+    def set_tags_from_list(self, tag_list):
+        """Set tags from a list, converting to hashtag format"""
+        hashtags = [f"#{tag.strip()}" for tag in tag_list if tag.strip()]
+        self.tags = " ".join(hashtags)
+    
+    def add_tag(self, tag):
+        """Add a single tag to the photo"""
+        if not tag.startswith('#'):
+            tag = f"#{tag}"
+        current_tags = self.tags.split() if self.tags else []
+        if tag not in current_tags:
+            current_tags.append(tag)
+            self.tags = " ".join(current_tags)
+
+    def remove_tag(self, tag):
+        """Remove a single tag from the photo"""
+        if not tag.startswith('#'):
+            tag = f"#{tag}"
+        
+        current_tags = self.tags.split() if self.tags else []
+        if tag in current_tags:
+            current_tags.remove(tag)
+            self.tags = " ".join(current_tags)
+    
+    def has_tag(self, tag):
+        """Check if photo has a specific tag"""
+        if not tag.startswith('#'):
+            tag = f"#{tag}"
+        return tag in (self.tags.split() if self.tags else [])
 
     def extract_exif_data(self):
         """Extract EXIF data from the photo file"""
@@ -941,12 +997,6 @@ class Photo(models.Model):
             parts.append(self.camera_model)
         return " ".join(parts) if parts else "Unknown"
 
-    def get_tags_list(self):
-        """Return tags as a list"""
-        if self.tags:
-            return [tag.strip() for tag in self.tags.split(",") if tag.strip()]
-        return []
-
     def delete(self, *args, **kwargs):
         """Override delete to remove files from storage"""
         # Delete original file
@@ -1052,3 +1102,153 @@ class Photo(models.Model):
             9: "Flash fired, auto mode, return detected",
         }
         return flash_map.get(int(flash_value), f"Flash {flash_value}")
+
+# ===============================
+# COLLECTIONS
+# ===============================
+class Collection(models.Model):
+    # Basic information
+    name = models.CharField(max_length=200)
+    description = models.TextField(blank=True, null=True)
+   
+    # Owner and permissions
+    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name="collections")
+    collaborators = models.ManyToManyField(User, blank=True, related_name="collaborated_collections")
+    is_public = models.BooleanField(default=False)
+
+    # Collection metadata
+    tags = models.CharField(max_length=500, blank=True, help_text="Comma-separated tags")
+    cover_photo = models.ForeignKey(Photo, on_delete=models.SET_NULL, null=True, blank=True, related_name="collection_cover")
+    collection_type = models.CharField(max_length=50, choices=COLLECTION_TYPES, default="personal")
+
+    # Photos relationship
+    photos = models.ManyToManyField(Photo, through="CollectionPhoto", related_name="collections")
+
+    # Sorting and display
+    sort_order = models.CharField(max_length=20, choices=SORT_OPTIONS, default="date_desc")
+    custom_order = models.JSONField(default=list, blank=True)
+
+    # System fields
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["owner", "-updated_at"]),
+            models.Index(fields=["-is_public", "-updated_at"]),
+            models.Index(fields=["tags"]),
+        ]
+        verbose_name = "Collection"
+        verbose_name_plural = "Collections"
+
+    def __str__(self):
+        return f"{self.name} - {self.owner.username}"
+
+    def get_photo_count(self):
+        """Return the number of photos in the collection"""
+        return self.photos.count()
+
+    def get_total_size_mb(self):
+        """Return the total size of the collection in MB"""
+        total_bytes = sum(photo.file_size for photo in self.photos.all())
+        return round(total_bytes / (1024 * 1024), 2)
+
+    def get_cover_photo_url(self):
+        """Return the URL of the cover photo if it exists, else return the URL of the first photo"""
+        if self.cover_photo and self.cover_photo.thumbnail:
+            return self.cover_photo.thumbnail.url
+        elif self.photos.exists():
+            # Use first photo as cover if no cover photo is set
+            first_photo = self.photos.first()
+            return first_photo.thumbnail.url if first_photo.thumbnail else first_photo.original_file.url
+        return None
+    
+    def get_tags_list(self):
+        """Return tags as a list of strings, extracting hashtags"""
+        if self.tags:
+            # Extract hashtags: split by space and filter those starting with #
+            hashtags = [tag.strip() for tag in self.tags.split() if tag.strip().startswith('#')]
+            # Remove the # symbol and return clean tags
+            return [tag[1:] for tag in hashtags]
+        return []
+    
+    def set_tags_from_list(self, tag_list):
+        """Set tags from a list, converting to hashtag format"""
+        hashtags = [f"#{tag.strip()}" for tag in tag_list if tag.strip()]
+        self.tags = " ".join(hashtags)
+    
+    def add_tag(self, tag):
+        """Add a single tag to the collection"""
+        if not tag.startswith('#'):
+            tag = f"#{tag}"
+        
+        current_tags = self.tags.split() if self.tags else []
+        if tag not in current_tags:
+            current_tags.append(tag)
+            self.tags = " ".join(current_tags)
+    
+    def remove_tag(self, tag):
+        """Remove a tag from the collection"""
+        if not tag.startswith('#'):
+            tag = f"#{tag}"
+        
+        current_tags = self.tags.split() if self.tags else []
+        if tag in current_tags:
+            current_tags.remove(tag)
+            self.tags = " ".join(current_tags)
+    
+    def has_tag(self, tag):
+        """Check if collection has a specific tag"""
+        if not tag.startswith('#'):
+            tag = f"#{tag}"
+        return tag in (self.tags.split() if self.tags else [])
+
+    def get_collaborators_list(self):
+        """Return collaborators as a list of usernames"""
+        return [collaborator.username for collaborator in self.collaborators.all()]
+    
+    def get_collaborators_count(self):
+        """Return the number of collaborators"""
+        return self.collaborators.count()
+    
+    def add_photo(self, photo, order=None):
+        """Add a photo to the collection"""
+        if order is None:
+            order = self.get_photo_count()
+
+        CollectionPhoto.objects.create(
+            collection=self,
+            photo=photo,
+            order=order
+        )
+        
+    def remove_photo(self, photo):
+        """Remove a photo from the collection"""
+        CollectionPhoto.objects.filter(collection=self, photo=photo).delete()
+
+    def reorder_photos(self, photo_order):
+        """Reorder photos in the collection"""
+        for index, photo_id in enumerate(photo_order):
+            CollectionPhoto.objects.filter(
+                collection=self,
+                photo_id=photo_id
+            ).update(order=index)
+        
+        
+
+class CollectionPhoto(models.Model):
+    """Intermediate model for managing photos in collections with ordering"""
+    collection = models.ForeignKey(Collection, on_delete=models.CASCADE, related_name="collection_photos")
+    photo = models.ForeignKey(Photo, on_delete=models.CASCADE, related_name="collection_photos")
+    order = models.PositiveIntegerField(default=0)
+    added_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ["order", "added_at"]
+        unique_together = ["collection", "photo"]
+        verbose_name = "Collection Photo"
+        verbose_name_plural = "Collection Photos"
+    
+    def __str__(self):
+        return f"{self.photo.title} in {self.collection.name}"

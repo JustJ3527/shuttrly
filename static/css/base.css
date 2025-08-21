@@ -3,25 +3,25 @@
 @import url("https://fonts.googleapis.com/css?family=Inter:700|Inter:400");
 @font-face {
   font-family: "Tan_Nimbus";
-  src: url("../../assets/fonts/tan-nimbus/TAN-NIMBUS.ttf") format("truetype");
-  src: url("../../assets/fonts/tan-nimbus/TAN-NIMBUS.woff") format("woff");
-  src: url("../../assets/fonts/tan-nimbus/TAN-NIMBUS.woff2") format("woff2");
+  src: url("../fonts/tan-nimbus/TAN-NIMBUS.ttf") format("truetype");
+  src: url("../fonts/tan-nimbus/TAN-NIMBUS.woff") format("woff");
+  src: url("../fonts/tan-nimbus/TAN-NIMBUS.woff2") format("woff2");
 }
 @font-face {
   font-family: "Garet";
   font-weight: normal;
-  src: url("../../assets/fonts/garet/Garet-Book.otf") format("opentype");
-  src: url("../../assets/fonts/garet/Garet-Book.ttf") format("truetype");
-  src: url("../../assets/fonts/garet/Garet-Book.woff") format("woff");
-  src: url("../../assets/fonts/garet/Garet-Book.woff2") format("woff2");
+  src: url("../fonts/garet/Garet-Book.otf") format("opentype");
+  src: url("../fonts/garet/Garet-Book.ttf") format("truetype");
+  src: url("../fonts/garet/Garet-Book.woff") format("woff");
+  src: url("../fonts/garet/Garet-Book.woff2") format("woff2");
 }
 @font-face {
   font-family: "Garet";
   font-weight: bold;
-  src: url("../../assets/fonts/garet/Garet-Heavy.otf") format("opentype");
-  src: url("../../assets/fonts/garet/Garet-Heavy.ttf") format("truetype");
-  src: url("../../assets/fonts/garet/Garet-Heavy.woff") format("woff");
-  src: url("../../assets/fonts/garet/Garet-Heavy.woff2") format("woff2");
+  src: url("../fonts/garet/Garet-Heavy.otf") format("opentype");
+  src: url("../fonts/garet/Garet-Heavy.ttf") format("truetype");
+  src: url("../fonts/garet/Garet-Heavy.woff") format("woff");
+  src: url("../fonts/garet/Garet-Heavy.woff2") format("woff2");
 }
 @font-face {
   font-family: "The_Seasons";
@@ -40,11 +40,11 @@
 }
 /* Variables par défaut (fallback) */
 :root {
-  --text: hsl(86, 17%, 8%);
-  --background: hsl(80, 5%, 88%);
-  --primary: hsl(81, 31%, 52%);
-  --secondary: hsl(112, 24%, 31%);
-  --accent: hsl(188, 31%, 50%);
+  --text-default: hsl(86, 17%, 8%);
+  --background-default: hsl(80, 5%, 88%);
+  --primary-default: hsl(81, 31%, 52%);
+  --secondary-default: hsl(112, 24%, 31%);
+  --accent-default: hsl(188, 31%, 50%);
   /* New responsive variables */
   --blur-amount: 20px;
   --sidebar-width: 250px;
@@ -190,10 +190,7 @@
   --accent-900: hsl(188, 29%, 90%);
   --accent-950: hsl(187, 31%, 95%);
   --opacity-background-before: 0.3;
-  --text: var(--text-default);
-  --background: var(--background-default);
-  --primary: var(--primary-default);
-  --accent: var(--accent-default);
+  --gradient-primary: linear-gradient(120deg, var(--primary-default), var(--accent-default));
 }
 
 html {
@@ -201,14 +198,16 @@ html {
 }
 
 body {
-  background-color: var(--background);
-  color: var(--text);
+  background: var(--background-default);
+  color: var(--text-default);
   margin: 0;
   padding: 0;
   font-family: "Garet";
   font-weight: 400;
-  transition: background-color 0.3s, color 0.3s;
-  min-height: 150vh;
+  transition: all 0.3s ease;
+}
+body p {
+  color: var(--text-default);
 }
 
 h1 {
@@ -232,7 +231,7 @@ h3 {
 .subtitle {
   font-size: 2rem;
   font-weight: bold;
-  color: var(--primary);
+  color: var(--primary-default);
   font-family: "The_Seasons";
   letter-spacing: 0.05rem;
 }
@@ -240,11 +239,11 @@ h3 {
 .description {
   font-size: 1.5rem;
   font-weight: 400;
-  color: var(--accent);
+  color: var(--accent-default);
 }
 
 .gradient-text {
-  background: linear-gradient(120deg, var(--primary), var(--accent));
+  background: var(--gradient-primary);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -256,9 +255,9 @@ select#theme-select {
   font-size: 1rem;
   cursor: pointer;
   border-radius: 0.5rem;
-  border: 1px solid var(--primary);
-  background: var(--background);
-  color: var(--text);
+  border: 1px solid var(--primary-default);
+  background: var(--background-default);
+  color: var(--text-default);
 }
 
 /* Horizontal navbar at the top - fixed height */
@@ -290,7 +289,7 @@ nav.navbar {
   top: 70px; /* Start after navbar */
   left: 0;
   width: 250px;
-  height: calc(100vh - 70px); /* Total height minus navbar */
+  height: calc(100vh - var(--navbar-height)); /* Total height minus navbar */
   background: rgba(255, 255, 255, 0.1);
   -webkit-backdrop-filter: blur(var(--blur-amount));
   backdrop-filter: blur(var(--blur-amount));
@@ -333,7 +332,7 @@ nav.navbar {
 
 .sidebar-section h3 i {
   font-size: 0.75rem;
-  color: var(--primary);
+  color: var(--primary-default);
 }
 
 .sidebar-section ul {
@@ -351,7 +350,7 @@ nav.navbar {
   align-items: center;
   gap: 0.75rem;
   padding: 0.75rem;
-  color: var(--text);
+  color: var(--text-default);
   text-decoration: none;
   font-weight: 500;
   font-size: 0.875rem;
@@ -374,7 +373,7 @@ nav.navbar {
 
 .sidebar-section a:hover {
   background: var(--text-200);
-  color: var(--primary);
+  color: var(--primary-default);
 }
 
 .sidebar-section a i {
@@ -386,7 +385,7 @@ nav.navbar {
 }
 
 .sidebar-section a:hover i {
-  color: var(--primary);
+  color: var(--primary-default);
 }
 
 .sidebar-header {
@@ -426,7 +425,7 @@ nav.navbar {
 }
 
 .navbar-menu a {
-  color: var(--text);
+  color: var(--text-default);
   text-decoration: none;
   padding: 0.75rem 1rem;
   border-radius: 0.5rem;
@@ -449,7 +448,7 @@ nav.navbar {
 
 .navbar-menu a:hover,
 .navbar-menu a.active {
-  color: var(--primary);
+  color: var(--primary-default);
 }
 
 .navbar-menu a.active::after {
@@ -460,7 +459,7 @@ nav.navbar {
   transform: translateX(-50%);
   width: 20px;
   height: 2px;
-  background: var(--primary);
+  background: var(--primary-default);
   border-radius: 1px;
 }
 
@@ -477,7 +476,7 @@ nav.navbar {
 }
 
 .navbar-actions a {
-  color: var(--text);
+  color: var(--text-default);
   text-decoration: none;
   font-weight: 500;
   border-radius: 0.5rem;
@@ -492,7 +491,7 @@ nav.navbar {
 
 .navbar-actions a:hover {
   background: rgba(255, 255, 255, 0.1);
-  color: var(--primary);
+  color: var(--primary-default);
   transform: scale(1.1);
 }
 
@@ -505,6 +504,7 @@ nav.navbar {
   padding-top: calc(var(--navbar-height) + 2rem);
   padding-left: calc(var(--sidebar-width) + 2rem);
   padding-right: 2rem;
+  min-height: 100vh; /* TODO: Delete */
 }
 
 /* Add content in the background to test the blur effect */
@@ -541,7 +541,7 @@ body::before {
     display: block;
     background: none;
     border: none;
-    color: var(--text);
+    color: var(--text-default);
     font-size: 1.5rem;
     cursor: pointer;
   }
@@ -558,7 +558,7 @@ body::before {
   left: 0;
   right: 0;
   bottom: 0;
-  background: var(--background);
+  background: var(--background-default);
   -webkit-backdrop-filter: blur(var(--blur-amount));
   backdrop-filter: blur(var(--blur-amount));
   z-index: 998;
@@ -598,7 +598,7 @@ body::before {
 }
 
 .mobile-menu-section h3 {
-  color: var(--primary);
+  color: var(--primary-default);
   font-size: 1.125rem;
   margin-bottom: 1rem;
   display: flex;
@@ -624,7 +624,7 @@ body::before {
   align-items: center;
   gap: 1rem;
   padding: 1rem;
-  color: var(--text);
+  color: var(--text-default);
   text-decoration: none;
   border-radius: 0.5rem;
   transition: all 0.3s ease;
@@ -633,7 +633,7 @@ body::before {
 
 .mobile-menu-section a:hover {
   background: rgba(255, 255, 255, 0.1);
-  color: var(--primary);
+  color: var(--primary-default);
 }
 
 .mobile-menu-section a i {
@@ -644,11 +644,30 @@ body::before {
 }
 
 .mobile-menu-section a:hover i {
-  color: var(--primary);
+  color: var(--primary-default);
 }
 
 .navbar-toggle {
   display: none;
+}
+
+footer {
+  background: var(--gradient-primary);
+  color: white;
+  text-align: center;
+  padding: 1rem;
+  position: relative;
+  bottom: 0;
+  width: auto;
+  height: 200px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 1.4rem;
+  margin-left: calc(var(--sidebar-width));
+}
+footer p {
+  color: var(--text-default);
 }
 
 /* Responsive design - Tablet (icons only for sidebar) */
@@ -723,6 +742,9 @@ body::before {
     padding-left: calc(var(--mobile-sidebar-width) + 2rem);
     transition: padding-left var(--sidebar-transition-duration) ease;
   }
+  footer {
+    margin-left: var(--mobile-sidebar-width);
+  }
 }
 /* Responsive design - Mobile */
 @media (max-width: 768px) {
@@ -779,7 +801,7 @@ body::before {
     display: block;
     width: 24px;
     height: 2px;
-    background: var(--text);
+    background: var(--text-default);
     margin: 3px 0;
     transition: all 0.3s ease;
     border-radius: 1px;
@@ -800,7 +822,7 @@ body::before {
   }
   /* Mobile menu overlay using CSS variables */
   .mobile-menu-overlay {
-    background: var(--background);
+    background: var(--background-default);
     -webkit-backdrop-filter: blur(var(--blur-amount));
     backdrop-filter: blur(var(--blur-amount));
   }
@@ -809,20 +831,20 @@ body::before {
     border: 1px solid rgba(255, 255, 255, 0.1);
   }
   .mobile-menu-section h3 {
-    color: var(--primary);
+    color: var(--primary-default);
   }
   .mobile-menu-section a {
-    color: var(--text);
+    color: var(--text-default);
   }
   .mobile-menu-section a:hover {
     background: rgba(255, 255, 255, 0.1);
-    color: var(--primary);
+    color: var(--primary-default);
   }
   .mobile-menu-section a i {
     color: var(--text-500);
   }
   .mobile-menu-section a:hover i {
-    color: var(--primary);
+    color: var(--primary-default);
   }
   /* Main content adjustment for mobile */
   .main-content {
@@ -866,4 +888,4 @@ body::before {
   .mobile-menu-section {
     padding: 1rem;
   }
-}/*# sourceMappingURL=style-navbar.css.map */
+}/*# sourceMappingURL=base.css.map */

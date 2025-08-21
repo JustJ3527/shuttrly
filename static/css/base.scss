@@ -1,50 +1,54 @@
-@charset "UTF-8";
 /* ===== Fonts ===== */
-@import url("https://fonts.googleapis.com/css?family=Inter:700|Inter:400");
+@import url('https://fonts.googleapis.com/css?family=Inter:700|Inter:400');
 @font-face {
-  font-family: "Tan_Nimbus";
-  src: url("../../assets/fonts/tan-nimbus/TAN-NIMBUS.ttf") format("truetype");
-  src: url("../../assets/fonts/tan-nimbus/TAN-NIMBUS.woff") format("woff");
-  src: url("../../assets/fonts/tan-nimbus/TAN-NIMBUS.woff2") format("woff2");
+  font-family: 'Tan_Nimbus';
+  src: url('../fonts/tan-nimbus/TAN-NIMBUS.ttf') format('truetype');
+  src: url('../fonts/tan-nimbus/TAN-NIMBUS.woff') format('woff');
+  src: url('../fonts/tan-nimbus/TAN-NIMBUS.woff2') format('woff2');
 }
+
 @font-face {
   font-family: "Garet";
   font-weight: normal;
-  src: url("../../assets/fonts/garet/Garet-Book.otf") format("opentype");
-  src: url("../../assets/fonts/garet/Garet-Book.ttf") format("truetype");
-  src: url("../../assets/fonts/garet/Garet-Book.woff") format("woff");
-  src: url("../../assets/fonts/garet/Garet-Book.woff2") format("woff2");
+  src: url('../fonts/garet/Garet-Book.otf') format('opentype');
+  src: url('../fonts/garet/Garet-Book.ttf') format('truetype');
+  src: url('../fonts/garet/Garet-Book.woff') format('woff');
+  src: url('../fonts/garet/Garet-Book.woff2') format('woff2');
 }
 @font-face {
   font-family: "Garet";
   font-weight: bold;
-  src: url("../../assets/fonts/garet/Garet-Heavy.otf") format("opentype");
-  src: url("../../assets/fonts/garet/Garet-Heavy.ttf") format("truetype");
-  src: url("../../assets/fonts/garet/Garet-Heavy.woff") format("woff");
-  src: url("../../assets/fonts/garet/Garet-Heavy.woff2") format("woff2");
+  src: url('../fonts/garet/Garet-Heavy.otf') format('opentype');
+  src: url('../fonts/garet/Garet-Heavy.ttf') format('truetype');
+  src: url('../fonts/garet/Garet-Heavy.woff') format('woff');
+  src: url('../fonts/garet/Garet-Heavy.woff2') format('woff2');
 }
+
 @font-face {
   font-family: "The_Seasons";
   font-weight: normal;
-  src: url("../../assets/fonts/the-seasons/TheSeasons-Regular.otf") format("opentype");
+  src: url('../../assets/fonts/the-seasons/TheSeasons-Regular.otf') format('opentype');
 }
 @font-face {
   font-family: "The_Seasons";
   font-weight: bold;
-  src: url("../../assets/fonts/the-seasons/TheSeasons-Bold.otf") format("opentype");
+  src: url('../../assets/fonts/the-seasons/TheSeasons-Bold.otf') format('opentype');
 }
 @font-face {
   font-family: "The_Seasons";
   font-weight: lighter;
-  src: url("../../assets/fonts/the-seasons/TheSeasons-Lighter.otf") format("opentype");
+  src: url('../../assets/fonts/the-seasons/TheSeasons-Lighter.otf') format('opentype');
 }
+
+
 /* Variables par défaut (fallback) */
 :root {
-  --text: hsl(86, 17%, 8%);
-  --background: hsl(80, 5%, 88%);
-  --primary: hsl(81, 31%, 52%);
-  --secondary: hsl(112, 24%, 31%);
-  --accent: hsl(188, 31%, 50%);
+  --text-default: hsl(86, 17%, 8%);
+  --background-default: hsl(80, 5%, 88%);
+  --primary-default: hsl(81, 31%, 52%);
+  --secondary-default: hsl(112, 24%, 31%);
+  --accent-default: hsl(188, 31%, 50%);
+  
   /* New responsive variables */
   --blur-amount: 20px;
   --sidebar-width: 250px;
@@ -53,12 +57,14 @@
   --mobile-sidebar-width: 5rem;
   --mobile-navbar-height: 5rem;
   --sidebar-transition-duration: 0.3s;
+
   --opacity-background-before: 0.5;
 }
 
 /* Thème clair détaillé */
-:root[data-theme=light] {
+:root[data-theme="light"] {
   --text-default: hsl(86, 17%, 8%);
+
   --text-50: hsl(75, 15%, 95%);
   --text-100: hsl(87, 18%, 90%);
   --text-200: hsl(87, 18%, 80%);
@@ -70,7 +76,10 @@
   --text-800: hsl(87, 18%, 20%);
   --text-900: hsl(87, 18%, 10%);
   --text-950: hsl(90, 15%, 5%);
+
+
   --background-default: hsl(80, 5%, 88%);
+
   --background-50: hsl(120, 4%, 95%);
   --background-100: hsl(80, 6%, 90%);
   --background-200: hsl(80, 6%, 80%);
@@ -82,7 +91,10 @@
   --background-800: hsl(80, 6%, 20%);
   --background-900: hsl(80, 6%, 10%);
   --background-950: hsl(60, 4%, 5%);
+
+
   --primary-default: hsl(81, 31%, 52%);
+
   --primary-50: hsl(83, 31%, 95%);
   --primary-100: hsl(80, 29%, 90%);
   --primary-200: hsl(81, 31%, 80%);
@@ -94,7 +106,10 @@
   --primary-800: hsl(81, 31%, 20%);
   --primary-900: hsl(80, 29%, 10%);
   --primary-950: hsl(83, 31%, 5%);
+
+
   --secondary-default: hsl(112, 24%, 69%);
+
   --secondary-50: hsl(110, 23%, 95%);
   --secondary-100: hsl(111, 25%, 90%);
   --secondary-200: hsl(113, 24%, 80%);
@@ -106,7 +121,10 @@
   --secondary-800: hsl(113, 24%, 20%);
   --secondary-900: hsl(111, 25%, 10%);
   --secondary-950: hsl(110, 23%, 5%);
+
+
   --accent-default: hsl(188, 31%, 50%);
+
   --accent-50: hsl(187, 31%, 95%);
   --accent-100: hsl(188, 29%, 90%);
   --accent-200: hsl(188, 31%, 80%);
@@ -118,7 +136,9 @@
   --accent-800: hsl(188, 31%, 20%);
   --accent-900: hsl(188, 29%, 10%);
   --accent-950: hsl(188, 31%, 5%);
+
   --opacity-background-before: 0.3;
+
   /* Variables principales */
   --text: var(--text-default);
   --background: var(--background-default);
@@ -128,8 +148,9 @@
 }
 
 /* Thème sombre détaillé */
-:root[data-theme=dark] {
+:root[data-theme="dark"] {
   --text-default: hsl(86, 17%, 92%);
+
   --text-50: hsl(90, 15%, 5%);
   --text-100: hsl(87, 18%, 10%);
   --text-200: hsl(87, 18%, 20%);
@@ -141,7 +162,10 @@
   --text-800: hsl(87, 18%, 80%);
   --text-900: hsl(87, 18%, 90%);
   --text-950: hsl(75, 15%, 95%);
+
+
   --background-default: hsl(80, 5%, 12%);
+
   --background-50: hsl(60, 4%, 5%);
   --background-100: hsl(80, 6%, 10%);
   --background-200: hsl(80, 6%, 20%);
@@ -153,7 +177,10 @@
   --background-800: hsl(80, 6%, 80%);
   --background-900: hsl(80, 6%, 90%);
   --background-950: hsl(120, 4%, 95%);
+
+
   --primary-default: hsl(81, 31%, 48%);
+
   --primary-50: hsl(83, 31%, 5%);
   --primary-100: hsl(80, 29%, 10%);
   --primary-200: hsl(81, 31%, 20%);
@@ -165,7 +192,10 @@
   --primary-800: hsl(81, 31%, 80%);
   --primary-900: hsl(80, 29%, 90%);
   --primary-950: hsl(83, 31%, 95%);
+
+
   --secondary-default: hsl(112, 24%, 31%);
+
   --secondary-50: hsl(110, 23%, 5%);
   --secondary-100: hsl(111, 25%, 10%);
   --secondary-200: hsl(113, 24%, 20%);
@@ -177,7 +207,10 @@
   --secondary-800: hsl(113, 24%, 80%);
   --secondary-900: hsl(111, 25%, 90%);
   --secondary-950: hsl(110, 23%, 95%);
+
+
   --accent-default: hsl(188, 31%, 50%);
+
   --accent-50: hsl(188, 31%, 5%);
   --accent-100: hsl(188, 29%, 10%);
   --accent-200: hsl(188, 31%, 20%);
@@ -189,62 +222,65 @@
   --accent-800: hsl(188, 31%, 80%);
   --accent-900: hsl(188, 29%, 90%);
   --accent-950: hsl(187, 31%, 95%);
+
   --opacity-background-before: 0.3;
-  --text: var(--text-default);
-  --background: var(--background-default);
-  --primary: var(--primary-default);
-  --accent: var(--accent-default);
+
+  --gradient-primary: linear-gradient(120deg, var(--primary-default), var(--accent-default));
+
+
 }
 
-html {
-  font-size: 100%;
+html { 
+  font-size: 100%; 
 }
-
 body {
-  background-color: var(--background);
-  color: var(--text);
+  background: var(--background-default);
+  color: var(--text-default);
   margin: 0;
   padding: 0;
-  font-family: "Garet";
+  font-family: 'Garet';
   font-weight: 400;
-  transition: background-color 0.3s, color 0.3s;
-  min-height: 150vh;
+  transition: all 0.3s ease;
+  
+  p {
+    color: var(--text-default);
+  }
 }
 
-h1 {
-  font-family: "Tan_Nimbus";
-  font-size: 3.366rem;
-  letter-spacing: 0.2rem;
+h1 { 
+  font-family: 'Tan_Nimbus'; 
+  font-size: 3.366rem; 
+  letter-spacing: 0.2rem
 }
 
-h2 {
-  font-size: 2.525rem;
-  font-family: "The_Seasons";
+h2 {  
+  font-size: 2.525rem; 
+  font-family: 'The_Seasons';
   font-weight: bold;
 }
 
-h3 {
+h3 {  
   font-size: 1.894rem;
-  font-family: "Garet";
+  font-family: 'Garet';
   font-weight: normal;
 }
 
-.subtitle {
-  font-size: 2rem;
-  font-weight: bold;
-  color: var(--primary);
-  font-family: "The_Seasons";
+.subtitle { 
+  font-size: 2rem; 
+  font-weight: bold; 
+  color: var(--primary-default); 
+  font-family: 'The_Seasons';
   letter-spacing: 0.05rem;
 }
 
-.description {
-  font-size: 1.5rem;
-  font-weight: 400;
-  color: var(--accent);
+.description { 
+  font-size: 1.5rem; 
+  font-weight: 400; 
+  color: var(--accent-default); 
 }
 
 .gradient-text {
-  background: linear-gradient(120deg, var(--primary), var(--accent));
+  background: var(--gradient-primary);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -256,9 +292,9 @@ select#theme-select {
   font-size: 1rem;
   cursor: pointer;
   border-radius: 0.5rem;
-  border: 1px solid var(--primary);
-  background: var(--background);
-  color: var(--text);
+  border: 1px solid var(--primary-default);
+  background: var(--background-default);
+  color: var(--text-default);
 }
 
 /* Horizontal navbar at the top - fixed height */
@@ -281,6 +317,7 @@ nav.navbar {
   -webkit-user-select: none;
   -webkit-touch-callout: none;
   -moz-user-select: none;
+  -ms-user-select: none;
   user-select: none;
 }
 
@@ -290,7 +327,7 @@ nav.navbar {
   top: 70px; /* Start after navbar */
   left: 0;
   width: 250px;
-  height: calc(100vh - 70px); /* Total height minus navbar */
+  height: calc(100vh - var(--navbar-height)); /* Total height minus navbar */
   background: rgba(255, 255, 255, 0.1);
   -webkit-backdrop-filter: blur(var(--blur-amount));
   backdrop-filter: blur(var(--blur-amount));
@@ -301,6 +338,7 @@ nav.navbar {
   -webkit-user-select: none;
   -webkit-touch-callout: none;
   -moz-user-select: none;
+  -ms-user-select: none;
   user-select: none;
 }
 
@@ -333,7 +371,7 @@ nav.navbar {
 
 .sidebar-section h3 i {
   font-size: 0.75rem;
-  color: var(--primary);
+  color: var(--primary-default);
 }
 
 .sidebar-section ul {
@@ -351,18 +389,18 @@ nav.navbar {
   align-items: center;
   gap: 0.75rem;
   padding: 0.75rem;
-  color: var(--text);
+  color: var(--text-default);
   text-decoration: none;
   font-weight: 500;
   font-size: 0.875rem;
   border-radius: 0.5rem;
-}
-.sidebar-section a .icon-container {
-  width: 1.5rem;
-  height: 1.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  .icon-container {
+    width: 1.5rem;
+    height: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
 }
 
 .sidebar-section a span {
@@ -374,7 +412,7 @@ nav.navbar {
 
 .sidebar-section a:hover {
   background: var(--text-200);
-  color: var(--primary);
+  color: var(--primary-default);
 }
 
 .sidebar-section a i {
@@ -386,7 +424,7 @@ nav.navbar {
 }
 
 .sidebar-section a:hover i {
-  color: var(--primary);
+  color: var(--primary-default);
 }
 
 .sidebar-header {
@@ -407,8 +445,8 @@ nav.navbar {
   font-weight: 700;
   text-decoration: none;
   flex-shrink: 0;
-  font-family: "Tan_Nimbus";
-  letter-spacing: 0.05rem;
+  font-family: 'Tan_Nimbus';
+  letter-spacing: 0.05rem;;
 }
 
 .navbar-menu {
@@ -426,7 +464,7 @@ nav.navbar {
 }
 
 .navbar-menu a {
-  color: var(--text);
+  color: var(--text-default);
   text-decoration: none;
   padding: 0.75rem 1rem;
   border-radius: 0.5rem;
@@ -436,7 +474,7 @@ nav.navbar {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  font-family: "Garet";
+  font-family: 'Garet';
   letter-spacing: 0.05rem;
   font-size: 1.2rem;
 }
@@ -449,18 +487,18 @@ nav.navbar {
 
 .navbar-menu a:hover,
 .navbar-menu a.active {
-  color: var(--primary);
+  color: var(--primary-default);
 }
 
 .navbar-menu a.active::after {
-  content: "";
+  content: '';
   position: absolute;
   bottom: -2px;
   left: 50%;
   transform: translateX(-50%);
   width: 20px;
   height: 2px;
-  background: var(--primary);
+  background: var(--primary-default);
   border-radius: 1px;
 }
 
@@ -477,7 +515,7 @@ nav.navbar {
 }
 
 .navbar-actions a {
-  color: var(--text);
+  color: var(--text-default);
   text-decoration: none;
   font-weight: 500;
   border-radius: 0.5rem;
@@ -492,7 +530,7 @@ nav.navbar {
 
 .navbar-actions a:hover {
   background: rgba(255, 255, 255, 0.1);
-  color: var(--primary);
+  color: var(--primary-default);
   transform: scale(1.1);
 }
 
@@ -505,17 +543,21 @@ nav.navbar {
   padding-top: calc(var(--navbar-height) + 2rem);
   padding-left: calc(var(--sidebar-width) + 2rem);
   padding-right: 2rem;
+  min-height: 100vh;  /* TODO: Delete */
 }
 
 /* Add content in the background to test the blur effect */
 body::before {
-  content: "";
+  content: '';
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: radial-gradient(circle at 20% 80%, var(--primary-200) 0%, transparent 50%), radial-gradient(circle at 80% 20%, var(--accent-200) 0%, transparent 50%), radial-gradient(circle at 40% 40%, var(--secondary-200) 0%, transparent 50%);
+  background: 
+    radial-gradient(circle at 20% 80%, var(--primary-200) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, var(--accent-200) 0%, transparent 50%),
+    radial-gradient(circle at 40% 40%, var(--secondary-200) 0%, transparent 50%);
   z-index: -2;
   pointer-events: none;
   opacity: var(--opacity-background-before);
@@ -526,26 +568,31 @@ body::before {
   nav.navbar {
     padding: 1rem;
   }
+  
   .navbar-menu ul {
     gap: 1rem;
   }
+  
   .sidebar-nav {
     transform: translateX(-100%);
   }
+  
   .main-content {
     padding-left: 1rem;
     padding-right: 1rem;
   }
+  
   /* Toggle button for mobile */
   .sidebar-toggle {
     display: block;
     background: none;
     border: none;
-    color: var(--text);
+    color: var(--text-default);
     font-size: 1.5rem;
     cursor: pointer;
   }
 }
+
 /* Hide the toggle button on desktop */
 .sidebar-toggle {
   display: none;
@@ -558,7 +605,7 @@ body::before {
   left: 0;
   right: 0;
   bottom: 0;
-  background: var(--background);
+  background: var(--background-default);
   -webkit-backdrop-filter: blur(var(--blur-amount));
   backdrop-filter: blur(var(--blur-amount));
   z-index: 998;
@@ -598,7 +645,7 @@ body::before {
 }
 
 .mobile-menu-section h3 {
-  color: var(--primary);
+  color: var(--primary-default);
   font-size: 1.125rem;
   margin-bottom: 1rem;
   display: flex;
@@ -624,7 +671,7 @@ body::before {
   align-items: center;
   gap: 1rem;
   padding: 1rem;
-  color: var(--text);
+  color: var(--text-default);
   text-decoration: none;
   border-radius: 0.5rem;
   transition: all 0.3s ease;
@@ -633,7 +680,7 @@ body::before {
 
 .mobile-menu-section a:hover {
   background: rgba(255, 255, 255, 0.1);
-  color: var(--primary);
+  color: var(--primary-default);
 }
 
 .mobile-menu-section a i {
@@ -644,12 +691,34 @@ body::before {
 }
 
 .mobile-menu-section a:hover i {
-  color: var(--primary);
+  color: var(--primary-default);
 }
 
 .navbar-toggle {
   display: none;
 }
+
+footer {
+  background: var(--gradient-primary);
+  color: white;
+  text-align: center;
+  padding: 1rem;
+  position: relative;
+  bottom: 0;
+  width: auto;
+  height: 200px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 1.4rem;
+  margin-left: calc(var(--sidebar-width));
+
+
+  p {
+    color: var(--text-default);
+  }
+}
+
 
 /* Responsive design - Tablet (icons only for sidebar) */
 @media (max-width: 1024px) and (min-width: 769px) {
@@ -660,30 +729,36 @@ body::before {
   .navbar-actions a {
     font-size: 0.875rem;
   }
+
   .navbar-logo {
     font-size: 1.25rem;
   }
+
   .sidebar-nav {
     width: var(--mobile-sidebar-width);
     transition: width var(--sidebar-transition-duration) ease, padding var(--sidebar-transition-duration) ease, box-shadow var(--sidebar-transition-duration) ease;
     overflow: hidden; /* Hide overflow content */
   }
+  
   .sidebar-header {
     opacity: 0;
     transform: translateX(-0.2rem);
     transition: opacity var(--sidebar-transition-duration) ease, transform var(--sidebar-transition-duration) ease;
   }
+  
   .sidebar-section h3 {
     opacity: 0;
     transform: translateX(-1rem);
     transition: opacity var(--sidebar-transition-duration) ease, transform var(--sidebar-transition-duration) ease;
     white-space: nowrap;
   }
+  
   .sidebar-section a {
     border-left: none;
     border-radius: 0.5rem;
     transition: justify-content var(--sidebar-transition-duration) ease, padding var(--sidebar-transition-duration) ease;
   }
+  
   .sidebar-section a span {
     opacity: 0;
     transform: translateX(-0.2rem);
@@ -692,11 +767,13 @@ body::before {
     position: absolute;
     left: 3rem; /* Position text to the right of icon */
   }
+  
   .sidebar-section a i {
     font-size: 1.125rem;
     width: auto;
     transition: all var(--sidebar-transition-duration) ease;
   }
+  
   /* Hover effect on tablet - expand to full desktop size */
   .sidebar-nav:hover {
     width: var(--sidebar-width);
@@ -704,32 +781,43 @@ body::before {
     z-index: 999; /* Ensure it's above main content */
     box-shadow: 0 0 20px rgba(0, 0, 0, 0.1); /* Add shadow for better visibility */
   }
+  
   .sidebar-nav:hover .sidebar-header {
     opacity: 1;
     transform: translateX(0);
   }
+  
   .sidebar-nav:hover .sidebar-section h3 {
     opacity: 1;
     transform: translateX(0);
   }
+  
   .sidebar-nav:hover .sidebar-section a {
     justify-content: flex-start;
   }
+  
   .sidebar-nav:hover .sidebar-section a span {
     opacity: 1;
     transform: translateX(1rem);
   }
+  
   .main-content {
     padding-left: calc(var(--mobile-sidebar-width) + 2rem);
     transition: padding-left var(--sidebar-transition-duration) ease;
   }
+
+  footer {
+    margin-left: var(--mobile-sidebar-width);
 }
+}
+
 /* Responsive design - Mobile */
 @media (max-width: 768px) {
   /* Show mobile menu overlay on mobile */
   .mobile-menu-overlay {
     display: flex;
   }
+  
   /* Top navbar mobile layout */
   nav.navbar {
     height: var(--mobile-navbar-height);
@@ -739,26 +827,31 @@ body::before {
     left: 0;
     right: 0;
     z-index: 999;
+
+    .navbar-logo-container {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
   }
-  nav.navbar .navbar-logo-container {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-  }
+  
   .navbar-logo {
     order: 2; /* Move logo to center */
     font-size: 1.25rem;
     flex: 1;
     text-align: center;
-    margin-top: 0.2rem;
+    margin-top: 0.2rem
   }
+  
   .navbar-menu {
     display: none; /* Hide horizontal menu */
   }
+  
   .navbar-actions {
     order: 3; /* Move actions to right */
     display: flex;
   }
+  
   /* Hamburger button styling */
   .navbar-toggle {
     display: flex !important;
@@ -775,55 +868,68 @@ body::before {
     order: 1; /* Position to the left */
     display: block;
   }
+  
   .hamburger-line {
     display: block;
     width: 24px;
     height: 2px;
-    background: var(--text);
+    background: var(--text-default);
     margin: 3px 0;
     transition: all 0.3s ease;
     border-radius: 1px;
   }
+  
   /* Hamburger animation */
   .navbar-toggle.active .hamburger-line:nth-child(1) {
     transform: rotate(45deg) translate(5px, 5px);
   }
+  
   .navbar-toggle.active .hamburger-line:nth-child(2) {
     opacity: 0;
   }
+  
   .navbar-toggle.active .hamburger-line:nth-child(3) {
     transform: rotate(-45deg) translate(7px, -6px);
   }
+  
   /* Hide sidebar on mobile - we'll use overlay instead */
   .sidebar-nav {
     display: none;
   }
+  
   /* Mobile menu overlay using CSS variables */
   .mobile-menu-overlay {
-    background: var(--background);
+    background: var(--background-default);
     -webkit-backdrop-filter: blur(var(--blur-amount));
     backdrop-filter: blur(var(--blur-amount));
   }
+  
   .mobile-menu-section {
     background: rgba(255, 255, 255, 0.1);
     border: 1px solid rgba(255, 255, 255, 0.1);
   }
+  
   .mobile-menu-section h3 {
-    color: var(--primary);
+    color: var(--primary-default);
   }
+  
   .mobile-menu-section a {
-    color: var(--text);
+    color: var(--text-default);
   }
+  
   .mobile-menu-section a:hover {
     background: rgba(255, 255, 255, 0.1);
-    color: var(--primary);
+    color: var(--primary-default);
   }
+  
   .mobile-menu-section a i {
     color: var(--text-500);
   }
+  
   .mobile-menu-section a:hover i {
-    color: var(--primary);
+    color: var(--primary-default);
   }
+  
   /* Main content adjustment for mobile */
   .main-content {
     padding-top: calc(var(--mobile-navbar-height) + 2rem);
@@ -832,38 +938,46 @@ body::before {
     padding-bottom: 2rem;
   }
 }
+
 /* Extra small devices */
 @media (max-width: 480px) {
   .navbar-logo {
     font-size: 1.125rem;
   }
+  
   .navbar-actions a {
     width: 30px;
     height: 30px;
     padding: 0;
   }
+  
   .mobile-menu-overlay {
     padding-top: calc(var(--mobile-navbar-height) + 2rem);
     padding-left: 1rem;
     padding-right: 1rem;
     padding-bottom: 2rem;
   }
+  
   .mobile-menu-content {
     gap: 1.5rem;
   }
+  
   .mobile-menu-section {
     padding: 1rem;
   }
 }
+
 /* Landscape orientation adjustments for mobile */
 @media (max-width: 768px) and (orientation: landscape) {
   .mobile-menu-overlay {
     padding: 1rem;
   }
+  
   .mobile-menu-content {
     gap: 1rem;
   }
+  
   .mobile-menu-section {
     padding: 1rem;
   }
-}/*# sourceMappingURL=style-navbar.css.map */
+}

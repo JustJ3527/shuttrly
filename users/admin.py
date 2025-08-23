@@ -34,6 +34,7 @@ class CustomUserAdmin(UserAdmin):
                     "date_of_birth",
                     "bio",
                     "profile_picture",
+                    "is_private",
                 )
             },
         ),

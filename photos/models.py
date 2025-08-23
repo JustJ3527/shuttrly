@@ -121,7 +121,7 @@ class Photo(models.Model):
     # System fields
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    is_public = models.BooleanField(default=False)
+    is_private = models.BooleanField(default=False)
     is_featured = models.BooleanField(default=False)
 
     class Meta:
@@ -130,7 +130,7 @@ class Photo(models.Model):
         verbose_name_plural = "Photos"
         indexes = [
             models.Index(fields=["user", "-date_taken"]),
-            models.Index(fields=["is_public", "-date_taken"]),
+            models.Index(fields=["is_private", "-date_taken"]),
             models.Index(fields=["camera_make", "camera_model"]),
             models.Index(fields=["tags"]),
         ]
@@ -1114,7 +1114,7 @@ class Collection(models.Model):
     # Owner and permissions
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name="collections")
     collaborators = models.ManyToManyField(User, blank=True, related_name="collaborated_collections")
-    is_public = models.BooleanField(default=False)
+    is_private = models.BooleanField(default=False)
 
     # Collection metadata
     tags = models.CharField(max_length=500, blank=True, help_text="Comma-separated tags")
@@ -1136,7 +1136,7 @@ class Collection(models.Model):
         ordering = ["-created_at"]
         indexes = [
             models.Index(fields=["owner", "-updated_at"]),
-            models.Index(fields=["-is_public", "-updated_at"]),
+            models.Index(fields=["-is_private", "-updated_at"]),
             models.Index(fields=["tags"]),
         ]
         verbose_name = "Collection"

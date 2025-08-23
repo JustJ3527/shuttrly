@@ -48,7 +48,7 @@ def photo_upload(request):
             title = request.POST.get("title", "")
             description = request.POST.get("description", "")
             tags = request.POST.get("tags", "")
-            is_public = request.POST.get("is_public") == "on"
+            is_private = request.POST.get("is_private") == "on"
 
             # Ensure media directory exists
             media_root = getattr(settings, "MEDIA_ROOT", "media")
@@ -104,7 +104,7 @@ def photo_upload(request):
                             title=title if title else "Untitled",
                             description=description if description else "",
                             tags=tags if tags else "",
-                            is_public=is_public,
+                            is_private=is_private,
                             file_size=photo_file.size,
                             file_extension=photo_file.name.split(".")[-1].lower(),
                             is_raw=photo_file.name.lower().endswith(
@@ -363,7 +363,7 @@ def photo_gallery(request):
     # Calculate statistics BEFORE applying slice
     total_photos = photos.count()
     raw_photos = photos.filter(is_raw=True).count()
-    public_photos = photos.filter(is_public=True).count()
+    public_photos = photos.filter(is_private=False).count()
 
     # For lazy loading, get all photos without pagination
     # But limit to a reasonable number to prevent memory issues
@@ -406,10 +406,22 @@ def photo_gallery(request):
 @login_required
 def photo_detail(request, photo_id):
     """Display detailed view of a single photo with EXIF data"""
-    photo = get_object_or_404(Photo, id=photo_id, user=request.user)
+    photo = get_object_or_404(Photo, id=photo_id)
+    
+    # Check if user can access this photo
+    if photo.user != request.user and photo.is_private:
+        messages.error(request, "You don't have permission to view this photo.")
+        return redirect("photos:gallery")
 
-    # Get related photos (same camera, lens, or tags)
-    related_photos = Photo.objects.filter(user=request.user).exclude(id=photo.id)
+    # Get related photos based on privacy settings
+    user_is_private = getattr(request.user, 'is_private', False)
+    
+    if user_is_private:
+        # If user is private, only show their own related photos
+        related_photos = Photo.objects.filter(user=request.user).exclude(id=photo.id)
+    else:
+        # If user is not private, show all non-private related photos
+        related_photos = Photo.objects.filter(is_private=False).exclude(id=photo.id)
 
     # Find photos with similar characteristics
     similar_photos = []
@@ -435,6 +447,7 @@ def photo_detail(request, photo_id):
     context = {
         "photo": photo,
         "similar_photos": unique_similar,
+        "user_is_private": user_is_private,
     }
     return render(request, "photos/detail.html", context)
 
@@ -527,7 +540,7 @@ def photo_stats(request):
     # Basic counts
     total_photos = user_photos.count()
     raw_photos = user_photos.filter(is_raw=True).count()
-    public_photos = user_photos.filter(is_public=True).count()
+    public_photos = user_photos.filter(is_private=False).count()
     featured_photos = user_photos.filter(is_featured=True).count()
 
     # Camera statistics
@@ -591,7 +604,7 @@ def photo_stats(request):
 @login_required
 def public_gallery(request):
     """Display public photos from all users"""
-    photos = Photo.objects.filter(is_public=True).select_related("user")
+    photos = Photo.objects.filter(is_private=False).select_related("user")
 
     # Apply search if provided
     query = request.GET.get("q", "")
@@ -730,7 +743,7 @@ def bulk_actions(request):
             except Exception as log_error:
                 print(f"Warning: Failed to log bulk photo make public: {log_error}")
 
-            photos.update(is_public=True)
+            photos.update(is_private=False)
             messages.success(request, f"{count} photo(s) made public!")
 
         elif action == "make_private":
@@ -756,7 +769,7 @@ def bulk_actions(request):
             except Exception as log_error:
                 print(f"Warning: Failed to log bulk photo make private: {log_error}")
 
-            photos.update(is_public=False)
+            photos.update(is_private=True)
             messages.success(request, f"{count} photo(s) made private!")
 
         elif action == "add_tags":
@@ -891,7 +904,7 @@ def photo_gallery_test(request):
     total_photos = photos.count()
     photos_with_exif = photos.exclude(date_taken__isnull=True).count()
     raw_photos = photos.filter(is_raw=True).count()
-    public_photos = photos.filter(is_public=True).count()
+    public_photos = photos.filter(is_private=False).count()
 
     # For test gallery, get all photos without pagination
     # Apply slice after ordering to maintain sort order
@@ -955,16 +968,20 @@ def collection_detail(request, collection_id):
     collection = get_object_or_404(Collection, id=collection_id)
     
     # Check if user has access to this collection
-    if not collection.is_public and collection.owner != request.user and request.user not in collection.collaborators.all():
+    if collection.is_private and collection.owner != request.user and request.user not in collection.collaborators.all():
         messages.error(request, "You don't have permission to view this collection.")
         return redirect('photos:collection_list')
     
     # Get photos in the collection with proper ordering
     photos = collection.photos.all().order_by('collection_photos__order', 'collection_photos__added_at')
     
+    # Check if user profile is private
+    user_is_private = getattr(request.user, 'is_private', False)
+    
     context = {
         'collection': collection,
         'photos': photos,
+        'user_is_private': user_is_private,
     }
     return render(request, 'photos/collection_detail.html', context)
 
@@ -1171,22 +1188,42 @@ def tag_detail(request, tag_name):
     if tag_name.startswith('#'):
         tag_name = tag_name[1:]
     
-    # Get photos with this tag
-    photos = Photo.objects.filter(
-        user=request.user,
-        tags__icontains=f"#{tag_name}"
-    ).order_by('-created_at')
+    # Check if user profile is private
+    user_is_private = getattr(request.user, 'is_private', False)
     
-    # Get collections with this tag
-    collections = Collection.objects.filter(
-        owner=request.user,
-        tags__icontains=f"#{tag_name}"
-    ).order_by('-updated_at')
+    # Get photos with this tag based on privacy settings
+    if user_is_private:
+        # If user is private, only show their own photos
+        photos = Photo.objects.filter(
+            user=request.user,
+            tags__icontains=f"#{tag_name}"
+        ).order_by('-created_at')
+    else:
+        # If user is not private, show all non-private photos with this tag
+        photos = Photo.objects.filter(
+            tags__icontains=f"#{tag_name}",
+            is_private=False
+        ).order_by('-created_at')
+    
+    # Get collections with this tag based on privacy settings
+    if user_is_private:
+        # If user is private, only show their own collections
+        collections = Collection.objects.filter(
+            owner=request.user,
+            tags__icontains=f"#{tag_name}"
+        ).order_by('-updated_at')
+    else:
+        # If user is not private, show all non-private collections with this tag
+        collections = Collection.objects.filter(
+            tags__icontains=f"#{tag_name}",
+            is_private=False
+        ).order_by('-updated_at')
     
     context = {
         'tag_name': tag_name,
         'photos': photos,
         'collections': collections,
+        'user_is_private': user_is_private,
     }
     return render(request, 'photos/tag_detail.html', context)
 
@@ -1200,13 +1237,28 @@ def search_by_tags(request):
             # Parse tags (remove # if present and split by space)
             tag_list = [tag.strip().lstrip('#') for tag in tags.split() if tag.strip()]
             
-            # Search photos
-            photos = Photo.objects.filter(user=request.user)
+            # Check if user profile is private
+            user_is_private = getattr(request.user, 'is_private', False)
+            
+            # Search photos based on privacy settings
+            if user_is_private:
+                # If user is private, only search their own photos
+                photos = Photo.objects.filter(user=request.user)
+            else:
+                # If user is not private, search all non-private photos
+                photos = Photo.objects.filter(is_private=False)
+            
             for tag in tag_list:
                 photos = photos.filter(tags__icontains=f"#{tag}")
             
-            # Search collections
-            collections = Collection.objects.filter(owner=request.user)
+            # Search collections based on privacy settings
+            if user_is_private:
+                # If user is private, only search their own collections
+                collections = Collection.objects.filter(owner=request.user)
+            else:
+                # If user is not private, search all non-private collections
+                collections = Collection.objects.filter(is_private=False)
+            
             for tag in tag_list:
                 collections = collections.filter(tags__icontains=f"#{tag}")
             
@@ -1215,6 +1267,7 @@ def search_by_tags(request):
                 'photos': photos.order_by('-created_at'),
                 'collections': collections.order_by('-updated_at'),
                 'search_query': tags,
+                'user_is_private': user_is_private,
             }
             return render(request, 'photos/tag_search_results.html', context)
     

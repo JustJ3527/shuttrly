@@ -1,14 +1,14 @@
 from django.db.models import Q
 from .models import Collection, Photo
 
-def create_collection_from_photos(name, owner, photos, description="", tags="", is_public=False):
+def create_collection_from_photos(name, owner, photos, description="", tags="", is_private=False):
     """Create a new collection from a list of photos"""
     collection = Collection.objects.create(
         name=name,
         owner=owner,
         description=description,
         tags=tags,
-        is_public=is_public
+        is_private=is_private
     )
      # Add photos to collection
     for index, photo in enumerate(photos):
@@ -26,13 +26,13 @@ def search_collections(query, user=None, public_only=False):
     q_objects = Q(name__icontains=query) | Q(description__icontains=query) | Q(tags__icontains=query)
 
     if public_only:
-        collections = Collection.objects.filter(is_public=True)
+        collections = Collection.objects.filter(is_private=False)
     elif user:
         collections = Collection.objects.filter(
-            Q(owner=user) | Q(collaborators=user) | Q(is_public=True)
+            Q(owner=user) | Q(collaborators=user) | Q(is_private=False)
             )
     else:
-        collections = Collection.objects.filter(is_public=True)
+        collections = Collection.objects.filter(is_private=False)
 
     return collections.filter(q_objects)
 
@@ -40,7 +40,7 @@ def get_user_collections(user, include_public=False):
     """Get all collections accessible by the user"""
     if include_public:
         return Collection.objects.filter(
-            Q(owner=user) | Q(collaborators=user) | Q(is_public=True)
+            Q(owner=user) | Q(collaborators=user) | Q(is_private=False)
         ).distinct()
     else:
         return Collection.objects.filter(
@@ -57,7 +57,7 @@ def duplicate_collection(collection, new_owner, new_name=None):
         owner=new_owner,
         description=collection.description,
         tags=collection.tags,
-        is_public=False, # New collections are private by default
+        is_private=True, # New collections are private by default
         collection_type=collection.collection_type,
         sort_order=collection.sort_order,
         cover_photo=collection.cover_photo,

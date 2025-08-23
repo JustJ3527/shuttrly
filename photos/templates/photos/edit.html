@@ -101,17 +101,17 @@
                                 
                                 <div class="col-md-6">
                                     <div class="mb-3">
-                                        <label for="{{ form.is_public.id_for_label }}" class="form-label">
-                                            {{ form.is_public.label }}
+                                        <label for="{{ form.is_private.id_for_label }}" class="form-label">
+                                            {{ form.is_private.label }}
                                         </label>
                                         <div class="form-check">
-                                            {{ form.is_public }}
-                                            <label class="form-check-label" for="{{ form.is_public.id_for_label }}">
-                                                Make this photo visible to everyone
+                                            {{ form.is_private }}
+                                            <label class="form-check-label" for="{{ form.is_private.id_for_label }}">
+                                                Make this photo visible only to you
                                             </label>
                                         </div>
-                                        {% if form.is_public.help_text %}
-                                            <div class="form-text">{{ form.is_public.help_text }}</div>
+                                        {% if form.is_private.help_text %}
+                                            <div class="form-text">{{ form.is_private.help_text }}</div>
                                         {% endif %}
                                     </div>
                                 </div>

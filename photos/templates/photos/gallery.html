@@ -159,7 +159,7 @@
                     {% endif %}
 
                     <!-- Public Badge -->
-                    {% if photo.is_public %}
+                    {% if not photo.is_private %}
                     <div class="public-badge">
                         <i class="fas fa-globe"></i>
                     </div>

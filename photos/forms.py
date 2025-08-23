@@ -68,11 +68,11 @@ class PhotoUploadForm(forms.Form):
         help_text=_("Enter tags with # symbol, separated by spaces (e.g, #nature #travel)"),
     )
 
-    is_public = forms.BooleanField(
+    is_private = forms.BooleanField(
         required=False,
         initial=False,
         widget=forms.CheckboxInput(attrs={"class": "form-check-input"}),
-        label=_("Make this photo public"),
+        label=_("Make this photo private"),
     )
 
     def __init__(self, user=None, *args, **kwargs):
@@ -187,7 +187,7 @@ class PhotoUploadForm(forms.Form):
                 title=self.cleaned_data.get("title", ""),
                 description=self.cleaned_data.get("description", ""),
                 tags=self.cleaned_data.get("tags", ""),
-                is_public=self.cleaned_data.get("is_public", False),
+                is_private=self.cleaned_data.get("is_private", False),
             )
 
             # Save the photo (this will trigger EXIF extraction and thumbnail generation)
@@ -220,7 +220,7 @@ class PhotoEditForm(forms.ModelForm):
 
     class Meta:
         model = Photo
-        fields = ["title", "description", "tags", "is_public", "is_featured"]
+        fields = ["title", "description", "tags", "is_private", "is_featured"]
         widgets = {
             "title": forms.TextInput(
                 attrs={"class": "form-control", "placeholder": _("Photo title")}
@@ -238,19 +238,19 @@ class PhotoEditForm(forms.ModelForm):
                     "placeholder": _("Tags separated by commas"),
                 }
             ),
-            "is_public": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+            "is_private": forms.CheckboxInput(attrs={"class": "form-check-input"}),
             "is_featured": forms.CheckboxInput(attrs={"class": "form-check-input"}),
         }
         labels = {
             "title": _("Title"),
             "description": _("Description"),
             "tags": _("Tags"),
-            "is_public": _("Public"),
+            "is_private": _("Private"),
             "is_featured": _("Featured"),
         }
         help_texts = {
             "tags": _("Separate tags with commas"),
-            "is_public": _("Make this photo visible to everyone"),
+            "is_private": _("Make this photo visible only to you"),
             "is_featured": _("Mark this photo as featured"),
         }
 
@@ -363,12 +363,12 @@ class CollectionCreateForm(forms.ModelForm):
 
     class Meta:
         model = Collection
-        fields = ["name", "description", "tags", "collection_type", "is_public"]
+        fields = ["name", "description", "tags", "collection_type", "is_private"]
         widgets = {
             "name": forms.TextInput(attrs={"class": "form-control", "placeholder": "Collection name"}),
             "description": forms.Textarea(attrs={"class": "form-control", "rows": 3, "placeholder": "Description (optional)"}),
             "collection_type": forms.Select(attrs={"class": "form-control"}),
-            "is_public": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+            "is_private": forms.CheckboxInput(attrs={"class": "form-check-input"}),
         }
 
     def clean_tags(self):

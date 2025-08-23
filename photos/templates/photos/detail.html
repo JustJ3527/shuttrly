@@ -49,17 +49,28 @@
                             {% endif %}
                         </div>
                         <div class="col-md-6 text-end">
-                            <div class="btn-group" role="group">
-                                <a href="{% url 'photos:edit' photo.id %}" class="btn btn-outline-primary">
-                                    <i class="fas fa-edit"></i> Edit
-                                </a>
-                                <a href="{% url 'photos:download' photo.id %}" class="btn btn-outline-success">
-                                    <i class="fas fa-download"></i> Download
-                                </a>
-                                <button class="btn btn-outline-danger" onclick="confirmDelete()">
-                                    <i class="fas fa-trash"></i> Delete
-                                </button>
-                            </div>
+                            {% if photo.user == request.user %}
+                                <div class="btn-group" role="group">
+                                    <a href="{% url 'photos:edit' photo.id %}" class="btn btn-outline-primary">
+                                        <i class="fas fa-edit"></i> Edit
+                                    </a>
+                                    <a href="{% url 'photos:download' photo.id %}" class="btn btn-outline-success">
+                                        <i class="fas fa-download"></i> Download
+                                    </a>
+                                    <button class="btn btn-outline-danger" onclick="confirmDelete()">
+                                        <i class="fas fa-trash"></i> Delete
+                                    </button>
+                                </div>
+                            {% else %}
+                                <div class="photo-owner-info">
+                                    <span class="text-muted">
+                                        <i class="fas fa-user"></i> Photo by 
+                                        <a href="{% url 'public_user_profile' photo.user.username %}" class="text-decoration-none">
+                                            {{ photo.user.username }}
+                                        </a>
+                                    </span>
+                                </div>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
@@ -105,7 +116,7 @@
                             {% endif %}
                             <div class="metadata-item">
                                 <strong>Status:</strong>
-                                {% if photo.is_public %}
+                                {% if not photo.is_private %}
                                     <span class="badge bg-success">Public</span>
                                 {% else %}
                                     <span class="badge bg-secondary">Private</span>
@@ -114,6 +125,15 @@
                                     <span class="badge bg-primary">Featured</span>
                                 {% endif %}
                             </div>
+                            
+                            {% if photo.user != request.user %}
+                                <div class="metadata-item">
+                                    <strong>Owner:</strong>
+                                    <a href="{% url 'public_user_profile' photo.user.username %}" class="text-decoration-none">
+                                        <i class="fas fa-user"></i> {{ photo.user.username }}
+                                    </a>
+                                </div>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
@@ -311,6 +331,15 @@
                                                 {{ similar_photo.created_at|date:"M d, Y" }}
                                             {% endif %}
                                         </div>
+                                        {% if similar_photo.user != request.user %}
+                                            <div class="similar-photo-owner">
+                                                <small class="text-muted">
+                                                    <a href="{% url 'public_user_profile' similar_photo.user.username %}" class="text-decoration-none">
+                                                        <i class="fas fa-user"></i> {{ similar_photo.user.username }}
+                                                    </a>
+                                                </small>
+                                            </div>
+                                        {% endif %}
                                     </div>
                                 </div>
                             </div>

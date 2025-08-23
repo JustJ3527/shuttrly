@@ -97,7 +97,7 @@
                     <div class="collection-card">
                         <div class="collection-cover" 
                              style="background-image: url('{% if collection.get_cover_photo_url %}{{ collection.get_cover_photo_url }}{% else %}{% static 'images/default-collection.jpg' %}{% endif %}')">
-                            {% if collection.is_public %}
+                            {% if not collection.is_private %}
                                 <div class="position-absolute top-0 end-0 m-2">
                                     <span class="badge bg-success">
                                         <i class="fas fa-globe"></i> Public

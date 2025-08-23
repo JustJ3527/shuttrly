@@ -120,16 +120,16 @@ class PhotoModelTest(TestCase):
             file_size=len(self.test_image_content),
             file_extension="jpg",
             is_raw=False,
-            is_public=False,
+            is_private=True,
         )
 
-        self.assertFalse(photo.is_public)
+        self.assertTrue(photo.is_private)
 
         # Make it public
-        photo.is_public = True
+        photo.is_private = False
         photo.save()
 
-        self.assertTrue(photo.is_public)
+        self.assertFalse(photo.is_private)
 
     def test_photo_featured(self):
         """Test photo featured functionality"""

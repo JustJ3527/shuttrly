@@ -173,7 +173,7 @@
                         <i class="fas fa-clock"></i>
                         <span>Updated {{ collection.updated_at|date:"M d, Y" }}</span>
                     </div>
-                    {% if collection.is_public %}
+                    {% if not collection.is_private %}
                         <div class="meta-item">
                             <i class="fas fa-globe"></i>
                             <span>Public</span>

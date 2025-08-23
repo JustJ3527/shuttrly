@@ -216,6 +216,35 @@
         color: white;
         text-decoration: none;
     }
+    
+    .privacy-notice {
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 20px;
+        padding: 0.5rem 1.5rem;
+        margin-top: 1.5rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.9rem;
+        backdrop-filter: blur(10px);
+    }
+    
+    .privacy-notice i {
+        font-size: 1rem;
+    }
+    
+    .photo-owner .badge {
+        font-size: 0.7rem;
+        padding: 0.25rem 0.5rem;
+        backdrop-filter: blur(10px);
+        background: rgba(13, 202, 240, 0.9) !important;
+    }
+    
+    .collection-meta span {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
 </style>
 {% endblock %}
 
@@ -240,6 +269,18 @@
                 <span class="stat-label">Total</span>
             </div>
         </div>
+        
+        {% if not user_is_private %}
+            <div class="privacy-notice">
+                <i class="fas fa-globe"></i>
+                <span>Showing all public content with this tag from all users</span>
+            </div>
+        {% else %}
+            <div class="privacy-notice">
+                <i class="fas fa-lock"></i>
+                <span>Showing only your content (private profile)</span>
+            </div>
+        {% endif %}
     </div>
 </div>
 
@@ -315,10 +356,24 @@
                                 </div>
                                 
                                 <div class="photo-actions" style="position: absolute; top: 0.5rem; left: 0.5rem;">
-                                    <a href="{% url 'photos:detail' photo.id %}" class="btn btn-sm btn-outline-light">
-                                        <i class="fas fa-eye"></i>
-                                    </a>
+                                    {% if photo.user == request.user %}
+                                        <a href="{% url 'photos:detail' photo.id %}" class="btn btn-sm btn-outline-light">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                    {% else %}
+                                        <a href="{% url 'photos:detail' photo.id %}" class="btn btn-sm btn-outline-light" title="View photo by {{ photo.user.username }}">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                    {% endif %}
                                 </div>
+                                
+                                {% if photo.user != request.user %}
+                                    <div class="photo-owner" style="position: absolute; top: 0.5rem; right: 0.5rem;">
+                                        <span class="badge bg-info">
+                                            <i class="fas fa-user"></i> {{ photo.user.username }}
+                                        </span>
+                                    </div>
+                                {% endif %}
                             </div>
                         {% endfor %}
                     </div>
@@ -339,7 +394,7 @@
                             <div class="collection-card">
                                 <div class="collection-cover" 
                                      style="background-image: url('{% if collection.get_cover_photo_url %}{{ collection.get_cover_photo_url }}{% else %}{% static 'images/default-collection.jpg' %}{% endif %}')">
-                                    {% if collection.is_public %}
+                                    {% if not collection.is_private %}
                                         <div class="position-absolute top-0 end-0 m-2">
                                             <span class="badge bg-success">
                                                 <i class="fas fa-globe"></i> Public
@@ -361,6 +416,11 @@
                                         <span>
                                             <i class="fas fa-calendar"></i> {{ collection.updated_at|date:"M d, Y" }}
                                         </span>
+                                        {% if collection.owner != request.user %}
+                                            <span>
+                                                <i class="fas fa-user"></i> {{ collection.owner.username }}
+                                            </span>
+                                        {% endif %}
                                     </div>
                                     
                                     <div class="mt-3">

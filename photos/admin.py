@@ -18,12 +18,12 @@ class PhotoAdmin(admin.ModelAdmin):
         "date_taken",
         "file_size_mb",
         "is_raw",
-        "is_public",
+        "is_private",
     ]
 
     list_filter = [
         "is_raw",
-        "is_public",
+        "is_private",
         "is_featured",
         "camera_make",
         "camera_model",
@@ -75,7 +75,7 @@ class PhotoAdmin(admin.ModelAdmin):
                     "title",
                     "description",
                     "tags",
-                    "is_public",
+                    "is_private",
                     "is_featured",
                 )
             },
@@ -210,14 +210,14 @@ class PhotoAdmin(admin.ModelAdmin):
 
     def make_public(self, request, queryset):
         """Make selected photos public"""
-        updated = queryset.update(is_public=True)
+        updated = queryset.update(is_private=False)
         self.message_user(request, f"{updated} photo(s) marked as public.")
 
     make_public.short_description = "Mark selected photos as public"
 
     def make_private(self, request, queryset):
         """Make selected photos private"""
-        updated = queryset.update(is_public=False)
+        updated = queryset.update(is_private=True)
         self.message_user(request, f"{updated} photo(s) marked as private.")
 
     make_private.short_description = "Mark selected photos as private"
@@ -246,8 +246,8 @@ class PhotoAdmin(admin.ModelAdmin):
 # ===============================
 @admin.register(Collection)
 class CollectionAdmin(admin.ModelAdmin):
-    list_display = ['name', 'owner', 'collection_type', 'is_public', 'get_photo_count', 'created_at']
-    list_filter = ['collection_type', 'is_public', 'created_at', 'owner']
+    list_display = ['name', 'owner', 'collection_type', 'is_private', 'get_photo_count', 'created_at']
+    list_filter = ['collection_type', 'is_private', 'created_at', 'owner']
     search_fields = ['name', 'description', 'tags', 'owner__username']
     readonly_fields = ['created_at', 'updated_at']
     

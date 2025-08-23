@@ -53,8 +53,8 @@
             <li><a href="{% url "home" %}" class="active"><span>Home</span></a></li>
             <li><a href="#"><span>Discover</span></a></li>
             <li><a href="#"><span>Search</span></a></li>
-            <li><a href="#"><span>Gallery</span></a></li>
-            <li><a href="#"><span>Upload</span></a></li>
+            <li><a href="{% url "photos:gallery" %}"><span>Gallery</span></a></li>
+            <li><a href="{% url "photos:collection_list" %}"><span>Collections</span></a></li>
           </ul>
         </div>
         <div class="navbar-actions">
@@ -76,8 +76,8 @@
               <li><a href="#"><i class="fas fa-home"></i> <span>Home</span></a></li>
               <li><a href="#"><i class="fas fa-compass"></i> <span>Discover</span></a></li>
               <li><a href="#"><i class="fas fa-search"></i> <span>Search</span></a></li>
-              <li><a href="#"><i class="fas fa-images"></i> <span>Gallery</span></a></li>
-              <li><a href="#"><i class="fas fa-cloud-upload-alt"></i> <span>Upload</span></a></li>
+              <li><a href="{% url "photos:gallery" %}"><i class="fas fa-images"></i> <span>Gallery</span></a></li>
+              <li><a href="{% url "photos:collection_list" %}"><i class="fas fa-cloud-upload-alt"></i> <span>Collections</span></a></li>
             </ul>
           </div>
           

@@ -7,6 +7,8 @@ from PIL import Image
 import exifread
 import rawpy
 from io import BytesIO
+import numpy as np
+from sklearn.cluster import KMeans
 
 COLLECTION_TYPES = [
     ("personal", "Personal"),
@@ -67,6 +69,14 @@ class Photo(models.Model):
     # Image dimensions
     width = models.PositiveIntegerField(blank=True, null=True)
     height = models.PositiveIntegerField(blank=True, null=True)
+
+    # Dominant colors for background gradient (Apple Music style)
+    dominant_color_1 = models.CharField(max_length=7, blank=True, help_text="Primary dominant color in hex format")
+    dominant_color_2 = models.CharField(max_length=7, blank=True, help_text="Secondary dominant color in hex format")
+    dominant_color_3 = models.CharField(max_length=7, blank=True, help_text="Tertiary dominant color in hex format")
+    dominant_color_4 = models.CharField(max_length=7, blank=True, help_text="Fourth dominant color in hex format")
+    dominant_color_5 = models.CharField(max_length=7, blank=True, help_text="Fifth dominant color in hex format")
+    colors_extracted = models.BooleanField(default=False, help_text="Whether dominant colors have been extracted")
 
     # EXIF Camera Data
     camera_make = models.CharField(max_length=100, blank=True)
@@ -1102,6 +1112,133 @@ class Photo(models.Model):
             9: "Flash fired, auto mode, return detected",
         }
         return flash_map.get(int(flash_value), f"Flash {flash_value}")
+
+    def extract_dominant_colors(self, num_colors=5):
+        """Extract dominant colors from the photo using K-means clustering"""
+        try:
+            if self.is_raw:
+                # For RAW files, use rawpy to convert to PIL Image
+                with rawpy.imread(self.original_file.path) as raw:
+                    rgb = raw.postprocess()
+                    img = Image.fromarray(rgb)
+            else:
+                # For regular images, open directly with PIL
+                img = Image.open(self.original_file.path)
+
+            # Convert to RGB if necessary
+            if img.mode in ("RGBA", "LA", "P"):
+                img = img.convert("RGB")
+
+            # Resize image for faster processing (maintain aspect ratio)
+            max_size = 300
+            if img.width > max_size or img.height > max_size:
+                img.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
+
+            # Convert to numpy array and reshape for clustering
+            img_array = np.array(img)
+            pixels = img_array.reshape((-1, 3))
+
+            # Use K-means to find dominant colors
+            kmeans = KMeans(n_clusters=num_colors, random_state=42, n_init=10)
+            kmeans.fit(pixels)
+            colors = kmeans.cluster_centers_.astype(int)
+
+            # Sort colors by brightness for better gradient
+            colors = sorted(colors, key=lambda c: (c[0] * 0.299 + c[1] * 0.587 + c[2] * 0.114))
+
+            # Convert to hex format and store
+            hex_colors = [f"#{c[0]:02x}{c[1]:02x}{c[2]:02x}" for c in colors]
+            
+            # Pad with default colors if we have fewer than 5
+            while len(hex_colors) < 5:
+                hex_colors.append("#000000")
+
+            # Store the colors
+            self.dominant_color_1 = hex_colors[0]
+            self.dominant_color_2 = hex_colors[1]
+            self.dominant_color_3 = hex_colors[2]
+            self.dominant_color_4 = hex_colors[3]
+            self.dominant_color_5 = hex_colors[4]
+            self.colors_extracted = True
+
+            print(f"Extracted dominant colors for {self.original_file.name}: {hex_colors[:3]}...")
+            return True
+
+        except Exception as e:
+            print(f"Error extracting dominant colors from {self.original_file.name}: {e}")
+            # Set default colors if extraction fails
+            self.dominant_color_1 = "#2c3e50"
+            self.dominant_color_2 = "#34495e"
+            self.dominant_color_3 = "#7f8c8d"
+            self.dominant_color_4 = "#95a5a6"
+            self.dominant_color_5 = "#bdc3c7"
+            self.colors_extracted = False
+            return False
+
+    def get_dominant_colors_list(self):
+        """Return list of dominant colors"""
+        colors = []
+        if self.dominant_color_1:
+            colors.append(self.dominant_color_1)
+        if self.dominant_color_2:
+            colors.append(self.dominant_color_2)
+        if self.dominant_color_3:
+            colors.append(self.dominant_color_3)
+        if self.dominant_color_4:
+            colors.append(self.dominant_color_4)
+        if self.dominant_color_5:
+            colors.append(self.dominant_color_5)
+        return colors
+
+    def generate_css_gradient(self, gradient_type="radial"):
+        """Generate CSS gradient for background (Apple Music style)"""
+        colors = self.get_dominant_colors_list()
+        
+        if not colors:
+            # Fallback gradient if no colors
+            return "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
+        
+        if gradient_type == "radial":
+            # Apple Music style radial gradient
+            if len(colors) >= 3:
+                return f"radial-gradient(circle at 30% 20%, {colors[0]} 0%, {colors[1]} 25%, {colors[2]} 50%, {colors[0]} 100%)"
+            elif len(colors) >= 2:
+                return f"radial-gradient(circle at 30% 20%, {colors[0]} 0%, {colors[1]} 50%, {colors[0]} 100%)"
+            else:
+                return f"radial-gradient(circle at 30% 20%, {colors[0]} 0%, {colors[0]} 100%)"
+        
+        elif gradient_type == "linear":
+            # Linear gradient alternative
+            if len(colors) >= 3:
+                return f"linear-gradient(135deg, {colors[0]} 0%, {colors[1]} 25%, {colors[2]} 50%, {colors[0]} 100%)"
+            elif len(colors) >= 2:
+                return f"linear-gradient(135deg, {colors[0]} 0%, {colors[1]} 100%)"
+            else:
+                return f"linear-gradient(135deg, {colors[0]} 0%, {colors[0]} 100%)"
+        
+        else:
+            # Default fallback
+            return f"linear-gradient(135deg, {colors[0] if colors else '#667eea'} 0%, #764ba2 100%)"
+
+    def get_background_style(self):
+        """Get complete CSS background style with gradient and overlay"""
+        gradient = self.generate_css_gradient("radial")
+        
+        # Create a semi-transparent overlay for better text readability
+        overlay = "rgba(0, 0, 0, 0.3)"
+        
+        return f"""
+            background: {gradient};
+            position: relative;
+        """, f"""
+            background: {overlay};
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 1;
+        """
 
 # ===============================
 # COLLECTIONS

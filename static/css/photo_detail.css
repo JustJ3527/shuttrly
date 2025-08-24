@@ -1,9 +1,6 @@
 /* Photo Detail Page Styles */
 
 .photo-display-container {
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
     overflow: hidden;
     margin-bottom: 2rem;
 }
@@ -11,14 +8,12 @@
 .photo-display {
     text-align: center;
     padding: 2rem;
-    background: #f8f9fa;
 }
 
 .main-photo {
     max-width: 100%;
-    max-height: 70vh;
-    border-radius: 8px;
-    box-shadow: 0 2px 15px rgba(0,0,0,0.2);
+    max-height: 80vh;
+    aspect-ratio: initial;
 }
 
 .raw-file-notice {
@@ -32,7 +27,6 @@
 .photo-actions-bar {
     padding: 1.5rem 2rem;
     border-bottom: 1px solid #e9ecef;
-    background: white;
 }
 
 .photo-title {
@@ -50,7 +44,6 @@
 
 .photo-metadata {
     padding: 2rem;
-    background: white;
 }
 
 .metadata-item {
@@ -75,7 +68,6 @@
 .tag {
     display: inline-block;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
     padding: 0.4rem 0.8rem;
     border-radius: 20px;
     font-size: 0.85rem;
@@ -88,7 +80,6 @@
 .tag:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-    color: white;
     text-decoration: none;
 }
 
@@ -98,9 +89,6 @@
 
 /* EXIF Sidebar */
 .exif-sidebar {
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
     padding: 2rem;
     height: fit-content;
     position: sticky;
@@ -119,7 +107,7 @@
 }
 
 .exif-section h4 {
-    color: #2c3e50;
+    color: var(--primary-default);
     font-size: 1.2rem;
     font-weight: 600;
     margin-bottom: 1rem;
@@ -129,7 +117,7 @@
 }
 
 .exif-section h4 i {
-    color: #667eea;
+    color: var(--secondary-default);
     width: 20px;
 }
 
@@ -146,13 +134,13 @@
 }
 
 .exif-label {
-    color: #6c757d;
+    color: var(--accent-default);
     font-weight: 500;
     font-size: 0.9rem;
 }
 
 .exif-value {
-    color: #2c3e50;
+    color: var(--secondary-default);
     font-weight: 600;
     text-align: right;
     max-width: 60%;
@@ -168,10 +156,8 @@
 
 /* Similar Photos */
 .similar-photos {
-    background: white;
     border-radius: 12px;
     padding: 2rem;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
 }
 
 .similar-photos h3 {
@@ -181,10 +167,8 @@
 }
 
 .similar-photo-card {
-    background: white;
     border-radius: 8px;
     overflow: hidden;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
     transition: transform 0.2s, box-shadow 0.2s;
 }
 

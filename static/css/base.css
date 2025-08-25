@@ -285,6 +285,7 @@ nav.navbar {
   -webkit-user-select: none;
   -webkit-touch-callout: none;
   -moz-user-select: none;
+  -ms-user-select: none;
   user-select: none;
 }
 
@@ -305,6 +306,7 @@ nav.navbar {
   -webkit-user-select: none;
   -webkit-touch-callout: none;
   -moz-user-select: none;
+  -ms-user-select: none;
   user-select: none;
 }
 
@@ -893,4 +895,10 @@ footer p {
   .mobile-menu-section {
     padding: 1rem;
   }
-}/*# sourceMappingURL=base.css.map */
+}
+.container-fluid {
+  max-width: 120rem;
+  width: 100%;
+}
+
+/*# sourceMappingURL=base.css.map */

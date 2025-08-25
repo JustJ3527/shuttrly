@@ -101,25 +101,6 @@
     margin-top: 1rem;
 }
 
-.collection-header .tag {
-    display: inline-block;
-    background: var(--primary-default);
-    color: white;
-    padding: 0.5rem 1rem;
-    border-radius: 20px;
-    font-size: 0.9rem;
-    margin-right: 0.5rem;
-    margin-bottom: 0.5rem;
-    text-decoration: none;
-    transition: background 0.3s linear;
-}
-
-.collection-header .tag:hover {
-    background: var(--accent-default);
-    color: white;
-    text-decoration: none;
-}
-
 .collection-header .collection-actions {
     margin-top: 1.5rem;
 }
@@ -226,21 +207,34 @@
    TAGS
    =============================== */
 
+.tags-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
 .tag {
     display: inline-block;
-    background: #e9ecef;
-    color: #495057;
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-    font-size: 0.8rem;
-    margin-right: 0.25rem;
-    margin-bottom: 0.25rem;
+    background: var(--gradient-primary);
+    padding: 0.4rem 0.8rem;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    font-weight: 500;
     text-decoration: none;
-    transition: background-color 0.2s;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+    color: var(--text-50)
 }
 
 .tag:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 2px 2px var(--primary-default);
     text-decoration: none;
+}
+
+.tag:active {
+    transform: translateY(0);
 }
 
 .tag-card {
@@ -691,5 +685,8 @@
     .collection-actions .btn {
         margin-right: 0;
         margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 }

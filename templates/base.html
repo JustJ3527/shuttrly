@@ -16,8 +16,6 @@
     <link rel="stylesheet" href="{% static 'css/messages.css' %}">
     <link rel="stylesheet" href="{% static 'css/step_validation.css' %}">
     <link rel="stylesheet" href="{% static 'css/base.css' %}">
-    <link rel="stylesheet" href="{% static 'css/collections.css' %}">
-
     <!-- Font Awesome -->
     <script src="https://kit.fontawesome.com/48953ba2ad.js" crossorigin="anonymous"></script>
 
@@ -34,6 +32,8 @@
 
 </head>
 <body>
+  {% block extra_css%}
+  {% endblock %}
     <!-- CSRF Token for AJAX requests -->
     {% csrf_token %}
 
@@ -191,5 +191,7 @@
 <!-- Temporarily disabled to fix photo selection
 <script src="{% static 'js/collections.js' %}"></script>
 -->
+{% endblock %}
+{% block extra_js %}
 {% endblock %}
 </html>

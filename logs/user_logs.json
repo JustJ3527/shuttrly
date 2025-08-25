@@ -12943,4 +12943,94 @@
   },
   "restored": false
 }
+,
+{
+  "log_id": "ae161d9c-8ad2-453b-9f96-a22f456e2feb",
+  "user": "jul_atn",
+  "user_id": 3,
+  "action": "login",
+  "timestamp": "2025-08-25T16:25:10.225127+00:00",
+  "ip_address": "127.0.0.1",
+  "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+  "location": {
+    "city": null,
+    "region": null,
+    "country": null
+  },
+  "extra_info": {
+    "twofa_method": null,
+    "remember_device": false,
+    "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+    "location": {
+      "city": null,
+      "region": null,
+      "country": null
+    }
+  },
+  "restored": false
+}
+,
+{
+  "log_id": "de292565-eae4-4a05-acaf-65f229fe418e",
+  "user": "admin",
+  "user_id": 1,
+  "action": "login",
+  "timestamp": "2025-08-25T16:40:01.805834+00:00",
+  "ip_address": "127.0.0.1",
+  "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+  "location": {
+    "city": null,
+    "region": null,
+    "country": null
+  },
+  "extra_info": {
+    "twofa_method": null,
+    "remember_device": false,
+    "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+    "location": {
+      "city": null,
+      "region": null,
+      "country": null
+    }
+  },
+  "restored": false
+}
+,
+{
+  "log_id": "49268a76-633b-4776-8d9b-c16040b7faa3",
+  "user": "jul_atn",
+  "user_id": 3,
+  "action": "logout",
+  "timestamp": "2025-08-25T16:53:32.765414+00:00",
+  "ip_address": "127.0.0.1",
+  "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+  "location": {
+    "city": null,
+    "region": null,
+    "country": null
+  },
+  "extra_info": {
+    "impacted_user_id": 3
+  },
+  "restored": false
+}
+,
+{
+  "log_id": "86b84206-131f-4ee1-a604-44f95e3dc9d4",
+  "user": "jul_atn_raw",
+  "user_id": 5,
+  "action": "register",
+  "timestamp": "2025-08-25T16:55:34.519164+00:00",
+  "ip_address": "127.0.0.1",
+  "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+  "location": {
+    "city": null,
+    "region": null,
+    "country": null
+  },
+  "extra_info": {
+    "impacted_user_id": 5
+  },
+  "restored": false
+}
 ]

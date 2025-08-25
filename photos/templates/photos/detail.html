@@ -461,13 +461,16 @@
 <!-- Mapbox GL JS doit être chargé AVANT le code qui l'utilise -->
 <script src="https://api.mapbox.com/mapbox-gl-js/v3.14.0/mapbox-gl.js"></script>
 <script>
+    const primaryDefault = getComputedStyle(root).getPropertyValue('--primary-default').trim();
+    const accentDefault = getComputedStyle(root).getPropertyValue('--accent-default').trim();
+    
     mapboxgl.accessToken = 'pk.eyJ1IjoianVsYXRuIiwiYSI6ImNtZXE3Ym9icDB3aDEya3F2bHlmM2ZlM2wifQ.MW0v1wXeWK71wQKO7g8gzQ';
     
     const map = new mapboxgl.Map({
         container: 'map',
         style: 'mapbox://styles/julatn/cmeq7hiit009501qw6lzmaxlk',
         center: [{{ photo.longitude|floatformat:6 }}, {{ photo.latitude|floatformat:6 }}],
-        zoom: 12,
+        zoom: 11.2,
         pitch: 0,              // carte plate, pas de 3D
         bearing: 0,            // orientation nord
         dragRotate: false,     // désactive la rotation avec la souris
@@ -479,7 +482,7 @@
     map.scrollZoom.enable();
 
     // Ajouter un marker
-new mapboxgl.Marker({ color: 'red' }) // couleur rouge
+    new mapboxgl.Marker({ color: accentDefault }) // couleur rouge
     .setLngLat([{{ photo.longitude|floatformat:6 }}, {{ photo.latitude|floatformat:6 }}])
     .addTo(map);
 </script>

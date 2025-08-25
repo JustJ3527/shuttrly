@@ -6,10 +6,11 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/photo_gallery.css' %}">
+<link rel="stylesheet" href="{% static 'css/collections.css' %}">
+
 <style>
     .collection-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
+        color: var(--text-default);
         padding: 3rem 0;
         margin-bottom: 2rem;
     }
@@ -34,24 +35,6 @@
     
     .collection-tags {
         margin-top: 1rem;
-    }
-    
-    .tag {
-        display: inline-block;
-        background: rgba(255,255,255,0.2);
-        color: white;
-        padding: 0.5rem 1rem;
-        border-radius: 20px;
-        font-size: 0.9rem;
-        margin-right: 0.5rem;
-        margin-bottom: 0.5rem;
-        text-decoration: none;
-        transition: background-color 0.2s;
-    }
-    
-    .tag:hover {
-        background: rgba(255,255,255,0.3);
-        color: white;
     }
     
     .collection-actions {
@@ -155,7 +138,7 @@
     <div class="container">
         <div class="row align-items-center">
             <div class="col-lg-8">
-                <h1>{{ collection.name }}</h1>
+                <h1 class="gradient-text">{{ collection.name }}</h1>
                 {% if collection.description %}
                     <p class="lead mb-0">{{ collection.description }}</p>
                 {% endif %}

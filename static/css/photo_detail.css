@@ -53,7 +53,7 @@
 }
 
 .metadata-item strong {
-    color: #495057;
+    color: var(--accent-default);
     font-weight: 600;
     margin-right: 0.5rem;
 }

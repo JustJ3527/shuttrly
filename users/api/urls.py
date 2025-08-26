@@ -1,0 +1,23 @@
+from django.urls import path
+from rest_framework_simplejwt.views import TokenRefreshView
+from . import views
+
+urlpatterns = [
+    # Authentication
+    path('auth/login/', views.login_api, name='api_login'),
+    path('auth/logout/', views.logout_api, name='api_logout'),
+    path('auth/refresh/', TokenRefreshView.as_view(), name='api_token_refresh'),
+    
+    # Registration (setps)
+    path('auth/register/step1/', views.register_step_1_email, name='api_register_step1'),
+    path('auth/register/step2/', views.register_step_2_verifify_email, name='api_register_step2'),
+    path('auth/register/complete/', views.register_complete, name='api_register_complete'),
+    path('auth/resend-code/', views.resend_verification_code, name='api_resend_code'),
+    
+    # User profile
+    path('user/profile/', views.user_profile, name='api_user_profile'),
+    path('user/update/', views.update_profile, name='api_update_profile'),
+    
+    # Utilities
+    path('auth/check-username/', views.check_username_availability, name='api_check_username'),
+]

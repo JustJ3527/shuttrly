@@ -37,6 +37,8 @@ ALLOWED_HOSTS = [
     "127.0.0.1",
     "21632b3c9aba.ngrok-free.app",
     "10.101.4.216",
+    "192.168.1.65",
+    "192.168.1.73"
 ]
 
 AUTH_USER_MODEL = "users.CustomUser"
@@ -59,8 +61,12 @@ INSTALLED_APPS = [
     "users.apps.UsersConfig",
     "adminpanel",
     "logs",
-    "photos.apps.PhotosConfig",  # Add this line
-]
+    "photos.apps.PhotosConfig",
+    # API
+    "rest_framework", # REST framework for building APIs
+    "rest_framework_simplejwt", # JSON Web Token Authentication
+    "corsheaders", # Cross-Origin Resource Sharing
+    ]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -72,6 +78,10 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "users.middleware.OnlineStatusMiddleware",  # Custom middleware for online status
     "users.middleware.LoginCachePreventionMiddleware",  # Prevent caching on login pages
+    "users.middleware.OnlineStatusMiddleware",
+    # API
+    "corsheaders.middleware.CorsMiddleware", # Cross-Origin Resource Sharing
+    "django.middleware.common.CommonMiddleware", # Common middleware for handling common requests
 ]
 
 AUTHENTICATION_BACKENDS = [
@@ -79,9 +89,9 @@ AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",
 ]
 
-MIDDLEWARE += ["users.middleware.OnlineStatusMiddleware"]
-
 ROOT_URLCONF = "shuttrly.urls"
+
+
 
 TEMPLATES = [
     {
@@ -212,3 +222,29 @@ UPLOAD_TIMEOUT = 600  # 10 minutes
 
 # Create temp upload directory if it doesn't exist
 os.makedirs(FILE_UPLOAD_TEMP_DIR, exist_ok=True)
+
+
+# Configuration REST framework
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+    'DEFAULT_RENDERER_CLASSES': [
+        'rest_framework.renderers.JSONRenderer',
+    ],
+}
+
+# Conifiguration JWT
+from datetime import timedelta
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
+}
+
+# CORS for allowing iOS requests
+CORS_ALLOW_ALL_ORIGINS = True # Developpement only

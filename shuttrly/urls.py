@@ -32,6 +32,9 @@ urlpatterns = [
     ),  # Include adminpanel app URLs
     path("logs/", include("logs.urls")),
     path("photos/", include("photos.urls")),
+
+    # API
+    path("api/v1/", include("users.api.urls")),
 ]
 
 if settings.DEBUG:

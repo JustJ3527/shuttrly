@@ -1094,10 +1094,14 @@ def handle_login_step_2_2fa_choice(request):
                 else:
                     messages.error(request, "Error sending verification code.")
 
-                return HttpResponseRedirect(f"{reverse('login')}?step=email_2fa")
+                request.session["current_login_step"] = "email_2fa"
+                return redirect(f"{reverse('login')}?step=email_2fa")
+
 
             elif method == "totp":
-                return HttpResponseRedirect(f"{reverse('login')}?step=totp_2fa")
+                request.session["current_login_step"] = "totp_2fa"
+                return redirect(f"{reverse('login')}?step=totp_2fa")
+
         else:
             form = Choose2FAMethodForm(request.POST)
             form.add_error("twofa_method", error_message)
@@ -1470,15 +1474,10 @@ def handle_enable_email_2fa_action(request, user):
 
     if not success:
         messages.error(request, error_message)
-        # Return to security category with error
-        return False, error_message, {"step": "initial"}
+        return render(request, "personal_settings.html", {"step": "initial", "error": error_message})
 
-    # Success - redirect to security category with verification step
-    messages.success(
-        request, "Verification code sent to your email. Please check your inbox."
-    )
-    return True, "Verification code sent successfully!", {"step": "verify_email_code"}
-
+    messages.success(request, "Verification code sent to your email. Please check your inbox.")
+    return render(request, "users/personal_settings.html", {"step": "verify_email_code"})
 
 def handle_verify_email_2fa_action(request, user):
     """Handle email 2FA verification action."""
@@ -1488,11 +1487,11 @@ def handle_verify_email_2fa_action(request, user):
     if success:
         messages.success(request, "Email 2FA enabled successfully!")
         # Return to security category with success
-        return True, "Email 2FA enabled successfully!", {"step": "initial"}
+        return render(request, "users/personal_settings.html", {"step": "initial"})
     else:
         messages.error(request, error_message)
         # Return to security category with verification step
-        return False, error_message, {"step": "verify_email_code"}
+        return render(request, "users/personal_settings.html", {"step": "verify_email_code"})
 
 
 def handle_resend_email_2fa_action(request, user):
@@ -1503,10 +1502,10 @@ def handle_resend_email_2fa_action(request, user):
         messages.success(
             request, error_message
         )  # error_message contains success message here
-        return True, error_message, {"step": "verify_email_code"}
+        return render(request, "users/personal_settings.html", {"step": "verify_email_code"})
     else:
         messages.error(request, error_message)
-        return False, error_message, {"step": "verify_email_code"}
+        return render(request, "users/personal_settings.html", {"step": "verify_email_code"})
 
 
 def handle_enable_totp_2fa_action(request, user, context):
@@ -1517,11 +1516,11 @@ def handle_enable_totp_2fa_action(request, user, context):
     if not success:
         messages.error(request, error_message)
         # Return to security category with error
-        return False, error_message, {"step": "initial"}
+        return render(request, "users/personal_settings.html", {"step": "initial", "error": error_message})
 
     # Success - return to security category with TOTP setup step
     messages.success(request, "TOTP 2FA setup initiated. Please scan the QR code.")
-    return True, "TOTP 2FA setup initiated!", {"step": "verify_totp"}
+    return render(request, "users/personal_settings.html", {"step": "verify_totp", **context_data})
 
 
 def handle_verify_totp_2fa_action(request, user):
@@ -1532,11 +1531,11 @@ def handle_verify_totp_2fa_action(request, user):
     if success:
         messages.success(request, "TOTP 2FA enabled successfully!")
         # Return to security category with success
-        return True, "TOTP 2FA enabled successfully!", {"step": "initial"}
+        return render(request, "users/personal_settings.html", {"step": "initial"})
     else:
         messages.error(request, error_message)
         # Return to security category with TOTP setup step
-        return False, error_message, {"step": "verify_totp"}
+        return render(request, "users/personal_settings.html", {"step": "verify_totp"})
 
 
 def handle_disable_2fa_action(request, user, method):
@@ -1546,10 +1545,10 @@ def handle_disable_2fa_action(request, user, method):
 
     if success:
         messages.success(request, message)
-        return True, message, {"step": "initial"}
+        return render(request, "users/personal_settings.html", {"step": "initial"})
     else:
         messages.error(request, message)
-        return False, message, {"step": "initial"}
+        return render(request, "users/personal_settings.html", {"step": "initial"})
 
 
 def handle_remove_trusted_device_action(request, user, current_device_token):
@@ -1562,15 +1561,15 @@ def handle_remove_trusted_device_action(request, user, current_device_token):
     if not success:
         messages.error(request, error_message)
         # Return to security category with error
-        return False, error_message, {"step": "initial"}
+        return render(request, "users/personal_settings.html", {"step": "initial", "error": error_message})
 
     if is_current_device:
         messages.success(request, "Current trusted device removed successfully!")
-        return True, "Current trusted device removed successfully!", {"step": "initial"}
+        return render(request, "users/personal_settings.html", {"step": "initial"})
     else:
         messages.success(request, "Trusted device removed successfully!")
         # Return to security category with success
-        return True, "Trusted device removed successfully!", {"step": "initial"}
+        return render(request, "users/personal_settings.html", {"step": "initial"})
 
 
 # ========= AJAX VIEWS =========

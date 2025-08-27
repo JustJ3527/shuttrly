@@ -1,9 +1,11 @@
-from django.urls import path
+from django.urls import path, include
 from . import views
 
 app_name = "photos"
 
 urlpatterns = [
+    # API endpoints
+    path("api/", include("photos.api.urls")),
     # Photo upload
     path("upload/", views.photo_upload, name="upload"),
     # Photo gallery and management

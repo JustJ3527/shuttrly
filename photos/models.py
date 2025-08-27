@@ -8,7 +8,6 @@ import exifread
 import rawpy
 from io import BytesIO
 import numpy as np
-from sklearn.cluster import KMeans
 
 COLLECTION_TYPES = [
     ("personal", "Personal"),
@@ -1134,15 +1133,43 @@ class Photo(models.Model):
             if img.width > max_size or img.height > max_size:
                 img.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
 
-            # Convert to numpy array and reshape for clustering
+            # Convert to numpy array and sample pixels for color analysis
             img_array = np.array(img)
-            pixels = img_array.reshape((-1, 3))
-
-            # Use K-means to find dominant colors
-            kmeans = KMeans(n_clusters=num_colors, random_state=42, n_init=10)
-            kmeans.fit(pixels)
-            colors = kmeans.cluster_centers_.astype(int)
-
+            
+            # Sample pixels from the image (every 10th pixel for performance)
+            sample_pixels = img_array[::10, ::10].reshape(-1, 3)
+            
+            # Simple color clustering: group similar colors
+            colors = []
+            tolerance = 30  # Color similarity threshold
+            
+            for pixel in sample_pixels:
+                # Check if this color is similar to any existing color
+                color_added = False
+                for existing_color in colors:
+                    if (abs(pixel[0] - existing_color[0]) < tolerance and 
+                        abs(pixel[1] - existing_color[1]) < tolerance and 
+                        abs(pixel[2] - existing_color[2]) < tolerance):
+                        color_added = True
+                        break
+                
+                if not color_added and len(colors) < num_colors:
+                    colors.append(pixel)
+                
+                if len(colors) >= num_colors:
+                    break
+            
+            # If we don't have enough colors, add some from the image
+            while len(colors) < num_colors:
+                # Take colors from different parts of the image
+                idx = len(colors) * len(sample_pixels) // num_colors
+                if idx < len(sample_pixels):
+                    colors.append(sample_pixels[idx])
+                else:
+                    colors.append(np.array([128, 128, 128]))  # Default gray
+            
+            colors = np.array(colors).astype(int)
+            
             # Sort colors by brightness for better gradient
             colors = sorted(colors, key=lambda c: (c[0] * 0.299 + c[1] * 0.587 + c[2] * 0.114))
 

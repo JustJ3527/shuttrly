@@ -16,6 +16,7 @@ urlpatterns = [
     
     # User profile
     path('user/profile/', views.user_profile, name='api_user_profile'),
+    path('user/profile/full/', views.user_profile_full, name='api_user_profile_full'),  # Nouvel endpoint complet
     path('user/update/', views.update_profile, name='api_update_profile'),
     
     # Utilities

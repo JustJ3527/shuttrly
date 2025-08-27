@@ -78,7 +78,6 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "users.middleware.OnlineStatusMiddleware",  # Custom middleware for online status
     "users.middleware.LoginCachePreventionMiddleware",  # Prevent caching on login pages
-    "users.middleware.OnlineStatusMiddleware",
     # API
     "corsheaders.middleware.CorsMiddleware", # Cross-Origin Resource Sharing
     "django.middleware.common.CommonMiddleware", # Common middleware for handling common requests
@@ -248,3 +247,66 @@ SIMPLE_JWT = {
 
 # CORS for allowing iOS requests
 CORS_ALLOW_ALL_ORIGINS = True # Developpement only
+
+# ===============================
+# OPTIMISATIONS POUR LE DÉVELOPPEMENT
+# ===============================
+
+if DEBUG:
+    # Optimisations pour accélérer le rechargement
+    import logging
+    
+    # Désactiver les logs verbeux
+    logging.getLogger('django.db.backends').setLevel(logging.WARNING)
+    logging.getLogger('django.utils.autoreload').setLevel(logging.WARNING)
+    
+    # Optimiser le rechargement automatique
+    import os
+    os.environ['DJANGO_AUTORELOAD_ENABLED'] = '1'
+    
+    # Réduire la fréquence de vérification des fichiers
+    import django
+    django.setup()
+    
+    # Optimiser la compilation des templates
+    TEMPLATES[0]['OPTIONS']['debug'] = False
+    
+    # Désactiver la validation des modèles en développement
+    import django.core.checks
+    django.core.checks.register = lambda *args, **kwargs: []
+    
+    # Optimiser la base de données SQLite
+    DATABASES['default']['OPTIONS'] = {
+        'timeout': 20,
+        'check_same_thread': False,
+    }
+    
+    # Réduire la taille des sessions
+    SESSION_ENGINE = 'django.contrib.sessions.backends.db'
+    SESSION_COOKIE_AGE = 3600  # 1 heure au lieu de 2
+    SESSION_SAVE_EVERY_REQUEST = False  # Désactiver la sauvegarde systématique
+    
+    # Optimiser les middlewares en développement
+    MIDDLEWARE = [
+        "django.middleware.security.SecurityMiddleware",
+        "django.contrib.sessions.middleware.SessionMiddleware",
+        "corsheaders.middleware.CorsMiddleware",  # Déplacer CORS en haut
+        "django.middleware.common.CommonMiddleware",
+        "django.middleware.csrf.CsrfViewMiddleware",
+        "django.contrib.auth.middleware.AuthenticationMiddleware",
+        "django.contrib.messages.middleware.MessageMiddleware",
+        "django.middleware.clickjacking.XFrameOptionsMiddleware",
+        "users.middleware.OnlineStatusMiddleware",
+        "users.middleware.LoginCachePreventionMiddleware",
+    ]
+
+    LOGGING = {
+    "version": 1,
+    "handlers": {
+        "console": {"class": "logging.StreamHandler"},
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "DEBUG",
+    },
+}

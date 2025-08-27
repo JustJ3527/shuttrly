@@ -2,7 +2,7 @@
 URL configuration for shuttrly project.
 
 The `urlpatterns` list routes URLs to views. For more information please see:
-    https://docs.djangoproject.com/en/5.2/topics/http/urls/
+     https://docs.djangoproject.com/en/5.2/topics/http/urls/
 Examples:
 Function views
     1. Add an import:  from my_app import views
@@ -35,6 +35,7 @@ urlpatterns = [
 
     # API
     path("api/v1/", include("users.api.urls")),
+    path("api/v1/photos/", include("photos.api.urls")),
 ]
 
 if settings.DEBUG:

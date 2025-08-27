@@ -810,8 +810,8 @@ def handle_login_step_1_credentials(request):
         and len(identifier.split("@")[-1]) > 1
     )
 
-    # Find user by email or username (flexible login)
-    user_qs = CustomUser.objects.filter(Q(email=identifier) | Q(username=identifier))
+    # Find user by email or username (case-insensitive flexible login)
+    user_qs = CustomUser.objects.filter(Q(email__iexact=identifier) | Q(username__iexact=identifier))
 
     if not user_qs.exists():
         if is_email:

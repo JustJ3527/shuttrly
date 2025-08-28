@@ -285,21 +285,24 @@ def resend_verification_code(request):
 @permission_classes([AllowAny])
 def login_api(request):
     """User login with 2FA support"""
-    step = request.data.get('step', 'credentials')
-    
-    if step == 'credentials':
+    # Auto-detect step based on request parameters
+    if 'identifier' in request.data and 'password' in request.data:
+        # Step 1: Credentials
         return handle_login_step_1_credentials_api(request)
-    elif step == 'choose_2fa':
+    elif 'chosen_method' in request.data:
+        # Step 2: 2FA method choice
         return handle_login_step_2_2fa_choice_api(request)
-    elif step == 'email_2fa':
+    elif 'verification_code' in request.data:
+        # Step 3: Email 2FA
         return handle_login_step_3_email_2fa_api(request)
-    elif step == 'totp_2fa':
+    elif 'totp_code' in request.data:
+        # Step 3: TOTP 2FA
         return handle_login_step_3_totp_2fa_api(request)
     else:
         return Response({
             'success': False,
-            'message': 'Invalid step.',
-            'errors': {'step': 'Invalid step parameter'}
+            'message': 'Invalid request parameters.',
+            'errors': {'request': 'Cannot determine step from parameters'}
         }, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -407,7 +410,7 @@ def handle_login_step_2_2fa_choice_api(request):
             'errors': {'user': 'User not found'}
         }, status=status.HTTP_400_BAD_REQUEST)
     
-    method = request.data.get("twofa_method")
+    method = request.data.get("chosen_method")
     
     if not method or method not in ['email', 'totp']:
         return Response({
@@ -542,7 +545,7 @@ def handle_login_step_3_email_2fa_api(request):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     # Handle code verification
-    submitted_code = request.data.get("twofa_code")
+    submitted_code = request.data.get("verification_code")
     if not submitted_code:
         return Response({
             'success': False,
@@ -624,7 +627,7 @@ def handle_login_step_3_totp_2fa_api(request):
             'errors': {'user': 'User not found'}
         }, status=status.HTTP_400_BAD_REQUEST)
     
-    submitted_code = request.data.get("twofa_code")
+    submitted_code = request.data.get("totp_code")
     if not submitted_code:
         return Response({
             'success': False,
@@ -823,6 +826,103 @@ def handle_login_success_api(request, user, remember_device):
         del request.session["trusted_device_max_age"]
     
     return Response(response_data, status=status.HTTP_200_OK)
+
+
+# ===============================
+# 2FA RESEND CODE API VIEWS
+# ===============================
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def resend_2fa_code_api(request):
+    """Resend 2FA code for login"""
+    session_data = request.session.get("login_data", {})
+    user_id = session_data.get("user_id")
+    
+    if not user_id:
+        return Response({
+            'success': False,
+            'message': 'Session expired. Please try again.',
+            'errors': {'session': 'Session expired'}
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        user = CustomUser.objects.get(pk=user_id)
+    except CustomUser.DoesNotExist:
+        return Response({
+            'success': False,
+            'message': 'User not found.',
+            'errors': {'user': 'User not found'}
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    chosen_method = session_data.get("chosen_2fa_method")
+    if not chosen_method:
+        return Response({
+            'success': False,
+            'message': 'No 2FA method selected.',
+            'errors': {'method': 'No method selected'}
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Check if enough time has passed since last code
+    code_sent_at = session_data.get("code_sent_at")
+    if code_sent_at:
+        sent_time = datetime.fromisoformat(
+            code_sent_at.replace("Z", "+00:00")
+            if code_sent_at.endswith("Z")
+            else code_sent_at
+        )
+        if timezone.is_naive(sent_time):
+            sent_time = timezone.make_aware(sent_time)
+        
+        time_since_sent = timezone.now() - sent_time
+        if time_since_sent.total_seconds() < 60:  # 1 minute delay
+            remaining_time = int(60 - time_since_sent.total_seconds())
+            return Response({
+                'success': False,
+                'message': f'Please wait {remaining_time} seconds before requesting a new code.',
+                'errors': {'resend': f'Wait {remaining_time} seconds'}
+            }, status=status.HTTP_400_BAD_REQUEST)
+    
+    if chosen_method == "email":
+        # Generate and send new email code
+        new_code = generate_email_code()
+        user.email_2fa_code = new_code
+        user.email_2fa_sent_at = timezone.now()
+        user.save()
+        
+        session_data.update({
+            "verification_code": new_code,
+            "code_sent_at": timezone.now().isoformat(),
+            "code_attempts": 0,
+        })
+        request.session["login_data"] = session_data
+        
+        success = send_2FA_email(user, new_code)
+        if success:
+            return Response({
+                'success': True,
+                'message': 'New verification code sent to your email.',
+                'method': 'email'
+            }, status=status.HTTP_200_OK)
+        else:
+            return Response({
+                'success': False,
+                'message': 'Error sending verification code.',
+                'errors': {'email': 'Failed to send code'}
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    elif chosen_method == "totp":
+        return Response({
+            'success': False,
+            'message': 'Cannot resend TOTP code.',
+            'errors': {'method': 'TOTP codes cannot be resent'}
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    return Response({
+        'success': False,
+        'message': 'Invalid 2FA method.',
+        'errors': {'method': 'Invalid method'}
+    }, status=status.HTTP_400_BAD_REQUEST)
 
 
 # ===============================
@@ -1045,6 +1145,35 @@ def logout_api(request):
     return Response({
         'success': True,
         'message': 'Logout successful.'
+    }, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def refresh_session_api(request):
+    """Refresh user session to keep it active"""
+    user = request.user
+    
+    # Update online status
+    user.is_online = True
+    user.last_seen = timezone.now()
+    user.save()
+    
+    # Log the session refresh
+    ip = get_client_ip(request)
+    log_user_action_json(
+        user=user,
+        action="session_refresh",
+        request=request,
+        ip_address=ip,
+        extra_info={"impacted_user_id": user.id}
+    )
+    
+    return Response({
+        'success': True,
+        'message': 'Session refreshed successfully.',
+        'user_id': user.id,
+        'timestamp': timezone.now().isoformat()
     }, status=status.HTTP_200_OK)
 
 

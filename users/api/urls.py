@@ -6,7 +6,9 @@ urlpatterns = [
     # Authentication
     path('auth/login/', views.login_api, name='api_login'),
     path('auth/logout/', views.logout_api, name='api_logout'),
+    path('auth/refresh-session/', views.refresh_session_api, name='api_refresh_session'),
     path('auth/refresh/', TokenRefreshView.as_view(), name='api_token_refresh'),
+    path('auth/resend-2fa-code/', views.resend_2fa_code_api, name='api_resend_2fa_code'),
     
     # Registration (setps)
     path('auth/register/step1/', views.register_step_1_email, name='api_register_step1'),

@@ -239,10 +239,10 @@ REST_FRAMEWORK = {
 # Conifiguration JWT
 from datetime import timedelta
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
-    'ROTATE_REFRESH_TOKENS': True,
-    'BLACKLIST_AFTER_ROTATION': True,
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=365),  # 1 year - effectively no expiration
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=365),  # 1 year - effectively no expiration
+    'ROTATE_REFRESH_TOKENS': False,  # Disable rotation to prevent automatic expiration
+    'BLACKLIST_AFTER_ROTATION': False,  # Disable blacklisting
 }
 
 # CORS for allowing iOS requests

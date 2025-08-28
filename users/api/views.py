@@ -6,10 +6,12 @@ import uuid
 from django.core.files import temp
 from django.core.exceptions import ValidationError
 from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from django.utils import timezone
+from rest_framework.authentication import SessionAuthentication
+from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from users.models import CustomUser
 from users.validators import UsernameValidator
@@ -17,7 +19,7 @@ from users.utils import (
     generate_email_code, send_verification_email,
     get_client_ip, get_user_agent, get_location_from_ip,
     send_2FA_email, verify_totp, is_trusted_device,
-    initialize_login_session_data
+    initialize_login_session_data, login_success
 )
 from users.constants import EMAIL_CODE_RESEND_DELAY_SECONDS, EMAIL_CODE_EXPIRY_SECONDS
 from logs.utils import log_user_action_json
@@ -663,6 +665,124 @@ def handle_login_success_api(request, user, remember_device):
     user.last_login_ip = ip
     user.save()
     
+    # Handle trusted device creation if requested
+    if remember_device:
+        # Set session flag for trusted device
+        request.session["remember_device"] = True
+        
+        # First, check if this device is already registered as trusted (by IP + User-Agent)
+        from users.models import TrustedDevice
+        existing_device = TrustedDevice.objects.filter(
+            user=user,
+            ip_address=ip,
+            user_agent=user_agent[:255]
+        ).first()
+        
+        if existing_device:
+            # Device already exists - update it and don't create a new one
+            existing_device.last_used_at = timezone.now()
+            if location:
+                existing_device.location = location
+            existing_device.save(
+                update_fields=["last_used_at", "location"]
+            )
+            
+            # Check if we need to update the cookie
+            trusted_tokens = [
+                value
+                for key, value in request.COOKIES.items()
+                if key.startswith(f"trusted_device_{user.pk}")
+            ]
+            
+            # If no valid cookie exists, create one for the existing device
+            if not trusted_tokens:
+                from users.utils import hash_token
+                import uuid
+                
+                cookie_name = f"trusted_device_{user.pk}"
+                max_age_days = 30
+                max_age = max_age_days * 24 * 60 * 60
+                
+                # Generate new token for existing device
+                token = f"{user.pk}-{uuid.uuid4().hex}"
+                token_hash = hash_token(token)
+                
+                # Update device with new token
+                existing_device.device_token = token_hash
+                existing_device.expires_at = timezone.now() + timedelta(days=max_age_days)
+                existing_device.save(update_fields=["device_token", "expires_at"])
+                
+                # Store token info for client
+                request.session["trusted_device_token"] = token
+                request.session["trusted_device_cookie_name"] = cookie_name
+                request.session["trusted_device_max_age"] = max_age
+        else:
+            # Check for existing trusted device cookies (in case user has cookie but device was deleted from DB)
+            trusted_tokens = [
+                value
+                for key, value in request.COOKIES.items()
+                if key.startswith(f"trusted_device_{user.pk}")
+            ]
+
+            # Try to find an existing trusted device by token
+            device = None
+            for token in trusted_tokens:
+                from users.utils import hash_token
+                hashed_token = hash_token(token)
+                device = TrustedDevice.objects.filter(
+                    user=user, device_token=hashed_token
+                ).first()
+                if device:
+                    break
+
+            if device:
+                # Update existing device with current usage information
+                device.last_used_at = timezone.now()
+                device.ip_address = ip
+                device.user_agent = user_agent[:255]
+                if location:
+                    device.location = location
+                device.save(
+                    update_fields=["last_used_at", "ip_address", "user_agent", "location"]
+                )
+            else:
+                # Create new trusted device
+                from users.utils import hash_token
+                from users.models import TrustedDevice
+                
+                cookie_name = f"trusted_device_{user.pk}"
+                max_age_days = 30
+                max_age = max_age_days * 24 * 60 * 60
+                
+                # Generate unique token
+                token = f"{user.pk}-{uuid.uuid4().hex}"
+                token_hash = hash_token(token)
+                
+                # Get device info from user agent
+                from users.utils import _get_device_info_from_user_agent
+                device_info = _get_device_info_from_user_agent(user_agent)
+                
+                # Create trusted device record
+                TrustedDevice.objects.create(
+                    user=user,
+                    device_token=token_hash,
+                    user_agent=user_agent[:255],
+                    ip_address=ip,
+                    location=location or "",
+                    expires_at=timezone.now() + timedelta(days=max_age_days),
+                    device_type=device_info.get("device_type", "Unknown Device"),
+                    device_family=device_info.get("device_family", "Unknown"),
+                    browser_family=device_info.get("browser_family", "Unknown"),
+                    browser_version=device_info.get("browser_version", ""),
+                    os_family=device_info.get("os_family", "Unknown"),
+                    os_version=device_info.get("os_version", ""),
+                )
+                
+                # Store token in session for client to set as cookie
+                request.session["trusted_device_token"] = token
+                request.session["trusted_device_cookie_name"] = cookie_name
+                request.session["trusted_device_max_age"] = max_age
+    
     # Log the connection
     log_user_action_json(
         user=user,
@@ -680,14 +800,29 @@ def handle_login_success_api(request, user, remember_device):
     tokens = create_tokens_for_user(user)
     user_data = UserSerializer(user).data
     
-    return Response({
+    response_data = {
         'success': True,
         'message': f'Welcome {user.first_name} !',
         'user': user_data,
         'tokens': tokens,
         'requires_2fa': False,
         'login_complete': True
-    }, status=status.HTTP_200_OK)
+    }
+    
+    # Add trusted device info if created
+    if remember_device and "trusted_device_token" in request.session:
+        response_data['trusted_device'] = {
+            'token': request.session["trusted_device_token"],
+            'cookie_name': request.session["trusted_device_cookie_name"],
+            'max_age': request.session["trusted_device_max_age"],
+            'expires_in_days': 30
+        }
+        # Clean up session data
+        del request.session["trusted_device_token"]
+        del request.session["trusted_device_cookie_name"]
+        del request.session["trusted_device_max_age"]
+    
+    return Response(response_data, status=status.HTTP_200_OK)
 
 
 # ===============================
@@ -696,6 +831,7 @@ def handle_login_success_api(request, user, remember_device):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+@authentication_classes([JWTAuthentication, SessionAuthentication])
 def user_profile(request):
     """Get user profile information"""
     serializer = UserSerializer(request.user)
@@ -704,6 +840,7 @@ def user_profile(request):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+@authentication_classes([JWTAuthentication, SessionAuthentication])
 def user_profile_full(request):
     """Get COMPLETE user profile information with all details"""
     user = request.user

@@ -300,10 +300,17 @@ if DEBUG:
         "users.middleware.LoginCachePreventionMiddleware",
     ]
 
-    LOGGING = {
+LOGGING = {
     "version": 1,
+    "disable_existing_loggers": False,
     "handlers": {
         "console": {"class": "logging.StreamHandler"},
+    },
+    "loggers": {
+        "django.db.backends": {
+            "handlers": ["console"],
+            "level": "DEBUG",   # Affiche toutes les requêtes SQL
+        },
     },
     "root": {
         "handlers": ["console"],

@@ -401,6 +401,7 @@ def send_verification_email(email, code):
             [email],
             fail_silently=False,
         )
+        print(f"Code: {code}")
         return True
     except Exception as e:
         print(f"Email sending error: {e}")

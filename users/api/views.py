@@ -29,6 +29,7 @@ from users.api.serializers import (
     RegisterStep4Serializer, RegisterStep5Serializer, LoginSerializer, ResendCodeSerializer, UserSerializer,
     create_tokens_for_user
 )
+from users.api.errors import AuthErrorResponse, handle_authentication_error
 
 # ===============================
 # REGISTRATION API VIEWS
@@ -77,12 +78,13 @@ def register_step_1_email(request):
             }, status=status.HTTP_200_OK)
         else:
             temp_user.delete()
-            return Response({
-                'success': False,
-                "message": "Failed to send verification code",
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return AuthErrorResponse.server_error({
+                'email': email,
+                'error': 'Failed to send verification code'
+            })
 
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    # Return structured error response
+    return AuthErrorResponse.validation_error(serializer.errors)
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -101,14 +103,13 @@ def register_step_2_verifify_email(request):
             if temp_user.verification_code_sent_at:
                 time_since_sent = timezone.now() - temp_user.verification_code_sent_at
                 if time_since_sent.total_seconds() > EMAIL_CODE_EXPIRY_SECONDS:
-                    return Response({
-                        'success': False,
-                        "message": "Verification code has expired",
-                    }, status=status.HTTP_400_BAD_REQUEST)
+                                    return AuthErrorResponse.verification_code_expired()
 
             # Check code
             if temp_user.email_verification_code == submitted_code:
-                temp_user.delete() #Clean temporary user
+                # Mark email as verified but keep temp user for final registration
+                temp_user.is_email_verified = True
+                temp_user.save()
 
                 return Response({
                     "success": True, 
@@ -116,16 +117,10 @@ def register_step_2_verifify_email(request):
                     "email_verified": True
                 }, status=status.HTTP_200_OK)
             else:
-                return Response({
-                    "success": False,
-                    "message": "Incorrect code."
-                }, status=status.HTTP_400_BAD_REQUEST)
+                return AuthErrorResponse.invalid_verification_code()
 
         except CustomUser.DoesNotExist:
-            return Response({
-                "success": False,
-                "message": "Session expired. Please try registration again."
-            }, status=status.HTTP_400_BAD_REQUEST)
+            return AuthErrorResponse.session_expired()
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -140,8 +135,19 @@ def register_complete(request):
                 'message': f'The field {field} is required.'
             }, status=status.HTTP_400_BAD_REQUEST)
     
+    email = request.data['email']
+    
+    # Check if there's a verified temporary user
+    try:
+        temp_user = CustomUser.objects.get(email=email, is_active=False, is_email_verified=True)
+    except CustomUser.DoesNotExist:
+        return Response({
+            'success': False,
+            'message': 'Email not verified. Please complete email verification first.',
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
     # Validate each step
-    step1_data = {'email': request.data['email']}
+    step1_data = {'email': email}
     step1_serializer = RegisterStep1Serializer(data=step1_data)
     if not step1_serializer.is_valid():
         return Response({
@@ -168,7 +174,7 @@ def register_complete(request):
     if not step4_serializer.is_valid():
         return Response({
             'success': False,
-            'message': 'Invlaid username.',
+            'message': 'Invalid username.',
             'errors': step4_serializer.errors
         }, status=status.HTTP_400_BAD_REQUEST)
     
@@ -186,32 +192,31 @@ def register_complete(request):
     
     # Create user
     try:
-        user = CustomUser.objects.create_user(
-            email=request.data['email'],
-            username=request.data['username'].lower(),
-            password=request.data['password1'],
-            first_name=request.data['first_name'],
-            last_name=request.data['last_name'],
-            date_of_birth=datetime.strptime(request.data['date_of_birth'], '%Y-%m-%d').date(),
-            is_email_verified=True,  # Email already verified at step 2
-        )
+        # Update the existing temporary user instead of creating a new one
+        temp_user.username = request.data['username'].lower()
+        temp_user.first_name = request.data['first_name']
+        temp_user.last_name = request.data['last_name']
+        temp_user.date_of_birth = datetime.strptime(request.data['date_of_birth'], '%Y-%m-%d').date()
+        temp_user.set_password(request.data['password1'])
+        temp_user.is_active = True
+        temp_user.save()
         
         # Log account creation
         ip = get_client_ip(request)
-        user.ip_address = ip
-        user.save()
+        temp_user.ip_address = ip
+        temp_user.save()
         
         log_user_action_json(
-            user=user,
+            user=temp_user,
             action="register_api",
             request=request,
             ip_address=ip,
-            extra_info={"impacted_user_id": user.id}
+            extra_info={"impacted_user_id": temp_user.id}
         )
         
         # Create JWT tokens
-        tokens = create_tokens_for_user(user)
-        user_data = UserSerializer(user).data
+        tokens = create_tokens_for_user(temp_user)
+        user_data = UserSerializer(temp_user).data
         
         return Response({
             'success': True,
@@ -225,6 +230,47 @@ def register_complete(request):
             'success': False,
             'message': f'Error creating account: {str(e)}'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def register_step_4_username(request):
+    """Step 4: Username selection with real-time validation"""
+    print(f"🔍 Step4 request data: {request.data}")
+    
+    # Simple validation without serializer for now
+    username = request.data.get('username', '').strip()
+    
+    if not username:
+        return Response({
+            'success': False,
+            'message': 'Username is required.',
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    if len(username) < 3:
+        return Response({
+            'success': False,
+            'message': 'Username must be at least 3 characters long.',
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    if len(username) > 30:
+        return Response({
+            'success': False,
+            'message': 'Username must be 30 characters or less.',
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Check if username is available
+    if CustomUser.objects.filter(username=username.lower()).exists():
+        return Response({
+            'success': False,
+            'message': 'This username is already taken.',
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    return Response({
+        'success': True,
+        'message': 'Username is available.',
+        'username': username
+    }, status=status.HTTP_200_OK)
 
 
 @api_view(['POST'])
@@ -382,11 +428,26 @@ def handle_login_step_1_credentials_api(request):
         # No 2FA required, proceed to login
         return handle_login_success_api(request, user, remember_device)
     
-    return Response({
-        'success': False,
-        'message': 'Incorrect credentials.',
-        'errors': serializer.errors
-    }, status=status.HTTP_400_BAD_REQUEST)
+    # Handle validation errors with structured error responses
+    if serializer.errors:
+        # Check for specific error types
+        if 'identifier' in serializer.errors:
+            # Could be user not found or invalid format
+            identifier = request.data.get('identifier', '')
+            if CustomUser.objects.filter(username=identifier).exists() or CustomUser.objects.filter(email=identifier).exists():
+                # User exists but password is wrong
+                return AuthErrorResponse.invalid_credentials()
+            else:
+                # User not found
+                return AuthErrorResponse.user_not_found(identifier)
+        elif 'password' in serializer.errors:
+            return AuthErrorResponse.invalid_credentials()
+        else:
+            # General validation error
+            return AuthErrorResponse.validation_error(serializer.errors)
+    
+    # Fallback for unexpected errors
+    return AuthErrorResponse.invalid_credentials()
 
 
 def handle_login_step_2_2fa_choice_api(request):
@@ -1193,25 +1254,25 @@ def check_username_availability(request):
     validator = UsernameValidator()
 
     if not username:
-        return Response({
-            "available": False, 
-            "message": "Username required"
-        }, status=status.HTTP_400_BAD_REQUEST)
+        return AuthErrorResponse.validation_error({
+            "username": ["Username is required"]
+        })
 
     try:
         # Use the same validator as the forms (converts to lowercase)
         validator.validate(username)
     except ValidationError as e:
-        return Response({
-            "available": False, 
-            "message": str(e)
-        }, status=status.HTTP_400_BAD_REQUEST)
+        return AuthErrorResponse.invalid_username_format(username, [str(e)])
 
     # Check availability (case-insensitive)
     # The validator already converted username to lowercase
     is_available = not CustomUser.objects.filter(username__iexact=username).exists()
 
-    return Response({
-        "available": is_available,
-        "message": "Available" if is_available else "Already taken",
-    }, status=status.HTTP_200_OK)
+    if is_available:
+        return Response({
+            "available": True,
+            "message": "Username is available",
+            "username": username
+        }, status=status.HTTP_200_OK)
+    else:
+        return AuthErrorResponse.username_already_taken(username)

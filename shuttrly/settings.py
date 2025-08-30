@@ -306,12 +306,12 @@ LOGGING = {
     "handlers": {
         "console": {"class": "logging.StreamHandler"},
     },
-    "loggers": {
-        "django.db.backends": {
-            "handlers": ["console"],
-            "level": "DEBUG",   # Affiche toutes les requêtes SQL
-        },
-    },
+    # "loggers": {
+    #     "django.db.backends": {
+    #         "handlers": ["console"],
+    #         "level": "DEBUG",   # Affiche toutes les requêtes SQL
+    #     },
+    # },
     "root": {
         "handlers": ["console"],
         "level": "DEBUG",

@@ -13,6 +13,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from users.models import CustomUser
 from users.utils import calculate_age
 from users.validators import UsernameValidator, CustomPasswordValidator
+from users.api.errors import AuthErrorResponse, AuthErrorCode
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -37,7 +38,9 @@ class RegisterStep1Serializer(serializers.Serializer):
     def validate_email(self, value):
         # Check if email already exists
         if CustomUser.objects.filter(email=value, is_active=True).exists():
-            raise serializers.ValidationError("An account with this email already exists.")
+            raise serializers.ValidationError(
+                AuthErrorResponse.email_already_exists(value).data["error"]["message"]
+            )
         return value
 
 class RegisterStep2Serializer(serializers.Serializer):
@@ -53,7 +56,9 @@ class RegisterStep3Serializer(serializers.Serializer):
     def validate_date_of_birth(self, value):
         age = calculate_age(value)
         if age < 16:
-            raise serializers.ValidationError("You must be at least 16 years old.")
+            raise serializers.ValidationError(
+                AuthErrorResponse.age_restriction().data["error"]["message"]
+            )
         return value
 
 class RegisterStep4Serializer(serializers.Serializer):
@@ -69,7 +74,9 @@ class RegisterStep4Serializer(serializers.Serializer):
 
         # Check availability
         if CustomUser.objects.filter(username=value.lower()).exists():
-            raise serializers.ValidationError("This username is already taken.")
+            raise serializers.ValidationError(
+                AuthErrorResponse.username_already_taken(value).data["error"]["message"]
+            )
         
         return value.lower()
 
@@ -83,14 +90,18 @@ class RegisterStep5Serializer(serializers.Serializer):
         password2 = data.get('password2')
 
         if password1 != password2:
-            raise serializers.ValidationError("Passwords do not match.")
+            raise serializers.ValidationError(
+                AuthErrorResponse.passwords_dont_match().data["error"]["message"]
+            )
         
         # Validate password strength
         validator = CustomPasswordValidator()
         try:
             validator.validate(password1)
         except ValidationError as e:
-            raise serializers.ValidationError(str(e))
+            raise serializers.ValidationError(
+                AuthErrorResponse.invalid_password_format([str(e)]).data["error"]["message"]
+            )
         
         return data
 
@@ -111,10 +122,14 @@ class LoginSerializer(serializers.Serializer):
         user = authenticate(username=identifier, password=password)
 
         if not user:
-            raise serializers.ValidationError("Invalid credentials.")
+            raise serializers.ValidationError(
+                AuthErrorResponse.invalid_credentials().data["error"]["message"]
+            )
 
         if not user.is_email_verified:
-            raise serializers.ValidationError("Please verify your email address.")
+            raise serializers.ValidationError(
+                AuthErrorResponse.email_not_verified(identifier).data["error"]["message"]
+            )
 
         data["user"] =  user
         return data

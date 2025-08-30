@@ -10,9 +10,10 @@ urlpatterns = [
     path('auth/refresh/', TokenRefreshView.as_view(), name='api_token_refresh'),
     path('auth/resend-2fa-code/', views.resend_2fa_code_api, name='api_resend_2fa_code'),
     
-    # Registration (setps)
+    # Registration (steps)
     path('auth/register/step1/', views.register_step_1_email, name='api_register_step1'),
     path('auth/register/step2/', views.register_step_2_verifify_email, name='api_register_step2'),
+    path('auth/register/step4/', views.register_step_4_username, name='api_register_step4'),
     path('auth/register/complete/', views.register_complete, name='api_register_complete'),
     path('auth/resend-code/', views.resend_verification_code, name='api_resend_code'),
     

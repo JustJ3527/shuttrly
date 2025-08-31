@@ -17,9 +17,10 @@
     <link rel="stylesheet" href="{% static 'css/step_validation.css' %}">
     <link rel="stylesheet" href="{% static 'css/base.css' %}">
     <!-- Font Awesome -->
-    <script src="https://kit.fontawesome.com/48953ba2ad.js" crossorigin="anonymous"></script>
-
-    <!-- Google Fonts -->
+<!-- Font Awesome CSS (au lieu du kit JS) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" 
+    integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" 
+    crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -52,11 +53,11 @@
         </div>
         <div class="navbar-menu">
           <ul>
-            <li><a href="{% url "home" %}" class="active"><span>Home</span></a></li>
+            <li><a href="{% url "home" %}" hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true"><span>Home</span></a></li>
             <li><a href="#"><span>Discover</span></a></li>
             <li><a href="#"><span>Search</span></a></li>
-            <li><a href="{% url "photos:gallery" %}"><span>Gallery</span></a></li>
-            <li><a href="{% url "photos:collection_list" %}"><span>Collections</span></a></li>
+            <li><a href="{% url "photos:gallery" %}" hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true"><span>Gallery</span></a></li>
+            <li><a href="{% url "photos:collection_list" %}" hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true"><span>Collections</span></a></li>
           </ul>
         </div>
         <div class="navbar-actions">
@@ -75,11 +76,11 @@
           <div class="mobile-menu-section">
             <h3><i class="fas fa-compass"></i> Navigation</h3>
             <ul>
-              <li><a href="#"><i class="fas fa-home"></i> <span>Home</span></a></li>
+              <li><a href="{% url "home" %}" hx-target="#main-content" hx-swap="innerHTML"><i class="fas fa-home"></i> <span>Home</span></a></li>
               <li><a href="#"><i class="fas fa-compass"></i> <span>Discover</span></a></li>
               <li><a href="#"><i class="fas fa-search"></i> <span>Search</span></a></li>
-              <li><a href="{% url "photos:gallery" %}"><i class="fas fa-images"></i> <span>Gallery</span></a></li>
-              <li><a href="{% url "photos:collection_list" %}"><i class="fas fa-cloud-upload-alt"></i> <span>Collections</span></a></li>
+              <li><a href="{% url "photos:gallery" %}" hx-target="#main-content" hx-swap="innerHTML"><i class="fas fa-images"></i> <span>Gallery</span></a></li>
+              <li><a href="{% url "photos:collection_list" %}" hx-target="#main-content" hx-swap="innerHTML"><i class="fas fa-cloud-upload-alt"></i> <span>Collections</span></a></li>
             </ul>
           </div>
           
@@ -163,7 +164,7 @@
     <!-- Display messages with auto-clear functionality -->
     {% display_messages_with_auto_clear %}
 
-    <div class="main-content">
+    <div class="main-content" id="main-content" data-page="{% block main_page %}{% endblock %}">
         {% block content %}
         {% endblock %}
       
@@ -175,23 +176,50 @@
         </select>
     </div>
     
+    {% block scripts %}
 
+    <!-- Local JavaScript files -->
+    <script src="{% static 'js/utils_scripts.js' %}"></script>
+    <script src="{% static 'js/message_manager.js' %}"></script>
+    <script src="{% static 'js/navbar.js' %}"></script>
+    <script src="{% static 'js/step_validation.js' %}"></script>
+    <script src="{% static 'js/script-navbar.js' %}"></script>
+    
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+
+    {% comment %} <script>
+        function updateNavbarActive() {
+          const page = document.getElementById('main-content').dataset.page;
+
+          // Navbar desktop
+          document.querySelectorAll('.navbar a').forEach(a => a.classList.remove('active'));
+          const activeLinkDesktop = document.querySelector(`.navbar a[hx-get$="${page}/"]`);
+          if(activeLinkDesktop) activeLinkDesktop.classList.add('active');
+
+          // Navbar mobile
+          document.querySelectorAll('.mobile-menu-overlay a').forEach(a => a.classList.remove('active'));
+          const activeLinkMobile = document.querySelector(`.mobile-menu-overlay a[hx-get$="${page}/"]`);
+          if(activeLinkMobile) activeLinkMobile.classList.add('active');
+        }
+
+        // Appel initial
+        updateNavbarActive();
+        // Mettre à jour data-page après chaque swap HTMX
+        document.body.addEventListener('htmx:afterSwap', function(evt) {
+            if (evt.detail.target.id === 'main-content') {
+                const page = evt.detail.xhr.getResponseHeader('X-Page-Name');
+                if (page) {
+                    document.getElementById('main-content').dataset.page = page;
+                }
+            }
+        });
+      </script> {% endcomment %}
+    {% endblock %}
 </body>
 <footer>
     <p>&copy; 2025 Shuttrly. All rights reserved.</p>
 </footer>
-{% block scripts %}
-
-<!-- Local JavaScript files -->
-<script src="{% static 'js/utils_scripts.js' %}"></script>
-<script src="{% static 'js/message_manager.js' %}"></script>
-<script src="{% static 'js/navbar.js' %}"></script>
-<script src="{% static 'js/step_validation.js' %}"></script>
-<script src="{% static 'js/script-navbar.js' %}"></script>
-<!-- Temporarily disabled to fix photo selection
-<script src="{% static 'js/collections.js' %}"></script>
--->
-{% endblock %}
 {% block extra_js %}
 {% endblock %}
 </html>

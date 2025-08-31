@@ -33,6 +33,8 @@ urlpatterns = [
     path("logs/", include("logs.urls")),
     path("photos/", include("photos.urls")),
 
+    path("posts/", include("posts.urls")),
+
     # API
     path("api/v1/", include("users.api.urls")),
     path("api/v1/photos/", include("photos.api.urls")),

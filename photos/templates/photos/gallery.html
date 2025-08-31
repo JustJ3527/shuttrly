@@ -1,4 +1,6 @@
 {% extends 'base.html' %}
+{% block main_page %}gallery{% endblock %}
+
 {% load static %}
 
 {% block title %}Photo Gallery - Shuttrly{% endblock %}
@@ -210,7 +212,9 @@
 </div>
 {% endblock %}
 
-{% block scripts %}
-{{ block.super }}
+{% block extra_js %}
 <script src="{% static 'js/photo_gallery.js' %}"></script>
+<script>
+    document.getElementById('main-content').dataset.page = "{{ page_name }}";
+</script>
 {% endblock %}

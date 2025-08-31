@@ -1,0 +1,665 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Edit Post - {{ post.title|default:"Untitled" }}{% endblock %}
+
+{% block content %}
+<div class="posts-container">
+    <!-- Header -->
+    <div class="posts-header">
+        <div class="container-fluid">
+            <div class="row align-items-center">
+                <div class="col">
+                    <h1><i class="fas fa-edit"></i> Edit Post</h1>
+                    <p class="subtitle">Update your post details and content</p>
+                </div>
+                <div class="col-auto">
+                    <div class="posts-actions">
+                        <a href="{% url 'posts:post_detail' post.pk %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-eye"></i> View Post
+                        </a>
+                        <a href="{% url 'posts:post_list' %}" class="btn btn-outline-primary">
+                            <i class="fas fa-arrow-left"></i> Back to Posts
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Main Content -->
+            <div class="col-lg-8">
+                <div class="posts-content">
+                    <!-- Post Edit Form -->
+                    <div class="post-edit-form">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0"><i class="fas fa-edit"></i> Edit Post Details</h5>
+                            </div>
+                            <div class="card-body">
+                                <form method="post" id="post-edit-form">
+                                    {% csrf_token %}
+                                    
+                                    <!-- Post Title -->
+                                    <div class="mb-3">
+                                        <label for="{{ form.title.id_for_label }}" class="form-label">
+                                            <i class="fas fa-heading"></i> Post Title (Optional)
+                                        </label>
+                                        {{ form.title }}
+                                        {% if form.title.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {{ form.title.errors.0 }}
+                                            </div>
+                                        {% endif %}
+                                        <div class="form-text">Give your post a catchy title to grab attention</div>
+                                    </div>
+                                    
+                                    <!-- Post Description -->
+                                    <div class="mb-3">
+                                        <label for="{{ form.description.id_for_label }}" class="form-label">
+                                            <i class="fas fa-align-left"></i> Description
+                                        </label>
+                                        {{ form.description }}
+                                        {% if form.description.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {{ form.description.errors.0 }}
+                                            </div>
+                                        {% endif %}
+                                        <div class="form-text">
+                                            <i class="fas fa-info-circle text-info"></i> 
+                                            {{ form.description.help_text }}
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Post Visibility -->
+                                    <div class="mb-3">
+                                        <label for="{{ form.visibility.id_for_label }}" class="form-label">
+                                            <i class="fas fa-eye"></i> Visibility
+                                        </label>
+                                        {{ form.visibility }}
+                                        {% if form.visibility.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {{ form.visibility.errors.0 }}
+                                            </div>
+                                        {% endif %}
+                                        <div class="form-text">Choose who can see your post</div>
+                                    </div>
+                                    
+                                    <!-- Form Errors -->
+                                    {% if form.non_field_errors %}
+                                    <div class="alert alert-danger">
+                                        <i class="fas fa-exclamation-triangle"></i>
+                                        {{ form.non_field_errors.0 }}
+                                    </div>
+                                    {% endif %}
+                                    
+                                    <!-- Submit Buttons -->
+                                    <div class="d-flex gap-2">
+                                        <button type="submit" class="btn btn-primary btn-lg" id="submit-btn">
+                                            <i class="fas fa-save"></i> Update Post
+                                        </button>
+                                        <a href="{% url 'posts:post_detail' post.pk %}" class="btn btn-outline-secondary btn-lg">
+                                            <i class="fas fa-times"></i> Cancel
+                                        </a>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Current Post Content Preview -->
+                    <div class="current-post-preview mt-4">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0"><i class="fas fa-eye"></i> Current Post Content</h5>
+                            </div>
+                            <div class="card-body">
+                                <!-- Post Content Display -->
+                                <div class="post-content-display">
+                                    {% if post.post_type == 'single_photo' %}
+                                        <!-- Single Photo Display -->
+                                        <div class="single-photo-display">
+                                            {% if post.get_cover_image_url %}
+                                                <img src="{{ post.get_cover_image_url }}" 
+                                                     alt="{{ post.title|default:'Post image' }}"
+                                                     class="img-fluid rounded">
+                                            {% else %}
+                                                <div class="no-image-placeholder">
+                                                    <i class="fas fa-image fa-3x text-muted"></i>
+                                                    <p class="text-muted">No image available</p>
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                        
+                                    {% elif post.post_type == 'multiple_photos' %}
+                                        <!-- Multiple Photos Display -->
+                                        <div class="multiple-photos-display">
+                                            <div class="photo-grid">
+                                                {% for photo in post.photos.all %}
+                                                <div class="photo-item">
+                                                    <img src="{{ photo.thumbnail.url|default:photo.original_file.url }}" 
+                                                         alt="{{ photo.title|default:'Photo' }}"
+                                                         class="photo-thumbnail">
+                                                </div>
+                                                {% empty %}
+                                                <div class="no-photos">
+                                                    <i class="fas fa-images fa-3x text-muted"></i>
+                                                    <p class="text-muted">No photos in this post</p>
+                                                </div>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                        
+                                    {% elif post.post_type == 'collection' %}
+                                        <!-- Collection Display -->
+                                        <div class="collection-display">
+                                            {% if post.content_object %}
+                                                <div class="collection-info">
+                                                    <h6>{{ post.content_object.name }}</h6>
+                                                    <p class="text-muted">{{ post.content_object.description|truncatewords:20 }}</p>
+                                                    <small class="text-muted">{{ post.content_object.get_photo_count }} photos</small>
+                                                </div>
+                                                {% if post.content_object.get_cover_photo_url %}
+                                                    <img src="{{ post.content_object.get_cover_photo_url }}" 
+                                                         alt="{{ post.content_object.name }}"
+                                                         class="img-fluid rounded">
+                                                {% endif %}
+                                            {% else %}
+                                                <div class="no-collection">
+                                                    <i class="fas fa-folder fa-3x text-muted"></i>
+                                                    <p class="text-muted">Collection not found</p>
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                
+                                <!-- Post Metadata -->
+                                <div class="post-metadata mt-3">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <small class="text-muted">
+                                                <i class="fas fa-calendar"></i> Created: {{ post.created_at|date:"M d, Y" }}
+                                            </small>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <small class="text-muted">
+                                                <i class="fas fa-clock"></i> Last updated: {{ post.updated_at|date:"M d, Y" }}
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Sidebar -->
+            <div class="col-lg-4">
+                <div class="posts-sidebar">
+                    <!-- Edit Tips -->
+                    <div class="edit-tips mb-4">
+                        <h5><i class="fas fa-lightbulb"></i> Editing Tips</h5>
+                        <ul class="tips-list">
+                            <li><i class="fas fa-hashtag text-primary"></i> Use relevant hashtags for better discoverability</li>
+                            <li><i class="fas fa-pen text-success"></i> Write engaging descriptions to tell your story</li>
+                            <li><i class="fas fa-eye text-warning"></i> Choose the right visibility for your audience</li>
+                            <li><i class="fas fa-save text-info"></i> Save your changes regularly</li>
+                        </ul>
+                    </div>
+                    
+                    <!-- Post Statistics -->
+                    <div class="post-statistics mb-4">
+                        <h5><i class="fas fa-chart-bar"></i> Post Statistics</h5>
+                        <div class="stats-grid">
+                            <div class="stat-item">
+                                <div class="stat-value">{{ post.views_count }}</div>
+                                <div class="stat-label">Views</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value">{{ post.likes_count }}</div>
+                                <div class="stat-label">Likes</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value">{{ post.comments_count }}</div>
+                                <div class="stat-label">Comments</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value">{{ post.saves_count }}</div>
+                                <div class="stat-label">Saves</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Quick Actions -->
+                    <div class="quick-actions mb-4">
+                        <h5><i class="fas fa-bolt"></i> Quick Actions</h5>
+                        <div class="action-buttons">
+                            <a href="{% url 'posts:post_detail' post.pk %}" class="btn btn-outline-primary btn-sm w-100 mb-2">
+                                <i class="fas fa-eye"></i> View Post
+                            </a>
+                            <a href="{% url 'posts:post_delete' post.pk %}" class="btn btn-outline-danger btn-sm w-100 mb-2">
+                                <i class="fas fa-trash"></i> Delete Post
+                            </a>
+                            <button type="button" class="btn btn-outline-secondary btn-sm w-100" onclick="history.back()">
+                                <i class="fas fa-arrow-left"></i> Go Back
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Post History -->
+                    <div class="post-history">
+                        <h5><i class="fas fa-history"></i> Post History</h5>
+                        <div class="history-timeline">
+                            <div class="timeline-item">
+                                <div class="timeline-date">{{ post.created_at|date:"M d" }}</div>
+                                <div class="timeline-content">
+                                    <strong>Post created</strong>
+                                    <small class="text-muted">{{ post.created_at|timesince }} ago</small>
+                                </div>
+                            </div>
+                            {% if post.updated_at != post.created_at %}
+                            <div class="timeline-item">
+                                <div class="timeline-date">{{ post.updated_at|date:"M d" }}</div>
+                                <div class="timeline-content">
+                                    <strong>Last updated</strong>
+                                    <small class="text-muted">{{ post.updated_at|timesince }} ago</small>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Custom CSS for this template -->
+<style>
+    .posts-container {
+        background: var(--background-default);
+        min-height: 100vh;
+    }
+    
+    .posts-header {
+        background: var(--gradient-primary);
+        color: white;
+        padding: 3rem 0;
+        margin-bottom: 2rem;
+    }
+    
+    .posts-header h1 {
+        color: white;
+        margin-bottom: 0.5rem;
+    }
+    
+    .posts-header .subtitle {
+        color: rgba(255, 255, 255, 0.9);
+        margin-bottom: 0;
+    }
+    
+    .posts-actions {
+        display: flex;
+        gap: 1rem;
+    }
+    
+    .card {
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 1rem;
+        backdrop-filter: blur(var(--blur-amount));
+    }
+    
+    .card-header {
+        background: rgba(255, 255, 255, 0.05);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 1rem 1rem 0 0;
+        padding: 1.5rem;
+    }
+    
+    .card-header h5 {
+        color: var(--primary-default);
+        margin: 0;
+        font-weight: 600;
+    }
+    
+    .card-body {
+        padding: 2rem;
+    }
+    
+    .form-label {
+        color: var(--text-default);
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+    
+    .form-control, .form-select {
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 0.5rem;
+        color: var(--text-default);
+        padding: 0.75rem 1rem;
+        transition: all 0.3s ease;
+    }
+    
+    .form-control:focus, .form-select:focus {
+        background: rgba(255, 255, 255, 0.15);
+        border-color: var(--primary-default);
+        box-shadow: 0 0 0 0.2rem rgba(var(--primary-default), 0.25);
+        color: var(--text-default);
+    }
+    
+    .form-text {
+        color: var(--text-600);
+        font-size: 0.875rem;
+        margin-top: 0.25rem;
+    }
+    
+    .btn {
+        border-radius: 0.5rem;
+        padding: 0.75rem 1.5rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        border: none;
+    }
+    
+    .btn-primary {
+        background: var(--primary-default);
+        color: white;
+    }
+    
+    .btn-primary:hover {
+        background: var(--primary-600);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(var(--primary-default), 0.3);
+    }
+    
+    .btn-outline-secondary {
+        border: 1px solid var(--text-400);
+        color: var(--text-default);
+    }
+    
+    .btn-outline-secondary:hover {
+        background: var(--text-200);
+        border-color: var(--text-300);
+        color: var(--text-default);
+    }
+    
+    .alert {
+        border-radius: 0.5rem;
+        border: none;
+        padding: 1rem 1.5rem;
+    }
+    
+    .alert-danger {
+        background: rgba(220, 53, 69, 0.1);
+        color: #dc3545;
+        border-left: 4px solid #dc3545;
+    }
+    
+    .photo-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+    
+    .photo-item {
+        border-radius: 0.5rem;
+        overflow: hidden;
+        position: relative;
+    }
+    
+    .photo-thumbnail {
+        width: 100%;
+        height: 120px;
+        object-fit: cover;
+    }
+    
+    .no-image-placeholder, .no-photos, .no-collection {
+        text-align: center;
+        padding: 2rem;
+        color: var(--text-400);
+    }
+    
+    .collection-info {
+        margin-bottom: 1rem;
+    }
+    
+    .collection-info h6 {
+        color: var(--primary-default);
+        margin-bottom: 0.5rem;
+    }
+    
+    .post-metadata {
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        padding-top: 1rem;
+    }
+    
+    .tips-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+    
+    .tips-list li {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin-bottom: 0.75rem;
+        padding: 0.75rem;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 0.5rem;
+        font-size: 0.875rem;
+    }
+    
+    .tips-list li i {
+        width: 16px;
+        text-align: center;
+    }
+    
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+    }
+    
+    .stat-item {
+        text-align: center;
+        padding: 1rem;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 0.5rem;
+    }
+    
+    .stat-value {
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: var(--primary-default);
+    }
+    
+    .stat-label {
+        font-size: 0.875rem;
+        color: var(--text-600);
+        margin-top: 0.25rem;
+    }
+    
+    .action-buttons {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .history-timeline {
+        margin-top: 1rem;
+    }
+    
+    .timeline-item {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .timeline-item:last-child {
+        border-bottom: none;
+    }
+    
+    .timeline-date {
+        background: var(--primary-default);
+        color: white;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        font-size: 0.75rem;
+        font-weight: bold;
+        min-width: 40px;
+        text-align: center;
+    }
+    
+    .timeline-content {
+        flex: 1;
+    }
+    
+    .timeline-content strong {
+        display: block;
+        color: var(--text-default);
+        font-size: 0.875rem;
+    }
+    
+    .timeline-content small {
+        font-size: 0.75rem;
+    }
+    
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        .posts-header {
+            padding: 2rem 0;
+        }
+        
+        .posts-header h1 {
+            font-size: 2rem;
+        }
+        
+        .posts-actions {
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        
+        .card-body {
+            padding: 1.5rem;
+        }
+        
+        .photo-grid {
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+        }
+        
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+</style>
+
+<!-- JavaScript for form handling -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('post-edit-form');
+    const submitBtn = document.getElementById('submit-btn');
+    
+    // Form submission handling
+    form.addEventListener('submit', function(e) {
+        // Show loading state
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
+        submitBtn.disabled = true;
+        
+        // Re-enable after a delay (in case of validation errors)
+        setTimeout(() => {
+            submitBtn.innerHTML = '<i class="fas fa-save"></i> Update Post';
+            submitBtn.disabled = false;
+        }, 5000);
+    });
+    
+    // Auto-save draft functionality
+    let autoSaveTimer;
+    const formInputs = form.querySelectorAll('input, textarea, select');
+    
+    formInputs.forEach(input => {
+        input.addEventListener('input', function() {
+            clearTimeout(autoSaveTimer);
+            autoSaveTimer = setTimeout(() => {
+                // Save form data to localStorage
+                const formData = new FormData(form);
+                const data = {};
+                for (let [key, value] of formData.entries()) {
+                    data[key] = value;
+                }
+                localStorage.setItem('post_edit_draft', JSON.stringify(data));
+                
+                // Show auto-save indicator
+                const indicator = document.createElement('div');
+                indicator.className = 'auto-save-indicator';
+                indicator.innerHTML = '<i class="fas fa-save"></i> Draft saved';
+                indicator.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    background: var(--primary-default);
+                    color: white;
+                    padding: 0.5rem 1rem;
+                    border-radius: 0.5rem;
+                    font-size: 0.875rem;
+                    z-index: 1000;
+                    opacity: 0;
+                    transition: opacity 0.3s ease;
+                `;
+                document.body.appendChild(indicator);
+                
+                // Show and hide indicator
+                setTimeout(() => indicator.style.opacity = '1', 100);
+                setTimeout(() => {
+                    indicator.style.opacity = '0';
+                    setTimeout(() => indicator.remove(), 300);
+                }, 2000);
+            }, 2000);
+        });
+    });
+    
+    // Load draft on page load
+    const savedDraft = localStorage.getItem('post_edit_draft');
+    if (savedDraft) {
+        const data = JSON.parse(savedDraft);
+        Object.keys(data).forEach(key => {
+            const input = form.querySelector(`[name="${key}"]`);
+            if (input) {
+                input.value = data[key];
+            }
+        });
+    }
+    
+    // Clear draft on successful submission
+    form.addEventListener('submit', function() {
+        localStorage.removeItem('post_edit_draft');
+    });
+    
+    // Keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+        // Ctrl/Cmd + S to save
+        if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+            e.preventDefault();
+            form.submit();
+        }
+        
+        // Escape to cancel
+        if (e.key === 'Escape') {
+            if (confirm('Are you sure you want to cancel? Unsaved changes will be lost.')) {
+                window.location.href = "{% url 'posts:post_detail' post.pk %}";
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

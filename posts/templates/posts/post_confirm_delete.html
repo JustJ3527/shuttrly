@@ -1,0 +1,774 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Delete Post - {{ post.title|default:"Untitled" }}{% endblock %}
+
+{% block content %}
+<div class="posts-container">
+    <!-- Header -->
+    <div class="posts-header">
+        <div class="container-fluid">
+            <div class="row align-items-center">
+                <div class="col">
+                    <h1><i class="fas fa-trash"></i> Delete Post</h1>
+                    <p class="subtitle">Are you sure you want to delete this post?</p>
+                </div>
+                <div class="col-auto">
+                    <div class="posts-actions">
+                        <a href="{% url 'posts:post_detail' post.pk %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-eye"></i> View Post
+                        </a>
+                        <a href="{% url 'posts:post_list' %}" class="btn btn-outline-primary">
+                            <i class="fas fa-arrow-left"></i> Back to Posts
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="container-fluid">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="posts-content">
+                    <!-- Delete Confirmation Card -->
+                    <div class="delete-confirmation">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0"><i class="fas fa-exclamation-triangle text-warning"></i> Confirm Deletion</h5>
+                            </div>
+                            <div class="card-body">
+                                <!-- Warning Message -->
+                                <div class="alert alert-warning">
+                                    <div class="d-flex align-items-start">
+                                        <i class="fas fa-exclamation-triangle fa-2x me-3"></i>
+                                        <div>
+                                            <h6 class="alert-heading">This action cannot be undone!</h6>
+                                            <p class="mb-0">Deleting this post will permanently remove it and all associated data including likes, comments, and saves.</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Post Preview -->
+                                <div class="post-preview mb-4">
+                                    <h6><i class="fas fa-eye"></i> Post Preview</h6>
+                                    <div class="preview-content">
+                                        {% if post.post_type == 'single_photo' %}
+                                            <!-- Single Photo Preview -->
+                                            <div class="single-photo-preview">
+                                                {% if post.get_cover_image_url %}
+                                                    <img src="{{ post.get_cover_image_url }}" 
+                                                         alt="{{ post.title|default:'Post image' }}"
+                                                         class="img-fluid rounded">
+                                                {% else %}
+                                                    <div class="no-image-placeholder">
+                                                        <i class="fas fa-image fa-2x text-muted"></i>
+                                                        <p class="text-muted">No image available</p>
+                                                    </div>
+                                                {% endif %}
+                                            </div>
+                                            
+                                        {% elif post.post_type == 'multiple_photos' %}
+                                            <!-- Multiple Photos Preview -->
+                                            <div class="multiple-photos-preview">
+                                                <div class="photo-grid">
+                                                    {% for photo in post.photos.all|slice:":4" %}
+                                                    <div class="photo-item">
+                                                        <img src="{{ photo.thumbnail.url|default:photo.original_file.url }}" 
+                                                             alt="{{ photo.title|default:'Photo' }}"
+                                                             class="photo-thumbnail">
+                                                    </div>
+                                                    {% empty %}
+                                                    <div class="no-photos">
+                                                        <i class="fas fa-images fa-2x text-muted"></i>
+                                                        <p class="text-muted">No photos in this post</p>
+                                                    </div>
+                                                    {% endfor %}
+                                                </div>
+                                                {% if post.photos.count > 4 %}
+                                                    <div class="more-photos-indicator">
+                                                        <span>+{{ post.photos.count|add:"-4" }} more</span>
+                                                    </div>
+                                                {% endif %}
+                                            </div>
+                                            
+                                        {% elif post.post_type == 'collection' %}
+                                            <!-- Collection Preview -->
+                                            <div class="collection-preview">
+                                                {% if post.content_object %}
+                                                    <div class="collection-info">
+                                                        <h6>{{ post.content_object.name }}</h6>
+                                                        <p class="text-muted">{{ post.content_object.description|truncatewords:15 }}</p>
+                                                        <small class="text-muted">{{ post.content_object.get_photo_count }} photos</small>
+                                                    </div>
+                                                    {% if post.content_object.get_cover_photo_url %}
+                                                        <img src="{{ post.content_object.get_cover_photo_url }}" 
+                                                             alt="{{ post.content_object.name }}"
+                                                             class="img-fluid rounded">
+                                                    {% endif %}
+                                                {% else %}
+                                                    <div class="no-collection">
+                                                        <i class="fas fa-folder fa-2x text-muted"></i>
+                                                        <p class="text-muted">Collection not found</p>
+                                                    </div>
+                                                {% endif %}
+                                            </div>
+                                        {% endif %}
+                                        
+                                        <!-- Post Details -->
+                                        <div class="post-details mt-3">
+                                            {% if post.title %}
+                                                <h5>{{ post.title }}</h5>
+                                            {% endif %}
+                                            {% if post.description %}
+                                                <p class="text-muted">{{ post.description|truncatewords:30 }}</p>
+                                            {% endif %}
+                                            <div class="post-meta">
+                                                <small class="text-muted">
+                                                    <i class="fas fa-calendar"></i> {{ post.created_at|date:"M d, Y" }}
+                                                    <span class="mx-2">•</span>
+                                                    <i class="fas fa-eye"></i> {{ post.views_count }} views
+                                                    <span class="mx-2">•</span>
+                                                    <i class="fas fa-heart"></i> {{ post.likes_count }} likes
+                                                    <span class="mx-2">•</span>
+                                                    <i class="fas fa-comment"></i> {{ post.comments_count }} comments
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Delete Form -->
+                                <form method="post" id="delete-form">
+                                    {% csrf_token %}
+                                    
+                                    <!-- Confirmation Checkbox -->
+                                    <div class="mb-4">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="confirm-delete" required>
+                                            <label class="form-check-label" for="confirm-delete">
+                                                <strong>I understand that this action cannot be undone</strong>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Optional Reason -->
+                                    <div class="mb-4">
+                                        <label for="delete-reason" class="form-label">
+                                            <i class="fas fa-comment"></i> Reason for deletion (optional)
+                                        </label>
+                                        <textarea class="form-control" id="delete-reason" name="delete_reason" 
+                                                  rows="3" placeholder="Help us improve by sharing why you're deleting this post..."></textarea>
+                                    </div>
+                                    
+                                    <!-- Action Buttons -->
+                                    <div class="d-flex gap-3">
+                                        <button type="submit" class="btn btn-danger btn-lg" id="delete-btn" disabled>
+                                            <i class="fas fa-trash"></i> Delete Post
+                                        </button>
+                                        <a href="{% url 'posts:post_detail' post.pk %}" class="btn btn-outline-secondary btn-lg">
+                                            <i class="fas fa-times"></i> Cancel
+                                        </a>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Impact Information -->
+                    <div class="impact-info mt-4">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0"><i class="fas fa-info-circle"></i> What will be deleted?</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="impact-list">
+                                    <div class="impact-item">
+                                        <i class="fas fa-image text-primary"></i>
+                                        <div>
+                                            <strong>The post itself</strong>
+                                            <small class="text-muted">All post content and metadata</small>
+                                        </div>
+                                    </div>
+                                    <div class="impact-item">
+                                        <i class="fas fa-heart text-danger"></i>
+                                        <div>
+                                            <strong>{{ post.likes_count }} likes</strong>
+                                            <small class="text-muted">All user likes will be removed</small>
+                                        </div>
+                                    </div>
+                                    <div class="impact-item">
+                                        <i class="fas fa-comment text-info"></i>
+                                        <div>
+                                            <strong>{{ post.comments_count }} comments</strong>
+                                            <small class="text-muted">All comments and replies will be deleted</small>
+                                        </div>
+                                    </div>
+                                    <div class="impact-item">
+                                        <i class="fas fa-bookmark text-warning"></i>
+                                        <div>
+                                            <strong>{{ post.saves_count }} saves</strong>
+                                            <small class="text-muted">All user saves will be removed</small>
+                                        </div>
+                                    </div>
+                                    <div class="impact-item">
+                                        <i class="fas fa-eye text-success"></i>
+                                        <div>
+                                            <strong>View history</strong>
+                                            <small class="text-muted">All view records will be deleted</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="alert alert-info mt-3">
+                                    <i class="fas fa-lightbulb"></i>
+                                    <strong>Note:</strong> The original photos and collections will remain intact. Only the post and its social interactions will be deleted.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Sidebar -->
+            <div class="col-lg-4">
+                <div class="posts-sidebar">
+                    <!-- Quick Stats -->
+                    <div class="quick-stats mb-4">
+                        <h5><i class="fas fa-chart-bar"></i> Post Statistics</h5>
+                        <div class="stats-grid">
+                            <div class="stat-item">
+                                <div class="stat-value">{{ post.views_count }}</div>
+                                <div class="stat-label">Views</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value">{{ post.likes_count }}</div>
+                                <div class="stat-label">Likes</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value">{{ post.comments_count }}</div>
+                                <div class="stat-label">Comments</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value">{{ post.saves_count }}</div>
+                                <div class="stat-label">Saves</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Alternative Actions -->
+                    <div class="alternative-actions mb-4">
+                        <h5><i class="fas fa-lightbulb"></i> Consider Alternatives</h5>
+                        <div class="alternatives-list">
+                            <a href="{% url 'posts:post_edit' post.pk %}" class="alternative-item">
+                                <i class="fas fa-edit text-primary"></i>
+                                <div>
+                                    <strong>Edit the post</strong>
+                                    <small>Update content instead of deleting</small>
+                                </div>
+                            </a>
+                            <a href="#" class="alternative-item" onclick="changeVisibility()">
+                                <i class="fas fa-eye-slash text-warning"></i>
+                                <div>
+                                    <strong>Make it private</strong>
+                                    <small>Hide from public view</small>
+                                </div>
+                            </a>
+                            <a href="{% url 'posts:post_detail' post.pk %}" class="alternative-item">
+                                <i class="fas fa-eye text-info"></i>
+                                <div>
+                                    <strong>View the post</strong>
+                                    <small>See how it looks to others</small>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <!-- Recovery Info -->
+                    <div class="recovery-info">
+                        <h5><i class="fas fa-clock"></i> Recovery Information</h5>
+                        <div class="recovery-content">
+                            <p class="text-muted small">
+                                <i class="fas fa-info-circle"></i>
+                                Once deleted, this post cannot be recovered. All associated data including likes, comments, and saves will be permanently removed.
+                            </p>
+                            <div class="recovery-timeline">
+                                <div class="timeline-item">
+                                    <div class="timeline-icon">
+                                        <i class="fas fa-trash text-danger"></i>
+                                    </div>
+                                    <div class="timeline-content">
+                                        <strong>Immediate deletion</strong>
+                                        <small class="text-muted">Post removed from all feeds</small>
+                                    </div>
+                                </div>
+                                <div class="timeline-item">
+                                    <div class="timeline-icon">
+                                        <i class="fas fa-database text-warning"></i>
+                                    </div>
+                                    <div class="timeline-content">
+                                        <strong>Data cleanup</strong>
+                                        <small class="text-muted">All interactions deleted</small>
+                                    </div>
+                                </div>
+                                <div class="timeline-item">
+                                    <div class="timeline-icon">
+                                        <i class="fas fa-times text-muted"></i>
+                                    </div>
+                                    <div class="timeline-content">
+                                        <strong>Permanent removal</strong>
+                                        <small class="text-muted">No recovery possible</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Custom CSS for this template -->
+<style>
+    .posts-container {
+        background: var(--background-default);
+        min-height: 100vh;
+    }
+    
+    .posts-header {
+        background: var(--gradient-primary);
+        color: white;
+        padding: 3rem 0;
+        margin-bottom: 2rem;
+    }
+    
+    .posts-header h1 {
+        color: white;
+        margin-bottom: 0.5rem;
+    }
+    
+    .posts-header .subtitle {
+        color: rgba(255, 255, 255, 0.9);
+        margin-bottom: 0;
+    }
+    
+    .posts-actions {
+        display: flex;
+        gap: 1rem;
+    }
+    
+    .card {
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 1rem;
+        backdrop-filter: blur(var(--blur-amount));
+    }
+    
+    .card-header {
+        background: rgba(255, 255, 255, 0.05);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 1rem 1rem 0 0;
+        padding: 1.5rem;
+    }
+    
+    .card-header h5 {
+        color: var(--primary-default);
+        margin: 0;
+        font-weight: 600;
+    }
+    
+    .card-body {
+        padding: 2rem;
+    }
+    
+    .alert {
+        border-radius: 0.5rem;
+        border: none;
+        padding: 1rem 1.5rem;
+    }
+    
+    .alert-warning {
+        background: rgba(255, 193, 7, 0.1);
+        color: #856404;
+        border-left: 4px solid #ffc107;
+    }
+    
+    .alert-info {
+        background: rgba(13, 202, 240, 0.1);
+        color: #055160;
+        border-left: 4px solid #0dcaf0;
+    }
+    
+    .preview-content {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .photo-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+        gap: 0.5rem;
+        margin-top: 1rem;
+    }
+    
+    .photo-item {
+        border-radius: 0.5rem;
+        overflow: hidden;
+        position: relative;
+    }
+    
+    .photo-thumbnail {
+        width: 100%;
+        height: 100px;
+        object-fit: cover;
+    }
+    
+    .more-photos-indicator {
+        position: absolute;
+        top: 0;
+        right: 0;
+        background: rgba(0, 0, 0, 0.7);
+        color: white;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        font-size: 0.75rem;
+        font-weight: bold;
+    }
+    
+    .no-image-placeholder, .no-photos, .no-collection {
+        text-align: center;
+        padding: 2rem;
+        color: var(--text-400);
+    }
+    
+    .collection-info {
+        margin-bottom: 1rem;
+    }
+    
+    .collection-info h6 {
+        color: var(--primary-default);
+        margin-bottom: 0.5rem;
+    }
+    
+    .post-meta {
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .form-check {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.75rem;
+        padding: 1rem;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 0.5rem;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .form-check-input {
+        margin-top: 0.25rem;
+        width: 1.25rem;
+        height: 1.25rem;
+    }
+    
+    .form-check-label {
+        color: var(--text-default);
+        font-weight: 500;
+    }
+    
+    .form-control {
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 0.5rem;
+        color: var(--text-default);
+        padding: 0.75rem 1rem;
+        transition: all 0.3s ease;
+    }
+    
+    .form-control:focus {
+        background: rgba(255, 255, 255, 0.15);
+        border-color: var(--primary-default);
+        box-shadow: 0 0 0 0.2rem rgba(var(--primary-default), 0.25);
+        color: var(--text-default);
+    }
+    
+    .btn {
+        border-radius: 0.5rem;
+        padding: 0.75rem 1.5rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        border: none;
+    }
+    
+    .btn-danger {
+        background: #dc3545;
+        color: white;
+    }
+    
+    .btn-danger:hover:not(:disabled) {
+        background: #c82333;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3);
+    }
+    
+    .btn-danger:disabled {
+        background: #6c757d;
+        cursor: not-allowed;
+    }
+    
+    .btn-outline-secondary {
+        border: 1px solid var(--text-400);
+        color: var(--text-default);
+    }
+    
+    .btn-outline-secondary:hover {
+        background: var(--text-200);
+        border-color: var(--text-300);
+        color: var(--text-default);
+    }
+    
+    .impact-list {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .impact-item {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 0.5rem;
+        border-left: 4px solid var(--primary-default);
+    }
+    
+    .impact-item i {
+        font-size: 1.25rem;
+        width: 24px;
+        text-align: center;
+    }
+    
+    .impact-item div {
+        flex: 1;
+    }
+    
+    .impact-item strong {
+        display: block;
+        color: var(--text-default);
+        font-size: 0.875rem;
+    }
+    
+    .impact-item small {
+        font-size: 0.75rem;
+    }
+    
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+    }
+    
+    .stat-item {
+        text-align: center;
+        padding: 1rem;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 0.5rem;
+    }
+    
+    .stat-value {
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: var(--primary-default);
+    }
+    
+    .stat-label {
+        font-size: 0.875rem;
+        color: var(--text-600);
+        margin-top: 0.25rem;
+    }
+    
+    .alternatives-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .alternative-item {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 0.5rem;
+        text-decoration: none;
+        color: var(--text-default);
+        transition: all 0.3s ease;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .alternative-item:hover {
+        background: rgba(255, 255, 255, 0.1);
+        transform: translateY(-2px);
+        text-decoration: none;
+        color: var(--text-default);
+    }
+    
+    .alternative-item i {
+        font-size: 1.25rem;
+        width: 24px;
+        text-align: center;
+    }
+    
+    .alternative-item div {
+        flex: 1;
+    }
+    
+    .alternative-item strong {
+        display: block;
+        font-size: 0.875rem;
+    }
+    
+    .alternative-item small {
+        font-size: 0.75rem;
+        color: var(--text-600);
+    }
+    
+    .recovery-timeline {
+        margin-top: 1rem;
+    }
+    
+    .timeline-item {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .timeline-item:last-child {
+        border-bottom: none;
+    }
+    
+    .timeline-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    
+    .timeline-content {
+        flex: 1;
+    }
+    
+    .timeline-content strong {
+        display: block;
+        color: var(--text-default);
+        font-size: 0.875rem;
+    }
+    
+    .timeline-content small {
+        font-size: 0.75rem;
+    }
+    
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        .posts-header {
+            padding: 2rem 0;
+        }
+        
+        .posts-header h1 {
+            font-size: 2rem;
+        }
+        
+        .posts-actions {
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        
+        .card-body {
+            padding: 1.5rem;
+        }
+        
+        .photo-grid {
+            grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+        }
+        
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        
+        .d-flex.gap-3 {
+            flex-direction: column;
+            gap: 1rem !important;
+        }
+    }
+</style>
+
+<!-- JavaScript for form handling -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('delete-form');
+    const confirmCheckbox = document.getElementById('confirm-delete');
+    const deleteBtn = document.getElementById('delete-btn');
+    const reasonTextarea = document.getElementById('delete-reason');
+    
+    // Enable/disable delete button based on checkbox
+    confirmCheckbox.addEventListener('change', function() {
+        deleteBtn.disabled = !this.checked;
+    });
+    
+    // Form submission handling
+    form.addEventListener('submit', function(e) {
+        if (!confirmCheckbox.checked) {
+            e.preventDefault();
+            alert('Please confirm that you understand this action cannot be undone.');
+            return;
+        }
+        
+        // Show loading state
+        deleteBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Deleting...';
+        deleteBtn.disabled = true;
+        
+        // Re-enable after a delay (in case of validation errors)
+        setTimeout(() => {
+            deleteBtn.innerHTML = '<i class="fas fa-trash"></i> Delete Post';
+            deleteBtn.disabled = false;
+        }, 5000);
+    });
+    
+    // Keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+        // Escape to cancel
+        if (e.key === 'Escape') {
+            if (confirm('Are you sure you want to cancel? You will be redirected back to the post.')) {
+                window.location.href = "{% url 'posts:post_detail' post.pk %}";
+            }
+        }
+        
+        // Enter to submit (only if checkbox is checked)
+        if (e.key === 'Enter' && confirmCheckbox.checked) {
+            form.submit();
+        }
+    });
+    
+    // Focus management
+    confirmCheckbox.focus();
+});
+
+// Function to change post visibility (placeholder)
+function changeVisibility() {
+    alert('This feature would allow you to change the post visibility instead of deleting it.');
+}
+</script>
+{% endblock %}
+

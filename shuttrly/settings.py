@@ -61,6 +61,7 @@ INSTALLED_APPS = [
     "users.apps.UsersConfig",
     "adminpanel",
     "logs",
+    "posts",
     "photos.apps.PhotosConfig",
     # API
     "rest_framework", # REST framework for building APIs

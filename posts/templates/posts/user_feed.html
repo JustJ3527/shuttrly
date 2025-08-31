@@ -1,0 +1,1339 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}My Feed{% endblock %}
+
+{% block content %}
+<div class="posts-container">
+    <!-- Header -->
+    <div class="posts-header">
+        <div class="container-fluid">
+            <div class="row align-items-center">
+                <div class="col">
+                    <h1><i class="fas fa-rss"></i> My Feed</h1>
+                    <p class="subtitle">Discover posts from people you follow and trending content</p>
+                </div>
+                <div class="col-auto">
+                    <div class="posts-actions">
+                        <a href="{% url 'posts:post_create' %}" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Create Post
+                        </a>
+                        <a href="{% url 'posts:post_list' %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-globe"></i> Explore All
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Main Feed -->
+            <div class="col-lg-8">
+                <div class="posts-content">
+                    <!-- Feed Controls -->
+                    <div class="feed-controls mb-4">
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="row align-items-center">
+                                    <div class="col">
+                                        <h5 class="mb-0"><i class="fas fa-sliders-h"></i> Feed Preferences</h5>
+                                    </div>
+                                    <div class="col-auto">
+                                        <div class="feed-options">
+                                            <select class="form-select" id="feed-sort">
+                                                <option value="recent">Most Recent</option>
+                                                <option value="popular">Most Popular</option>
+                                                <option value="trending">Trending</option>
+                                                <option value="following">Following Only</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Feed Content -->
+                    <div class="feed-content">
+                        {% if posts %}
+                            <div class="posts-stream">
+                                {% for post in posts %}
+                                <div class="post-item mb-4">
+                                    <div class="card">
+                                        <!-- Post Header -->
+                                        <div class="card-header">
+                                            <div class="post-author">
+                                                <div class="author-avatar">
+                                                    {% if post.author.profile_picture %}
+                                                        <img src="{{ post.author.profile_picture.url }}" 
+                                                             alt="{{ post.author.username }}"
+                                                             class="avatar-img">
+                                                    {% else %}
+                                                        <div class="avatar-placeholder">
+                                                            <i class="fas fa-user"></i>
+                                                        </div>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="author-info">
+                                                    <div class="author-name">
+                                                        <a href="{% url 'posts:user_profile_posts' post.author.username %}" class="author-link">
+                                                            {{ post.author.username }}
+                                                        </a>
+                                                        {% if post.author.is_staff %}
+                                                            <i class="fas fa-check-circle verified-badge"></i>
+                                                        {% endif %}
+                                                    </div>
+                                                    <div class="post-meta">
+                                                        <small class="text-muted">
+                                                            <i class="fas fa-clock"></i> {{ post.created_at|timesince }} ago
+                                                            {% if post.location %}
+                                                                <span class="mx-2">•</span>
+                                                                <i class="fas fa-map-marker-alt"></i> {{ post.location }}
+                                                            {% endif %}
+                                                        </small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="post-actions-dropdown">
+                                                <div class="dropdown">
+                                                    <button class="btn btn-link dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                                        <i class="fas fa-ellipsis-h"></i>
+                                                    </button>
+                                                    <ul class="dropdown-menu">
+                                                        <li><a class="dropdown-item" href="{% url 'posts:post_detail' post.pk %}">
+                                                            <i class="fas fa-eye"></i> View Post
+                                                        </a></li>
+                                                        {% if user == post.author %}
+                                                        <li><a class="dropdown-item" href="{% url 'posts:post_edit' post.pk %}">
+                                                            <i class="fas fa-edit"></i> Edit Post
+                                                        </a></li>
+                                                        <li><hr class="dropdown-divider"></li>
+                                                        <li><a class="dropdown-item text-danger" href="{% url 'posts:post_delete' post.pk %}">
+                                                            <i class="fas fa-trash"></i> Delete Post
+                                                        </a></li>
+                                                        {% endif %}
+                                                        <li><a class="dropdown-item" href="#">
+                                                            <i class="fas fa-flag"></i> Report Post
+                                                        </a></li>
+                                                    </ul>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Post Media -->
+                                        <div class="post-media">
+                                            {% if post.post_type == 'single_photo' %}
+                                                <div class="single-photo">
+                                                    {% if post.get_cover_image_url %}
+                                                        <img src="{{ post.get_cover_image_url }}" 
+                                                             alt="{{ post.title|default:'Post image' }}"
+                                                             class="post-image"
+                                                             onclick="openImageViewer(this.src, '{{ post.title|default:"Post image" }}')">
+                                                    {% else %}
+                                                        <div class="no-image">
+                                                            <i class="fas fa-image"></i>
+                                                        </div>
+                                                    {% endif %}
+                                                </div>
+                                            {% elif post.post_type == 'multiple_photos' %}
+                                                <div class="multiple-photos">
+                                                    <div class="photo-carousel">
+                                                        {% for photo in post.photos.all %}
+                                                        <div class="photo-slide">
+                                                            <img src="{{ photo.thumbnail.url|default:photo.original_file.url }}" 
+                                                                 alt="{{ photo.title|default:'Photo' }}"
+                                                                 class="carousel-image"
+                                                                 onclick="openImageViewer(this.src, '{{ photo.title|default:"Photo" }}')">
+                                                        </div>
+                                                        {% endfor %}
+                                                    </div>
+                                                    {% if post.photos.count > 1 %}
+                                                        <div class="carousel-controls">
+                                                            <button class="carousel-btn prev-btn" onclick="changeSlide(-1)">
+                                                                <i class="fas fa-chevron-left"></i>
+                                                            </button>
+                                                            <button class="carousel-btn next-btn" onclick="changeSlide(1)">
+                                                                <i class="fas fa-chevron-right"></i>
+                                                            </button>
+                                                        </div>
+                                                        <div class="carousel-indicators">
+                                                            {% for photo in post.photos.all %}
+                                                            <span class="indicator" onclick="currentSlide({{ forloop.counter }})"></span>
+                                                            {% endfor %}
+                                                        </div>
+                                                    {% endif %}
+                                                </div>
+                                            {% elif post.post_type == 'collection' %}
+                                                <div class="collection-preview">
+                                                    {% if post.content_object %}
+                                                        {% if post.content_object.get_cover_photo_url %}
+                                                            <img src="{{ post.content_object.get_cover_photo_url }}" 
+                                                                 alt="{{ post.content_object.name }}"
+                                                                 class="post-image"
+                                                                 onclick="openImageViewer(this.src, '{{ post.content_object.name }}')">
+                                                        {% else %}
+                                                            <div class="no-image">
+                                                                <i class="fas fa-folder"></i>
+                                                            </div>
+                                                        {% endif %}
+                                                        <div class="collection-overlay">
+                                                            <span class="collection-name">{{ post.content_object.name }}</span>
+                                                            <span class="photo-count">{{ post.content_object.get_photo_count }} photos</span>
+                                                        </div>
+                                                    {% else %}
+                                                        <div class="no-image">
+                                                            <i class="fas fa-folder"></i>
+                                                        </div>
+                                                    {% endif %}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+
+                                        <!-- Post Content -->
+                                        <div class="card-body">
+                                            {% if post.title %}
+                                                <h5 class="post-title">{{ post.title }}</h5>
+                                            {% endif %}
+                                            {% if post.description %}
+                                                <p class="post-description">{{ post.description|linebreaks }}</p>
+                                            {% endif %}
+                                            
+                                                                                            <!-- Post Tags -->
+                                                {% if post.tags %}
+                                                    <div class="post-tags">
+                                                        {% for tag in post.get_tags_list %}
+                                                            {% if tag %}
+                                                                <a href="{% url 'posts:hashtag_posts' tag %}" class="tag">#{{ tag }}</a>
+                                                            {% endif %}
+                                                        {% endfor %}
+                                                    </div>
+                                                {% endif %}
+                                        </div>
+
+                                        <!-- Post Engagement -->
+                                        <div class="card-footer">
+                                            <div class="engagement-stats">
+                                                <div class="stat-item">
+                                                    <i class="fas fa-eye"></i>
+                                                    <span>{{ post.views_count }}</span>
+                                                </div>
+                                                <div class="stat-item">
+                                                    <i class="fas fa-heart"></i>
+                                                    <span>{{ post.likes_count }}</span>
+                                                </div>
+                                                <div class="stat-item">
+                                                    <i class="fas fa-comment"></i>
+                                                    <span>{{ post.comments_count }}</span>
+                                                </div>
+                                                <div class="stat-item">
+                                                    <i class="fas fa-bookmark"></i>
+                                                    <span>{{ post.saves_count }}</span>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="engagement-actions">
+                                                <button class="btn btn-link like-btn" data-post-id="{{ post.pk }}">
+                                                    <i class="fas fa-heart"></i> Like
+                                                </button>
+                                                <button class="btn btn-link comment-btn" onclick="focusCommentInput({{ post.pk }})">
+                                                    <i class="fas fa-comment"></i> Comment
+                                                </button>
+                                                <button class="btn btn-link save-btn" data-post-id="{{ post.pk }}">
+                                                    <i class="fas fa-bookmark"></i> Save
+                                                </button>
+                                                <button class="btn btn-link share-btn" onclick="sharePost({{ post.pk }})">
+                                                    <i class="fas fa-share"></i> Share
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <!-- Comments Section -->
+                                        <div class="comments-section">
+                                            <div class="comments-header">
+                                                <h6>Comments ({{ post.comments_count }})</h6>
+                                            </div>
+                                            
+                                            <div class="comments-list">
+                                                {% for comment in post.comments.all|slice:":3" %}
+                                                <div class="comment-item">
+                                                    <div class="comment-avatar">
+                                                        {% if comment.user.profile_picture %}
+                                                            <img src="{{ comment.user.profile_picture.url }}" 
+                                                                 alt="{{ comment.user.username }}"
+                                                                 class="comment-avatar-img">
+                                                        {% else %}
+                                                            <div class="comment-avatar-placeholder">
+                                                                <i class="fas fa-user"></i>
+                                                            </div>
+                                                        {% endif %}
+                                                    </div>
+                                                    <div class="comment-content">
+                                                        <div class="comment-header">
+                                                            <span class="comment-author">{{ comment.user.username }}</span>
+                                                            <small class="comment-time">{{ comment.created_at|timesince }} ago</small>
+                                                        </div>
+                                                        <p class="comment-text">{{ comment.text }}</p>
+                                                        <div class="comment-actions">
+                                                            <button class="btn btn-sm btn-link reply-btn" onclick="showReplyForm({{ comment.pk }})">
+                                                                Reply
+                                                            </button>
+                                                            {% if user == comment.user %}
+                                                            <button class="btn btn-sm btn-link text-danger" onclick="deleteComment({{ comment.pk }})">
+                                                                Delete
+                                                            </button>
+                                                            {% endif %}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                {% empty %}
+                                                <div class="no-comments">
+                                                    <p class="text-muted">No comments yet. Be the first to comment!</p>
+                                                </div>
+                                                {% endfor %}
+                                            </div>
+                                            
+                                            {% if post.comments_count > 3 %}
+                                                <div class="view-all-comments">
+                                                    <a href="{% url 'posts:post_detail' post.pk %}" class="btn btn-link">
+                                                        View all {{ post.comments_count }} comments
+                                                    </a>
+                                                </div>
+                                            {% endif %}
+                                            
+                                            <!-- Add Comment Form -->
+                                            <div class="add-comment-form">
+                                                <form method="post" action="{% url 'posts:add_comment' post.pk %}" class="comment-form">
+                                                    {% csrf_token %}
+                                                    <div class="input-group">
+                                                        <input type="text" class="form-control comment-input" 
+                                                               placeholder="Add a comment..." 
+                                                               name="text" required>
+                                                        <button type="submit" class="btn btn-primary comment-submit">
+                                                            <i class="fas fa-paper-plane"></i>
+                                                        </button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+
+                            <!-- Load More -->
+                            {% if has_next %}
+                            <div class="load-more-wrapper text-center">
+                                <button class="btn btn-outline-primary btn-lg" id="load-more-btn" onclick="loadMorePosts()">
+                                    <i class="fas fa-spinner fa-spin" id="load-more-spinner" style="display: none;"></i>
+                                    Load More Posts
+                                </button>
+                            </div>
+                            {% endif %}
+
+                        {% else %}
+                            <!-- Empty Feed -->
+                            <div class="empty-feed">
+                                <div class="card">
+                                    <div class="card-body text-center">
+                                        <i class="fas fa-rss fa-3x text-muted mb-3"></i>
+                                        <h5>Your feed is empty</h5>
+                                        <p class="text-muted">
+                                            Start following people to see their posts in your feed, or explore trending content.
+                                        </p>
+                                        <div class="empty-feed-actions">
+                                            <a href="{% url 'posts:post_list' %}" class="btn btn-primary">
+                                                <i class="fas fa-compass"></i> Explore Posts
+                                            </a>
+                                            <a href="#" class="btn btn-outline-primary">
+                                                <i class="fas fa-user-plus"></i> Find People to Follow
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <div class="col-lg-4">
+                <div class="posts-sidebar">
+                    <!-- Trending Hashtags -->
+                    <div class="trending-hashtags mb-4">
+                        <h5><i class="fas fa-fire"></i> Trending Hashtags</h5>
+                        <div class="hashtags-list">
+                            {% for hashtag in trending_hashtags %}
+                            <a href="{% url 'posts:hashtag_posts' hashtag.hashtag %}" class="hashtag-item">
+                                <span class="hashtag-name">#{{ hashtag.hashtag }}</span>
+                                <span class="hashtag-count">{{ hashtag.count }} posts</span>
+                            </a>
+                            {% empty %}
+                            <p class="text-muted small">No trending hashtags yet</p>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- Suggested Users -->
+                    <div class="suggested-users mb-4">
+                        <h5><i class="fas fa-users"></i> Suggested Users</h5>
+                        <div class="users-list">
+                            <!-- Placeholder for suggested users -->
+                            <div class="user-suggestion">
+                                <div class="user-avatar">
+                                    <i class="fas fa-user"></i>
+                                </div>
+                                <div class="user-info">
+                                    <strong>username</strong>
+                                    <small class="text-muted">@username</small>
+                                </div>
+                                <button class="btn btn-sm btn-outline-primary">Follow</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Feed Stats -->
+                    <div class="feed-stats">
+                        <h5><i class="fas fa-chart-line"></i> Your Activity</h5>
+                        <div class="stats-summary">
+                            <div class="stat-row">
+                                <span class="stat-label">Posts Created</span>
+                                <span class="stat-value">{{ user_posts_count|default:0 }}</span>
+                            </div>
+                            <div class="stat-row">
+                                <span class="stat-label">Posts Liked</span>
+                                <span class="stat-value">{{ user_likes_count|default:0 }}</span>
+                            </div>
+                            <div class="stat-row">
+                                <span class="stat-label">Comments Made</span>
+                                <span class="stat-value">{{ user_comments_count|default:0 }}</span>
+                            </div>
+                            <div class="stat-row">
+                                <span class="stat-label">Posts Saved</span>
+                                <span class="stat-value">{{ user_saves_count|default:0 }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Image Viewer Modal -->
+<div class="modal fade" id="imageViewerModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="imageViewerTitle">Image</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <img src="" alt="" id="modalImage" class="img-fluid">
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Custom CSS for this template -->
+<style>
+    .posts-container {
+        background: var(--background-default);
+        min-height: 100vh;
+    }
+    
+    .posts-header {
+        background: var(--gradient-primary);
+        color: white;
+        padding: 3rem 0;
+        margin-bottom: 2rem;
+    }
+    
+    .posts-header h1 {
+        color: white;
+        margin-bottom: 0.5rem;
+    }
+    
+    .posts-header .subtitle {
+        color: rgba(255, 255, 255, 0.9);
+        margin-bottom: 0;
+    }
+    
+    .posts-actions {
+        display: flex;
+        gap: 1rem;
+    }
+    
+    .card {
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 1rem;
+        backdrop-filter: blur(var(--blur-amount));
+        transition: all 0.3s ease;
+    }
+    
+    .card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+    }
+    
+    .card-header {
+        background: rgba(255, 255, 255, 0.05);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 1rem 1rem 0 0;
+        padding: 1rem 1.5rem;
+    }
+    
+    .card-body {
+        padding: 1.5rem;
+    }
+    
+    .card-footer {
+        background: rgba(255, 255, 255, 0.05);
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        padding: 1rem 1.5rem;
+    }
+    
+    .post-author {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+    
+    .author-avatar {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        overflow: hidden;
+        border: 2px solid var(--primary-default);
+    }
+    
+    .avatar-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    
+    .avatar-placeholder {
+        width: 100%;
+        height: 100%;
+        background: var(--primary-default);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.25rem;
+    }
+    
+    .author-info {
+        flex: 1;
+    }
+    
+    .author-name {
+        font-weight: 600;
+        color: var(--text-default);
+        margin-bottom: 0.25rem;
+    }
+    
+    .author-link {
+        color: var(--text-default);
+        text-decoration: none;
+    }
+    
+    .author-link:hover {
+        color: var(--primary-default);
+    }
+    
+    .verified-badge {
+        color: var(--primary-default);
+        margin-left: 0.5rem;
+        font-size: 0.875rem;
+    }
+    
+    .post-meta {
+        color: var(--text-600);
+        font-size: 0.875rem;
+    }
+    
+    .post-actions-dropdown {
+        margin-left: auto;
+    }
+    
+    .post-media {
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .post-image {
+        width: 100%;
+        max-height: 600px;
+        object-fit: cover;
+        cursor: pointer;
+        transition: transform 0.3s ease;
+    }
+    
+    .post-image:hover {
+        transform: scale(1.02);
+    }
+    
+    .no-image {
+        width: 100%;
+        height: 300px;
+        background: rgba(255, 255, 255, 0.1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-400);
+        font-size: 3rem;
+    }
+    
+    .photo-carousel {
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .photo-slide {
+        display: none;
+    }
+    
+    .photo-slide.active {
+        display: block;
+    }
+    
+    .carousel-image {
+        width: 100%;
+        max-height: 600px;
+        object-fit: cover;
+        cursor: pointer;
+    }
+    
+    .carousel-controls {
+        position: absolute;
+        top: 50%;
+        left: 0;
+        right: 0;
+        transform: translateY(-50%);
+        display: flex;
+        justify-content: space-between;
+        padding: 0 1rem;
+    }
+    
+    .carousel-btn {
+        background: rgba(0, 0, 0, 0.7);
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .carousel-btn:hover {
+        background: rgba(0, 0, 0, 0.9);
+        transform: scale(1.1);
+    }
+    
+    .carousel-indicators {
+        position: absolute;
+        bottom: 1rem;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 0.5rem;
+    }
+    
+    .indicator {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.5);
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .indicator.active {
+        background: var(--primary-default);
+    }
+    
+    .collection-overlay {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
+        color: white;
+        padding: 1rem;
+    }
+    
+    .collection-name {
+        display: block;
+        font-weight: bold;
+        font-size: 1rem;
+    }
+    
+    .photo-count {
+        font-size: 0.875rem;
+        opacity: 0.8;
+    }
+    
+    .post-title {
+        color: var(--text-default);
+        margin-bottom: 1rem;
+        font-weight: 600;
+    }
+    
+    .post-description {
+        color: var(--text-600);
+        line-height: 1.6;
+        margin-bottom: 1rem;
+    }
+    
+    .post-tags {
+        margin-bottom: 1rem;
+    }
+    
+    .tag {
+        display: inline-block;
+        background: var(--primary-default);
+        color: white;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        text-decoration: none;
+        font-size: 0.875rem;
+        margin-right: 0.5rem;
+        margin-bottom: 0.25rem;
+        transition: all 0.3s ease;
+    }
+    
+    .tag:hover {
+        background: var(--primary-600);
+        color: white;
+        text-decoration: none;
+        transform: translateY(-1px);
+    }
+    
+    .engagement-stats {
+        display: flex;
+        gap: 1.5rem;
+        margin-bottom: 1rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .stat-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: var(--text-600);
+        font-size: 0.875rem;
+    }
+    
+    .stat-item i {
+        color: var(--primary-default);
+    }
+    
+    .engagement-actions {
+        display: flex;
+        gap: 1rem;
+        justify-content: space-between;
+    }
+    
+    .btn-link {
+        color: var(--text-600);
+        text-decoration: none;
+        padding: 0.5rem 0.75rem;
+        border-radius: 0.5rem;
+        transition: all 0.3s ease;
+        border: none;
+        background: transparent;
+    }
+    
+    .btn-link:hover {
+        color: var(--primary-default);
+        background: rgba(255, 255, 255, 0.1);
+    }
+    
+    .comments-section {
+        background: rgba(255, 255, 255, 0.05);
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        padding: 1.5rem;
+    }
+    
+    .comments-header {
+        margin-bottom: 1rem;
+    }
+    
+    .comments-header h6 {
+        color: var(--text-default);
+        margin: 0;
+    }
+    
+    .comments-list {
+        margin-bottom: 1.5rem;
+    }
+    
+    .comment-item {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 1rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .comment-item:last-child {
+        border-bottom: none;
+        margin-bottom: 0;
+    }
+    
+    .comment-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        overflow: hidden;
+        flex-shrink: 0;
+    }
+    
+    .comment-avatar-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    
+    .comment-avatar-placeholder {
+        width: 100%;
+        height: 100%;
+        background: var(--primary-default);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 0.875rem;
+    }
+    
+    .comment-content {
+        flex: 1;
+    }
+    
+    .comment-header {
+        margin-bottom: 0.25rem;
+    }
+    
+    .comment-author {
+        font-weight: 600;
+        color: var(--text-default);
+        margin-right: 0.5rem;
+    }
+    
+    .comment-time {
+        color: var(--text-600);
+        font-size: 0.75rem;
+    }
+    
+    .comment-text {
+        color: var(--text-default);
+        margin-bottom: 0.5rem;
+        line-height: 1.4;
+    }
+    
+    .comment-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+    
+    .comment-actions .btn-link {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+    }
+    
+    .no-comments {
+        text-align: center;
+        padding: 2rem;
+        color: var(--text-400);
+    }
+    
+    .view-all-comments {
+        text-align: center;
+        margin-bottom: 1.5rem;
+    }
+    
+    .add-comment-form {
+        margin-top: 1rem;
+    }
+    
+    .comment-form {
+        display: flex;
+        gap: 0.5rem;
+    }
+    
+    .comment-input {
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 0.5rem;
+        color: var(--text-default);
+        padding: 0.75rem 1rem;
+    }
+    
+    .comment-input:focus {
+        background: rgba(255, 255, 255, 0.15);
+        border-color: var(--primary-default);
+        box-shadow: 0 0 0 0.2rem rgba(var(--primary-default), 0.25);
+        color: var(--text-default);
+    }
+    
+    .comment-submit {
+        background: var(--primary-default);
+        border: none;
+        border-radius: 0.5rem;
+        padding: 0.75rem 1rem;
+        color: white;
+        transition: all 0.3s ease;
+    }
+    
+    .comment-submit:hover {
+        background: var(--primary-600);
+        transform: translateY(-1px);
+    }
+    
+    .load-more-wrapper {
+        margin-top: 2rem;
+        padding: 2rem 0;
+    }
+    
+    .empty-feed {
+        text-align: center;
+        padding: 3rem 0;
+    }
+    
+    .empty-feed-actions {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        margin-top: 1.5rem;
+    }
+    
+    .form-select {
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 0.5rem;
+        color: var(--text-default);
+        padding: 0.5rem 1rem;
+    }
+    
+    .form-select:focus {
+        background: rgba(255, 255, 255, 0.15);
+        border-color: var(--primary-default);
+        box-shadow: 0 0 0 0.2rem rgba(var(--primary-default), 0.25);
+        color: var(--text-default);
+    }
+    
+    .btn {
+        border-radius: 0.5rem;
+        padding: 0.75rem 1.5rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        border: none;
+    }
+    
+    .btn-primary {
+        background: var(--primary-default);
+        color: white;
+    }
+    
+    .btn-primary:hover {
+        background: var(--primary-600);
+        transform: translateY(-1px);
+    }
+    
+    .btn-outline-primary {
+        border: 1px solid var(--primary-default);
+        color: var(--primary-default);
+        background: transparent;
+    }
+    
+    .btn-outline-primary:hover {
+        background: var(--primary-default);
+        color: white;
+    }
+    
+    .btn-outline-secondary {
+        border: 1px solid var(--text-400);
+        color: var(--text-default);
+        background: transparent;
+    }
+    
+    .btn-outline-secondary:hover {
+        background: var(--text-200);
+        border-color: var(--text-300);
+        color: var(--text-default);
+    }
+    
+    .hashtags-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .hashtag-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 0.5rem;
+        text-decoration: none;
+        color: var(--text-default);
+        transition: all 0.3s ease;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .hashtag-item:hover {
+        background: var(--primary-default);
+        color: white;
+        text-decoration: none;
+        transform: translateY(-1px);
+    }
+    
+    .hashtag-name {
+        font-weight: 600;
+    }
+    
+    .hashtag-count {
+        font-size: 0.875rem;
+        opacity: 0.8;
+    }
+    
+    .users-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    
+    .user-suggestion {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 0.5rem;
+    }
+    
+    .user-suggestion .user-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: var(--primary-default);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1rem;
+    }
+    
+    .user-suggestion .user-info {
+        flex: 1;
+    }
+    
+    .user-suggestion strong {
+        display: block;
+        color: var(--text-default);
+        font-size: 0.875rem;
+    }
+    
+    .user-suggestion small {
+        color: var(--text-600);
+        font-size: 0.75rem;
+    }
+    
+    .stats-summary {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    
+    .stat-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 0.5rem;
+    }
+    
+    .stat-label {
+        color: var(--text-600);
+        font-size: 0.875rem;
+    }
+    
+    .stat-value {
+        color: var(--primary-default);
+        font-weight: 600;
+        font-size: 1.125rem;
+    }
+    
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        .posts-header {
+            padding: 2rem 0;
+        }
+        
+        .posts-header h1 {
+            font-size: 2rem;
+        }
+        
+        .posts-actions {
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        
+        .engagement-actions {
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        
+        .engagement-actions .btn-link {
+            flex: 1;
+            text-align: center;
+            min-width: 80px;
+        }
+        
+        .carousel-controls {
+            padding: 0 0.5rem;
+        }
+        
+        .carousel-btn {
+            width: 36px;
+            height: 36px;
+        }
+        
+        .empty-feed-actions {
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+    }
+</style>
+
+<!-- JavaScript for interactions -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize carousel for multiple photos
+    initializeCarousels();
+    
+    // Like button functionality
+    const likeBtns = document.querySelectorAll('.like-btn');
+    likeBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const postId = this.dataset.postId;
+            const button = this;
+            
+            // Toggle like state
+            if (button.classList.contains('liked')) {
+                button.classList.remove('liked');
+                button.innerHTML = '<i class="fas fa-heart"></i> Like';
+            } else {
+                button.classList.add('liked');
+                button.innerHTML = '<i class="fas fa-heart text-danger"></i> Liked';
+            }
+            
+            // Simulate AJAX call
+            // fetch(`/posts/${postId}/like/`, {
+            //     method: 'POST',
+            //     headers: {
+            //         'X-CSRFToken': getCookie('csrftoken'),
+            //     },
+            // })
+        });
+    });
+    
+    // Save button functionality
+    const saveBtns = document.querySelectorAll('.save-btn');
+    saveBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const postId = this.dataset.postId;
+            const button = this;
+            
+            // Toggle save state
+            if (button.classList.contains('saved')) {
+                button.classList.remove('saved');
+                button.innerHTML = '<i class="fas fa-bookmark"></i> Save';
+            } else {
+                button.classList.add('saved');
+                button.innerHTML = '<i class="fas fa-bookmark text-warning"></i> Saved';
+            }
+            
+            // Simulate AJAX call
+            // fetch(`/posts/${postId}/save/`, {
+            //     method: 'POST',
+            //     headers: {
+            //         'X-CSRFToken': getCookie('csrftoken'),
+            //     },
+            // })
+        });
+    });
+    
+    // Feed sort functionality
+    const feedSort = document.getElementById('feed-sort');
+    if (feedSort) {
+        feedSort.addEventListener('change', function() {
+            const sortValue = this.value;
+            const currentUrl = new URL(window.location);
+            currentUrl.searchParams.set('sort', sortValue);
+            window.location.href = currentUrl.toString();
+        });
+    }
+    
+    // Get CSRF token function
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+});
+
+// Carousel functionality
+let currentSlideIndex = 0;
+
+function initializeCarousels() {
+    const carousels = document.querySelectorAll('.photo-carousel');
+    carousels.forEach(carousel => {
+        const slides = carousel.querySelectorAll('.photo-slide');
+        if (slides.length > 0) {
+            slides[0].classList.add('active');
+        }
+    });
+}
+
+function changeSlide(direction) {
+    const carousel = event.target.closest('.photo-carousel');
+    const slides = carousel.querySelectorAll('.photo-slide');
+    const indicators = carousel.parentElement.querySelectorAll('.indicator');
+    
+    if (slides.length === 0) return;
+    
+    currentSlideIndex += direction;
+    
+    if (currentSlideIndex >= slides.length) {
+        currentSlideIndex = 0;
+    } else if (currentSlideIndex < 0) {
+        currentSlideIndex = slides.length - 1;
+    }
+    
+    // Update slides
+    slides.forEach((slide, index) => {
+        slide.classList.toggle('active', index === currentSlideIndex);
+    });
+    
+    // Update indicators
+    indicators.forEach((indicator, index) => {
+        indicator.classList.toggle('active', index === currentSlideIndex);
+    });
+}
+
+function currentSlide(index) {
+    const carousel = event.target.closest('.multiple-photos').querySelector('.photo-carousel');
+    const slides = carousel.querySelectorAll('.photo-slide');
+    const indicators = carousel.parentElement.querySelectorAll('.indicator');
+    
+    currentSlideIndex = index - 1;
+    
+    // Update slides
+    slides.forEach((slide, i) => {
+        slide.classList.toggle('active', i === currentSlideIndex);
+    });
+    
+    // Update indicators
+    indicators.forEach((indicator, i) => {
+        indicator.classList.toggle('active', i === currentSlideIndex);
+    });
+}
+
+// Image viewer functionality
+function openImageViewer(imageSrc, imageTitle) {
+    const modal = document.getElementById('imageViewerModal');
+    const modalImage = document.getElementById('modalImage');
+    const modalTitle = document.getElementById('imageViewerTitle');
+    
+    modalImage.src = imageSrc;
+    modalTitle.textContent = imageTitle;
+    
+    const bootstrapModal = new bootstrap.Modal(modal);
+    bootstrapModal.show();
+}
+
+// Comment functionality
+function focusCommentInput(postId) {
+    const commentInput = document.querySelector(`[data-post-id="${postId}"] .comment-input`);
+    if (commentInput) {
+        commentInput.focus();
+    }
+}
+
+function showReplyForm(commentId) {
+    // Implementation for reply form
+    console.log('Show reply form for comment:', commentId);
+}
+
+function deleteComment(commentId) {
+    if (confirm('Are you sure you want to delete this comment?')) {
+        // Implementation for comment deletion
+        console.log('Delete comment:', commentId);
+    }
+}
+
+// Load more functionality
+function loadMorePosts() {
+    const loadMoreBtn = document.getElementById('load-more-btn');
+    const spinner = document.getElementById('load-more-spinner');
+    
+    // Show loading state
+    loadMoreBtn.disabled = true;
+    spinner.style.display = 'inline-block';
+    loadMoreBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
+    
+    // Simulate loading
+    setTimeout(() => {
+        // Reset button state
+        loadMoreBtn.disabled = false;
+        spinner.style.display = 'none';
+        loadMoreBtn.innerHTML = '<i class="fas fa-spinner fa-spin" id="load-more-spinner" style="display: none;"></i> Load More Posts';
+        
+        // Implementation for loading more posts
+        console.log('Load more posts');
+    }, 2000);
+}
+
+// Share functionality
+function sharePost(postId) {
+    // Implementation for sharing posts
+    console.log('Share post:', postId);
+    
+    if (navigator.share) {
+        navigator.share({
+            title: 'Check out this post!',
+            url: window.location.origin + '/posts/' + postId + '/'
+        });
+    } else {
+        // Fallback for browsers that don't support Web Share API
+        const url = window.location.origin + '/posts/' + postId + '/';
+        navigator.clipboard.writeText(url).then(() => {
+            alert('Post URL copied to clipboard!');
+        });
+    }
+}
+</script>
+{% endblock %}

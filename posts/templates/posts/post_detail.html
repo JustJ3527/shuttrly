@@ -1,0 +1,1273 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ post.title|default:"Post" }} - Shuttrly{% endblock %}
+
+{% block content %}
+<div class="posts-container">
+    <!-- Posts Header -->
+    <div class="posts-header">
+        <h1>Post Details</h1>
+        <p>View and interact with this post</p>
+    </div>
+    
+    <!-- Posts Navigation -->
+    <div class="posts-navigation">
+        <div class="posts-nav-tabs">
+            <a href="{% url 'posts:post_list' %}" class="posts-nav-tab">
+                <i class="fas fa-globe"></i> All Posts
+            </a>
+            <a href="{% url 'posts:user_feed' %}" class="posts-nav-tab">
+                <i class="fas fa-rss"></i> My Feed
+            </a>
+            <a href="{% url 'posts:post_search' %}" class="posts-nav-tab">
+                <i class="fas fa-search"></i> Search
+            </a>
+            <a href="{% url 'posts:post_create' %}" class="posts-nav-tab">
+                <i class="fas fa-plus"></i> Create Post
+            </a>
+        </div>
+    </div>
+    
+    <!-- Main Content Area -->
+    <div class="row">
+        <!-- Main Content -->
+        <div class="col-lg-8">
+            <div class="posts-content">
+                <!-- Post Card -->
+                <div class="post-detail-card mb-4">
+                    <div class="card">
+                        <!-- Post Header -->
+                        <div class="card-header post-header">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div class="post-author-info">
+                                    <a href="{% url 'posts:user_profile_posts' username=post.author.username %}" 
+                                       class="author-link">
+                                        <img src="{{ post.author.profile_picture.url }}" 
+                                             alt="{{ post.author.username }}"
+                                             class="author-avatar">
+                                        <div class="author-details">
+                                            <h6 class="author-name">{{ post.author.username }}</h6>
+                                            <small class="text-muted">{{ post.published_at|timesince }} ago</small>
+                                        </div>
+                                    </a>
+                                </div>
+                                
+                                <div class="post-actions-dropdown">
+                                    <div class="dropdown">
+                                        <button class="btn btn-link dropdown-toggle" type="button" 
+                                                data-bs-toggle="dropdown" aria-expanded="false">
+                                            <i class="fas fa-ellipsis-h"></i>
+                                        </button>
+                                        <ul class="dropdown-menu">
+                                            {% if user == post.author %}
+                                            <li>
+                                                <a class="dropdown-item" href="{% url 'posts:post_edit' pk=post.pk %}">
+                                                    <i class="fas fa-edit"></i> Edit Post
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item text-danger" href="{% url 'posts:post_delete' pk=post.pk %}">
+                                                    <i class="fas fa-trash"></i> Delete Post
+                                                </a>
+                                            </li>
+                                            {% endif %}
+                                            <li>
+                                                <a class="dropdown-item" href="#" onclick="sharePost()">
+                                                    <i class="fas fa-share"></i> Share Post
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item" href="#" onclick="reportPost()">
+                                                    <i class="fas fa-flag"></i> Report Post
+                                                </a>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Post Type and Visibility Badges -->
+                            <div class="post-badges mt-2">
+                                <span class="badge bg-primary me-2">
+                                    {% if post.post_type == 'single_photo' %}
+                                        <i class="fas fa-camera"></i> Single Photo
+                                    {% elif post.post_type == 'multiple_photos' %}
+                                        <i class="fas fa-images"></i> Multiple Photos
+                                    {% elif post.post_type == 'collection' %}
+                                        <i class="fas fa-folder"></i> Collection
+                                    {% endif %}
+                                </span>
+                                
+                                {% if post.visibility != 'public' %}
+                                <span class="badge bg-secondary">
+                                    {% if post.visibility == 'private' %}
+                                        <i class="fas fa-lock"></i> Private
+                                    {% elif post.visibility == 'friends' %}
+                                        <i class="fas fa-users"></i> Friends Only
+                                    {% endif %}
+                                </span>
+                                {% endif %}
+                                
+                                {% if post.is_featured %}
+                                <span class="badge bg-warning">
+                                    <i class="fas fa-star"></i> Featured
+                                </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <!-- Post Content -->
+                        <div class="card-body post-content">
+                            <!-- Post Title -->
+                            {% if post.title %}
+                            <h4 class="post-title mb-3">{{ post.title }}</h4>
+                            {% endif %}
+                            
+                            <!-- Post Description -->
+                            {% if post.description %}
+                            <div class="post-description mb-3">
+                                <p class="post-text">{{ post.description|linebreaks }}</p>
+                            </div>
+                            {% endif %}
+                            
+                            <!-- Post Tags -->
+                            {% if post.tags %}
+                            <div class="post-tags mb-3">
+                                {% for tag in post.get_tags_list %}
+                                <a href="{% url 'posts:hashtag_posts' hashtag=tag %}" 
+                                   class="badge bg-primary text-decoration-none me-1">
+                                    #{{ tag }}
+                                </a>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                            
+                            <!-- Post Media -->
+                            <div class="post-media mb-3">
+                                {% if post.post_type == 'single_photo' %}
+                                    <!-- Single Photo Display -->
+                                    <div class="single-photo-container">
+                                        <img src="{{ post.get_cover_image_url }}" 
+                                             alt="{{ post.title|default:'Post image' }}"
+                                             class="post-main-image"
+                                             onclick="openImageViewer(this.src)">
+                                    </div>
+                                    
+                                {% elif post.post_type == 'multiple_photos' %}
+                                    <!-- Multiple Photos Display -->
+                                    <div class="multiple-photos-container">
+                                        <div class="photos-grid">
+                                            {% for photo in post.photos.all %}
+                                            <div class="photo-grid-item" onclick="openImageViewer('{{ photo.thumbnail.url|default:photo.original_file.url }}')">
+                                                <img src="{{ photo.thumbnail.url|default:photo.original_file.url }}" 
+                                                     alt="{{ photo.title|default:'Photo' }}"
+                                                     class="photo-grid-image">
+                                                {% if forloop.counter > 4 and forloop.last %}
+                                                <div class="photo-overlay">
+                                                    <span class="more-photos">+{{ post.photos.count|add:"-4" }}</span>
+                                                </div>
+                                                {% endif %}
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                    
+                                {% elif post.post_type == 'collection' %}
+                                    <!-- Collection Display -->
+                                    <div class="collection-preview">
+                                        <div class="collection-header">
+                                            <h5><i class="fas fa-folder"></i> {{ post.content_object.name }}</h5>
+                                            <p class="text-muted">{{ post.content_object.description|truncatewords:20 }}</p>
+                                        </div>
+                                        <div class="collection-photos-preview">
+                                            {% for photo in post.content_object.photos.all|slice:":6" %}
+                                            <div class="collection-photo-item" onclick="openImageViewer('{{ photo.thumbnail.url|default:photo.original_file.url }}')">
+                                                <img src="{{ photo.thumbnail.url|default:photo.original_file.url }}" 
+                                                     alt="{{ photo.title|default:'Collection photo' }}"
+                                                     class="collection-photo-thumbnail">
+                                            </div>
+                                            {% endfor %}
+                                            {% if post.content_object.photos.count > 6 %}
+                                            <div class="collection-photo-item more-photos">
+                                                <span>+{{ post.content_object.photos.count|add:"-6" }}</span>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <!-- Post Statistics -->
+                            <div class="post-statistics mb-3">
+                                <div class="row text-center">
+                                    <div class="col">
+                                        <div class="stat-item">
+                                            <i class="fas fa-eye text-secondary"></i>
+                                            <span class="stat-number">{{ post.views_count }}</span>
+                                            <small class="stat-label">Views</small>
+                                        </div>
+                                    </div>
+                                    <div class="col">
+                                        <div class="stat-item">
+                                            <i class="fas fa-heart text-danger"></i>
+                                            <span class="stat-number">{{ post.likes_count }}</span>
+                                            <small class="stat-label">Likes</small>
+                                        </div>
+                                    </div>
+                                    <div class="col">
+                                        <div class="stat-item">
+                                            <i class="fas fa-comment text-primary"></i>
+                                            <span class="stat-number">{{ post.comments_count }}</span>
+                                            <small class="stat-label">Comments</small>
+                                        </div>
+                                    </div>
+                                    <div class="col">
+                                        <div class="stat-item">
+                                            <i class="fas fa-bookmark text-success"></i>
+                                            <span class="stat-number">{{ post.saves_count }}</span>
+                                            <small class="stat-label">Saves</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Post Actions -->
+                        <div class="card-footer post-actions">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="action-buttons">
+                                    <!-- Like Button -->
+                                    <button class="btn btn-action {% if user_liked %}btn-liked{% endif %}" 
+                                            onclick="toggleLike({{ post.id }})" id="like-btn-{{ post.id }}">
+                                        <i class="fas fa-heart"></i>
+                                        <span class="action-text">Like</span>
+                                        <span class="action-count">{{ post.likes_count }}</span>
+                                    </button>
+                                    
+                                    <!-- Comment Button -->
+                                    <button class="btn btn-action" onclick="focusCommentForm()">
+                                        <i class="fas fa-comment"></i>
+                                        <span class="action-text">Comment</span>
+                                        <span class="action-count">{{ post.comments_count }}</span>
+                                    </button>
+                                    
+                                    <!-- Save Button -->
+                                    <button class="btn btn-action {% if user_saved %}btn-saved{% endif %}" 
+                                            onclick="toggleSave({{ post.id }})" id="save-btn-{{ post.id }}">
+                                        <i class="fas fa-bookmark"></i>
+                                        <span class="action-text">Save</span>
+                                        <span class="action-count">{{ post.saves_count }}</span>
+                                    </button>
+                                    
+                                    <!-- Share Button -->
+                                    <button class="btn btn-action" onclick="sharePost()">
+                                        <i class="fas fa-share"></i>
+                                        <span class="action-text">Share</span>
+                                    </button>
+                                </div>
+                                
+                                <div class="post-meta">
+                                    <small class="text-muted">
+                                        <i class="fas fa-clock"></i> {{ post.created_at|date:"F j, Y" }}
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Comments Section -->
+                <div class="comments-section">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-comments"></i> Comments 
+                                <span class="badge bg-primary">{{ post.comments_count }}</span>
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <!-- Add Comment Form -->
+                            {% if user.is_authenticated %}
+                            <div class="add-comment-form mb-4">
+                                <form method="post" action="{% url 'posts:add_comment' post_id=post.id %}" id="comment-form">
+                                    {% csrf_token %}
+                                    <div class="d-flex gap-2">
+                                        <img src="{{ user.profile_picture.url }}" 
+                                             alt="{{ user.username }}"
+                                             class="comment-avatar">
+                                        <div class="flex-grow-1">
+                                            {{ comment_form.content }}
+                                            <div class="d-flex justify-content-between align-items-center mt-2">
+                                                <small class="text-muted">
+                                                    <i class="fas fa-info-circle"></i> 
+                                                    {{ comment_form.content.help_text }}
+                                                </small>
+                                                <button type="submit" class="btn btn-primary btn-sm">
+                                                    <i class="fas fa-paper-plane"></i> Post Comment
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                            {% else %}
+                            <div class="login-prompt mb-4">
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle"></i>
+                                    <a href="{% url 'login' %}">Log in</a> to add a comment.
+                                </div>
+                            </div>
+                            {% endif %}
+                            
+                            <!-- Comments List -->
+                            <div class="comments-list">
+                                {% if post.comments.all %}
+                                    {% for comment in post.comments.all %}
+                                    <div class="comment-item" id="comment-{{ comment.id }}">
+                                        <div class="comment-content">
+                                            <div class="d-flex gap-2">
+                                                <img src="{{ comment.user.profile_picture.url }}" 
+                                                     alt="{{ comment.user.username }}"
+                                                     class="comment-avatar">
+                                                <div class="comment-body flex-grow-1">
+                                                    <div class="comment-header">
+                                                        <a href="{% url 'posts:user_profile_posts' username=comment.user.username %}" 
+                                                           class="comment-author">{{ comment.user.username }}</a>
+                                                        <small class="text-muted">{{ comment.created_at|timesince }} ago</small>
+                                                    </div>
+                                                    <div class="comment-text">
+                                                        {{ comment.content|linebreaks }}
+                                                    </div>
+                                                    <div class="comment-actions">
+                                                        <button class="btn btn-link btn-sm" onclick="replyToComment({{ comment.id }})">
+                                                            <i class="fas fa-reply"></i> Reply
+                                                        </button>
+                                                        {% if user == comment.user %}
+                                                        <button class="btn btn-link btn-sm text-danger" 
+                                                                onclick="deleteComment({{ comment.id }})">
+                                                            <i class="fas fa-trash"></i> Delete
+                                                        </button>
+                                                        {% endif %}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Replies -->
+                                        {% if comment.replies.all %}
+                                        <div class="comment-replies">
+                                            {% for reply in comment.replies.all %}
+                                            <div class="reply-item" id="comment-{{ reply.id }}">
+                                                <div class="comment-content">
+                                                    <div class="d-flex gap-2">
+                                                        <img src="{{ reply.user.profile_picture.url }}" 
+                                                             alt="{{ reply.user.username }}"
+                                                             class="comment-avatar reply-avatar">
+                                                        <div class="comment-body flex-grow-1">
+                                                            <div class="comment-header">
+                                                                <a href="{% url 'posts:user_profile_posts' username=reply.user.username %}" 
+                                                                   class="comment-author">{{ reply.user.username }}</a>
+                                                                <small class="text-muted">{{ reply.created_at|timesince }} ago</small>
+                                                            </div>
+                                                            <div class="comment-text">
+                                                                {{ reply.content|linebreaks }}
+                                                            </div>
+                                                            {% if user == reply.user %}
+                                                            <div class="comment-actions">
+                                                                <button class="btn btn-link btn-sm text-danger" 
+                                                                        onclick="deleteComment({{ reply.id }})">
+                                                                    <i class="fas fa-trash"></i> Delete
+                                                                </button>
+                                                            </div>
+                                                            {% endif %}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    {% endfor %}
+                                {% else %}
+                                    <div class="no-comments">
+                                        <i class="fas fa-comments fa-2x text-muted mb-3"></i>
+                                        <h6>No comments yet</h6>
+                                        <p class="text-muted">Be the first to share your thoughts!</p>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <div class="posts-sidebar">
+                <!-- Author Info -->
+                <div class="author-info-card mb-4">
+                    <div class="card">
+                        <div class="card-body text-center">
+                            <img src="{{ post.author.profile_picture.url }}" 
+                                 alt="{{ post.author.username }}"
+                                 class="author-profile-picture mb-3">
+                            <h5 class="author-name">{{ post.author.username }}</h5>
+                            {% if post.author.bio %}
+                            <p class="author-bio">{{ post.author.bio|truncatewords:20 }}</p>
+                            {% endif %}
+                            <div class="author-stats">
+                                <div class="row text-center">
+                                    <div class="col">
+                                        <div class="stat-number">{{ post.author.posts.count }}</div>
+                                        <small class="stat-label">Posts</small>
+                                    </div>
+                                    <div class="col">
+                                        <div class="stat-number">{{ post.author.photos.count }}</div>
+                                        <small class="stat-label">Photos</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <a href="{% url 'posts:user_profile_posts' username=post.author.username %}" 
+                               class="btn btn-outline-primary btn-sm mt-2">
+                                <i class="fas fa-user"></i> View Profile
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Related Posts -->
+                <div class="related-posts mb-4">
+                    <h5><i class="fas fa-thumbs-up"></i> You Might Also Like</h5>
+                    <div class="related-posts-list">
+                        <!-- This would be populated by the view with related posts -->
+                        <p class="text-muted">Related posts will appear here</p>
+                    </div>
+                </div>
+                
+                <!-- Post Insights -->
+                {% if user == post.author %}
+                <div class="post-insights mb-4">
+                    <h5><i class="fas fa-chart-line"></i> Post Insights</h5>
+                    <div class="insights-card">
+                        <div class="insight-item">
+                            <div class="insight-label">Engagement Rate</div>
+                            <div class="insight-value">{{ post_stats.engagement_rate }}%</div>
+                        </div>
+                        <div class="insight-item">
+                            <div class="insight-label">Reach</div>
+                            <div class="insight-value">{{ post_stats.views_count }}</div>
+                        </div>
+                        <div class="insight-item">
+                            <div class="insight-label">Interactions</div>
+                            <div class="insight-value">{{ post_stats.likes_count|add:post_stats.comments_count }}</div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                
+                <!-- Trending Hashtags -->
+                <div class="trending-hashtags">
+                    <h5><i class="fas fa-fire"></i> Trending Hashtags</h5>
+                    {% if trending_hashtags %}
+                        {% for hashtag_data in trending_hashtags|slice:":5" %}
+                        <div class="hashtag-item">
+                            <a href="{% url 'posts:hashtag_posts' hashtag=hashtag_data.hashtag %}" class="hashtag-text">
+                                #{{ hashtag_data.hashtag }}
+                            </a>
+                            <span class="hashtag-count">{{ hashtag_data.count }}</span>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted">No trending hashtags yet</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Image Viewer Modal -->
+<div class="modal fade" id="imageViewerModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Image Viewer</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+                <img src="" alt="Full size image" class="img-fluid" id="modalImage">
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Custom CSS for this template -->
+<style>
+    .posts-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+    
+    .posts-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 40px 20px;
+        margin-bottom: 30px;
+        border-radius: 15px;
+        text-align: center;
+    }
+    
+    .posts-header h1 {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin-bottom: 10px;
+    }
+    
+    .posts-header p {
+        font-size: 1.1rem;
+        opacity: 0.9;
+        margin-bottom: 0;
+    }
+    
+    .posts-navigation {
+        background: var(--background-default);
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 30px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    
+    .posts-nav-tabs {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    
+    .posts-nav-tab {
+        padding: 10px 20px;
+        border-radius: 25px;
+        text-decoration: none;
+        color: var(--text-default);
+        font-weight: 500;
+        transition: all 0.3s ease;
+        border: 2px solid transparent;
+    }
+    
+    .posts-nav-tab:hover {
+        color: #667eea;
+        border-color: #667eea;
+        text-decoration: none;
+    }
+    
+    .posts-content {
+        background: var(--background-default);
+        border-radius: 10px;
+        padding: 30px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        min-height: 500px;
+    }
+    
+    .posts-sidebar {
+        background: var(--background-default);
+        border-radius: 10px;
+        padding: 20px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        height: fit-content;
+    }
+    
+    /* Post Detail Card */
+    .post-detail-card .card {
+        border: none;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        border-radius: 15px;
+        overflow: hidden;
+    }
+    
+    .post-header {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-bottom: 1px solid #dee2e6;
+    }
+    
+    .post-author-info {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+    
+    .author-link {
+        text-decoration: none;
+        color: inherit;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+    
+    .author-avatar {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 3px solid white;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    
+    .author-name {
+        margin: 0;
+        font-weight: 600;
+        color: #333;
+    }
+    
+    .post-badges .badge {
+        font-size: 0.8rem;
+        padding: 6px 12px;
+    }
+    
+    .post-content {
+        padding: 30px;
+    }
+    
+    .post-title {
+        color: #333;
+        font-weight: 700;
+    }
+    
+    .post-text {
+        font-size: 1.1rem;
+        line-height: 1.6;
+        color: #555;
+    }
+    
+    .post-tags .badge {
+        font-size: 0.9rem;
+        padding: 6px 12px;
+        margin-right: 8px;
+        margin-bottom: 8px;
+    }
+    
+    /* Post Media */
+    .post-main-image {
+        width: 100%;
+        max-height: 600px;
+        object-fit: contain;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: transform 0.3s ease;
+    }
+    
+    .post-main-image:hover {
+        transform: scale(1.02);
+    }
+    
+    .photos-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 10px;
+        max-height: 400px;
+        overflow-y: auto;
+    }
+    
+    .photo-grid-item {
+        position: relative;
+        border-radius: 8px;
+        overflow: hidden;
+        cursor: pointer;
+        transition: transform 0.3s ease;
+    }
+    
+    .photo-grid-item:hover {
+        transform: scale(1.05);
+    }
+    
+    .photo-grid-image {
+        width: 100%;
+        height: 200px;
+        object-fit: cover;
+    }
+    
+    .photo-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.5rem;
+        font-weight: 600;
+    }
+    
+    .collection-preview {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 20px;
+    }
+    
+    .collection-header h5 {
+        color: #333;
+        margin-bottom: 10px;
+    }
+    
+    .collection-photos-preview {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+        margin-top: 15px;
+    }
+    
+    .collection-photo-item {
+        aspect-ratio: 1;
+        border-radius: 8px;
+        overflow: hidden;
+        cursor: pointer;
+        transition: transform 0.3s ease;
+    }
+    
+    .collection-photo-item:hover {
+        transform: scale(1.05);
+    }
+    
+    .collection-photo-thumbnail {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    
+    .collection-photo-item.more-photos {
+        background: rgba(0,0,0,0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 600;
+    }
+    
+    /* Post Statistics */
+    .post-statistics {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 20px;
+    }
+    
+    .stat-item {
+        text-align: center;
+    }
+    
+    .stat-item i {
+        font-size: 1.5rem;
+        margin-bottom: 5px;
+        display: block;
+    }
+    
+    .stat-number {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #333;
+        display: block;
+    }
+    
+    .stat-label {
+        color: var(--text-default);
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    /* Post Actions */
+    .post-actions {
+        background: var(--background-default);
+        border-top: 1px solid #dee2e6;
+        padding: 20px;
+    }
+    
+    .action-buttons {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+    
+    .btn-action {
+        background: var(--background-default);
+        border: 2px solid #e9ecef;
+        color: var(--text-default);
+        padding: 10px 20px;
+        border-radius: 25px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .btn-action:hover {
+        border-color: #667eea;
+        color: #667eea;
+        transform: translateY(-2px);
+    }
+    
+    .btn-action.btn-liked {
+        background: #ff6b6b;
+        border-color: #ff6b6b;
+        color: white;
+    }
+    
+    .btn-action.btn-saved {
+        background: #51cf66;
+        border-color: #51cf66;
+        color: white;
+    }
+    
+    .action-count {
+        background: white;
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--text-default);
+    }
+    
+    /* Comments Section */
+    .comments-section .card {
+        border: none;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        border-radius: 15px;
+    }
+    
+    .add-comment-form {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 20px;
+    }
+    
+    .comment-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        object-fit: cover;
+        flex-shrink: 0;
+    }
+    
+    .reply-avatar {
+        width: 30px;
+        height: 30px;
+    }
+    
+    .comment-item {
+        padding: 15px 0;
+        border-bottom: 1px solid #eee;
+    }
+    
+    .comment-item:last-child {
+        border-bottom: none;
+    }
+    
+    .comment-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+    
+    .comment-author {
+        font-weight: 600;
+        color: #333;
+        text-decoration: none;
+    }
+    
+    .comment-author:hover {
+        color: #667eea;
+    }
+    
+    .comment-text {
+        color: #555;
+        line-height: 1.5;
+        margin-bottom: 10px;
+    }
+    
+    .comment-actions {
+        display: flex;
+        gap: 15px;
+    }
+    
+    .comment-actions .btn-link {
+        padding: 0;
+        font-size: 0.9rem;
+        text-decoration: none;
+    }
+    
+    .comment-replies {
+        margin-left: 50px;
+        margin-top: 15px;
+        padding-left: 20px;
+        border-left: 2px solid #e9ecef;
+    }
+    
+    .reply-item {
+        padding: 10px 0;
+    }
+    
+    .no-comments {
+        text-align: center;
+        padding: 40px;
+        color: var(--text-default);
+    }
+    
+    /* Sidebar Styles */
+    .author-info-card .card {
+        border: none;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        border-radius: 15px;
+    }
+    
+    .author-profile-picture {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 4px solid white;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    
+    .author-bio {
+        color: var(--text-default);
+        font-size: 0.9rem;
+        margin-bottom: 20px;
+    }
+    
+    .author-stats .stat-number {
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: #667eea;
+    }
+    
+    .insights-card {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 15px;
+    }
+    
+    .insight-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 0;
+        border-bottom: 1px solid #dee2e6;
+    }
+    
+    .insight-item:last-child {
+        border-bottom: none;
+    }
+    
+    .insight-label {
+        color: var(--text-default);
+        font-size: 0.9rem;
+    }
+    
+    .insight-value {
+        font-weight: 600;
+        color: #333;
+    }
+    
+    .trending-hashtags h5 {
+        margin-bottom: 15px;
+        color: #333;
+    }
+    
+    .hashtag-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 12px;
+        margin-bottom: 8px;
+        background: #f8f9fa;
+        border-radius: 6px;
+        transition: all 0.3s ease;
+    }
+    
+    .hashtag-item:hover {
+        background: #e9ecef;
+        transform: translateX(5px);
+    }
+    
+    .hashtag-text {
+        color: #667eea;
+        font-weight: 500;
+        text-decoration: none;
+    }
+    
+    .hashtag-text:hover {
+        color: #764ba2;
+        text-decoration: none;
+    }
+    
+    .hashtag-count {
+        background: #667eea;
+        color: white;
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+    
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        .posts-container {
+            padding: 10px;
+        }
+        
+        .posts-header {
+            padding: 30px 15px;
+        }
+        
+        .posts-header h1 {
+            font-size: 2rem;
+        }
+        
+        .posts-nav-tabs {
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .post-content {
+            padding: 20px;
+        }
+        
+        .photos-grid {
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        }
+        
+        .collection-photos-preview {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        
+        .action-buttons {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        
+        .comment-replies {
+            margin-left: 20px;
+        }
+    }
+</style>
+
+<!-- JavaScript for this template -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+
+// Toggle like functionality
+function toggleLike(postId) {
+    const likeBtn = document.getElementById(`like-btn-${postId}`);
+    const likeCount = likeBtn.querySelector('.action-count');
+    
+    fetch(`/posts/${postId}/like/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.liked) {
+            likeBtn.classList.add('btn-liked');
+            likeBtn.querySelector('.action-text').textContent = 'Liked';
+        } else {
+            likeBtn.classList.remove('btn-liked');
+            likeBtn.querySelector('.action-text').textContent = 'Like';
+        }
+        likeCount.textContent = data.likes_count;
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error toggling like. Please try again.');
+    });
+}
+
+// Toggle save functionality
+function toggleSave(postId) {
+    const saveBtn = document.getElementById(`save-btn-${postId}`);
+    const saveCount = saveBtn.querySelector('.action-count');
+    
+    fetch(`/posts/${postId}/save/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.saved) {
+            saveBtn.classList.add('btn-saved');
+            saveBtn.querySelector('.action-text').textContent = 'Saved';
+        } else {
+            saveBtn.classList.remove('btn-saved');
+            saveBtn.querySelector('.action-text').textContent = 'Save';
+        }
+        saveCount.textContent = data.saves_count;
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error toggling save. Please try again.');
+    });
+}
+
+// Focus comment form
+function focusCommentForm() {
+    const commentForm = document.getElementById('comment-form');
+    if (commentForm) {
+        const textarea = commentForm.querySelector('textarea');
+        textarea.focus();
+        textarea.scrollIntoView({ behavior: 'smooth' });
+    }
+}
+
+// Reply to comment
+function replyToComment(commentId) {
+    const commentForm = document.getElementById('comment-form');
+    const textarea = commentForm.querySelector('textarea');
+    
+    // Add reply indicator
+    textarea.placeholder = `Replying to comment ${commentId}...`;
+    textarea.focus();
+    textarea.scrollIntoView({ behavior: 'smooth' });
+    
+    // Store the parent comment ID for form submission
+    commentForm.dataset.parentComment = commentId;
+}
+
+// Delete comment
+function deleteComment(commentId) {
+    if (confirm('Are you sure you want to delete this comment?')) {
+        fetch(`/posts/comment/${commentId}/delete/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const commentElement = document.getElementById(`comment-${commentId}`);
+                commentElement.remove();
+                
+                // Update comment count
+                const commentCount = document.querySelector('.badge.bg-primary');
+                commentCount.textContent = data.comments_count;
+            } else {
+                alert(data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error deleting comment. Please try again.');
+        });
+    }
+}
+
+// Share post
+function sharePost() {
+    const postUrl = window.location.href;
+    const postTitle = '{{ post.title|default:"Check out this post" }}';
+    
+    if (navigator.share) {
+        navigator.share({
+            title: postTitle,
+            url: postUrl
+        });
+    } else {
+        // Fallback: copy to clipboard
+        navigator.clipboard.writeText(postUrl).then(() => {
+            alert('Post URL copied to clipboard!');
+        }).catch(() => {
+            // Fallback for older browsers
+            const textArea = document.createElement('textarea');
+            textArea.value = postUrl;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            alert('Post URL copied to clipboard!');
+        });
+    }
+}
+
+// Report post
+function reportPost() {
+    alert('Report functionality will be implemented soon.');
+}
+
+// Image viewer functionality
+function openImageViewer(imageSrc) {
+    const modal = new bootstrap.Modal(document.getElementById('imageViewerModal'));
+    document.getElementById('modalImage').src = imageSrc;
+    modal.show();
+}
+
+// Auto-refresh post statistics
+function refreshPostStats() {
+    fetch(`/posts/{{ post.id }}/stats/ajax/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        // Update view count
+        const viewCount = document.querySelector('.stat-item:nth-child(1) .stat-number');
+        if (viewCount) viewCount.textContent = data.views_count;
+        
+        // Update like count
+        const likeCount = document.querySelector('.stat-item:nth-child(2) .stat-number');
+        if (likeCount) likeCount.textContent = data.likes_count;
+        
+        // Update comment count
+        const commentCount = document.querySelector('.stat-item:nth-child(3) .stat-number');
+        if (commentCount) commentCount.textContent = data.comments_count;
+        
+        // Update save count
+        const saveCount = document.querySelector('.stat-item:nth-child(4) .stat-number');
+        if (saveCount) saveCount.textContent = data.saves_count;
+    })
+    .catch(error => {
+        console.error('Error refreshing stats:', error);
+    });
+}
+
+// Refresh stats every 30 seconds
+setInterval(refreshPostStats, 30000);
+
+// Handle comment form submission
+document.getElementById('comment-form').addEventListener('submit', function(e) {
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    
+    // Show loading state
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Posting...';
+    
+    // Form will submit normally, this is just for UX
+    setTimeout(() => {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+    }, 2000);
+});
+</script>
+{% endblock %}

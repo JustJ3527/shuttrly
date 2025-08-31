@@ -3,7 +3,7 @@ from datetime import datetime, date, timedelta
 import uuid
 
 # Third party imports
-from django.core.files import temp
+from django.contrib.auth import authenticate
 from django.core.exceptions import ValidationError
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes, authentication_classes
@@ -13,21 +13,23 @@ from django.utils import timezone
 from rest_framework.authentication import SessionAuthentication
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
+# Local imports
 from users.models import CustomUser
 from users.validators import UsernameValidator
 from users.utils import (
     generate_email_code, send_verification_email,
     get_client_ip, get_user_agent, get_location_from_ip,
     send_2FA_email, verify_totp, is_trusted_device,
-    initialize_login_session_data, login_success
+    initialize_login_session_data, login_success, calculate_age
 )
 from users.constants import EMAIL_CODE_RESEND_DELAY_SECONDS, EMAIL_CODE_EXPIRY_SECONDS
 from logs.utils import log_user_action_json
 
 from users.api.serializers import (
     RegisterStep1Serializer, RegisterStep2Serializer, RegisterStep3Serializer,
-    RegisterStep4Serializer, RegisterStep5Serializer, LoginSerializer, ResendCodeSerializer, UserSerializer,
-    create_tokens_for_user
+    RegisterStep4Serializer, RegisterStep5Serializer, LoginSerializer, ResendCodeSerializer, 
+    UserSerializer, TwoFAMethodChoiceSerializer, Email2FASerializer, TOTP2FASerializer,
+    ProfileUpdateSerializer, create_tokens_for_user
 )
 from users.api.errors import AuthErrorResponse, handle_authentication_error
 
@@ -41,21 +43,27 @@ def register_step_1_email(request):
     """Step 1: Email verification and sending code"""
     serializer = RegisterStep1Serializer(data=request.data)
     
-    if serializer.is_valid():
-        email = serializer.validated_data['email']
-
-        # Clean temporary users
-        CustomUser.objects.filter(email=email, is_active=False).delete()
-
-        # Generate verification code
-        verification_code = generate_email_code()
-
-
-        # Create temporary user
+    if not serializer.is_valid():
+        return AuthErrorResponse.validation_error(serializer.errors)
+    
+    email = serializer.validated_data['email']
+    
+    # Check if email already exists for active users
+    if CustomUser.objects.filter(email=email, is_active=True).exists():
+        return AuthErrorResponse.email_already_exists(email)
+    
+    # Clean temporary users with this email
+    CustomUser.objects.filter(email=email, is_active=False).delete()
+    
+    # Generate verification code
+    verification_code = generate_email_code()
+    
+    # Create temporary user
+    temp_username = f"temp_{uuid.uuid4().hex[:8]}"
+    while CustomUser.objects.filter(username=temp_username).exists():
         temp_username = f"temp_{uuid.uuid4().hex[:8]}"
-        while CustomUser.objects.filter(username=temp_username).exists():
-            temp_username = f"temp_{uuid.uuid4().hex[:8]}"
-
+    
+    try:
         temp_user = CustomUser.objects.create(
             email=email,
             username=temp_username,
@@ -65,26 +73,30 @@ def register_step_1_email(request):
             email_verification_code=verification_code,
             verification_code_sent_at=timezone.now()
         )
-
-        # Send email
+        
+        # Send verification email
         success = send_verification_email(email, verification_code)
-
+        
         if success:
             return Response({
                 'success': True,
-                "message": f"Verification code sent to your mail: {email}",
+                'message': f"Verification code sent to your email: {email}",
                 'email': email,
                 'temp_user_id': temp_user.id
             }, status=status.HTTP_200_OK)
         else:
+            # Clean up if email sending failed
             temp_user.delete()
             return AuthErrorResponse.server_error({
                 'email': email,
                 'error': 'Failed to send verification code'
             })
-
-    # Return structured error response
-    return AuthErrorResponse.validation_error(serializer.errors)
+            
+    except Exception as e:
+        return AuthErrorResponse.server_error({
+            'email': email,
+            'error': f'Error creating temporary user: {str(e)}'
+        })
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -92,69 +104,71 @@ def register_step_2_verifify_email(request):
     """Step 2: Verify email"""
     serializer = RegisterStep2Serializer(data=request.data)
     
-    if serializer.is_valid():
-        email = request.data.get("email")
-        submitted_code = serializer.validated_data["verification_code"]
-
-        try:
-            temp_user = CustomUser.objects.get(email=email, is_active=False)
-
-            # Check code expiration
-            if temp_user.verification_code_sent_at:
-                time_since_sent = timezone.now() - temp_user.verification_code_sent_at
-                if time_since_sent.total_seconds() > EMAIL_CODE_EXPIRY_SECONDS:
-                                    return AuthErrorResponse.verification_code_expired()
-
-            # Check code
-            if temp_user.email_verification_code == submitted_code:
-                # Mark email as verified but keep temp user for final registration
-                temp_user.is_email_verified = True
-                temp_user.save()
-
-                return Response({
-                    "success": True, 
-                    "message": "Email verification successful",
-                    "email_verified": True
-                }, status=status.HTTP_200_OK)
-            else:
-                return AuthErrorResponse.invalid_verification_code()
-
-        except CustomUser.DoesNotExist:
-            return AuthErrorResponse.session_expired()
+    if not serializer.is_valid():
+        return AuthErrorResponse.validation_error(serializer.errors)
+    
+    email = request.data.get("email")
+    submitted_code = serializer.validated_data["verification_code"]
+    
+    if not email:
+        return AuthErrorResponse.validation_error({
+            'email': ['Email is required for verification']
+        })
+    
+    try:
+        temp_user = CustomUser.objects.get(email=email, is_active=False)
+        
+        # Check code expiration
+        if temp_user.verification_code_sent_at:
+            time_since_sent = timezone.now() - temp_user.verification_code_sent_at
+            if time_since_sent.total_seconds() > EMAIL_CODE_EXPIRY_SECONDS:
+                return AuthErrorResponse.verification_code_expired()
+        
+        # Check verification code
+        if temp_user.email_verification_code == submitted_code:
+            # Mark email as verified but keep temp user for final registration
+            temp_user.is_email_verified = True
+            temp_user.save()
+            
+            return Response({
+                "success": True, 
+                "message": "Email verification successful",
+                "email_verified": True
+            }, status=status.HTTP_200_OK)
+        else:
+            return AuthErrorResponse.invalid_verification_code()
+            
+    except CustomUser.DoesNotExist:
+        return AuthErrorResponse.session_expired()
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def register_complete(request):
     """Complete registration with all required information"""
-    # Verify that all required information is present
-    required_fields = ['email', 'first_name', 'last_name', 'date_of_birth', 'username', 'password1', 'password2']
-    for field in required_fields:
-        if not request.data.get(field):
-            return Response({
-                'success': False,
-                'message': f'The field {field} is required.'
-            }, status=status.HTTP_400_BAD_REQUEST)
+    email = request.data.get('email')
     
-    email = request.data['email']
+    if not email:
+        return AuthErrorResponse.validation_error({
+            'email': ['Email is required']
+        })
+    
+    # Validate all required fields
+    required_fields = ['first_name', 'last_name', 'date_of_birth', 'username', 'password1', 'password2']
+    missing_fields = [field for field in required_fields if not request.data.get(field)]
+    
+    if missing_fields:
+        return AuthErrorResponse.validation_error({
+            'missing_fields': missing_fields,
+            'message': f'The following fields are required: {", ".join(missing_fields)}'
+        })
     
     # Check if there's a verified temporary user
     try:
         temp_user = CustomUser.objects.get(email=email, is_active=False, is_email_verified=True)
     except CustomUser.DoesNotExist:
-        return Response({
-            'success': False,
-            'message': 'Email not verified. Please complete email verification first.',
-        }, status=status.HTTP_400_BAD_REQUEST)
+        return AuthErrorResponse.session_expired()
     
-    # Validate each step
-    step1_data = {'email': email}
-    step1_serializer = RegisterStep1Serializer(data=step1_data)
-    if not step1_serializer.is_valid():
-        return Response({
-            'success': False,
-            'message': 'Invalid email.',
-            'errors': step1_serializer.errors
-        }, status=status.HTTP_400_BAD_REQUEST)
+    # Validate each step using serializers
     
     step3_data = {
         'first_name': request.data['first_name'],
@@ -163,20 +177,27 @@ def register_complete(request):
     }
     step3_serializer = RegisterStep3Serializer(data=step3_data)
     if not step3_serializer.is_valid():
-        return Response({
-            'success': False,
-            'message': 'Invalid personal information.',
-            'errors': step3_serializer.errors
-        }, status=status.HTTP_400_BAD_REQUEST)
+        return AuthErrorResponse.validation_error(step3_serializer.errors)
+    
+    # Check age requirement
+    try:
+        birth_date = datetime.strptime(request.data['date_of_birth'], '%Y-%m-%d').date()
+        age = calculate_age(birth_date)
+        if age < 16:
+            return AuthErrorResponse.age_restriction()
+    except ValueError:
+        return AuthErrorResponse.validation_error({
+            'date_of_birth': ['Invalid date format. Use YYYY-MM-DD']
+        })
     
     step4_data = {'username': request.data['username']}
     step4_serializer = RegisterStep4Serializer(data=step4_data)
     if not step4_serializer.is_valid():
-        return Response({
-            'success': False,
-            'message': 'Invalid username.',
-            'errors': step4_serializer.errors
-        }, status=status.HTTP_400_BAD_REQUEST)
+        return AuthErrorResponse.validation_error(step4_serializer.errors)
+    
+    # Check username availability
+    if CustomUser.objects.filter(username=request.data['username'].lower(), is_active=True).exists():
+        return AuthErrorResponse.username_already_taken(request.data['username'])
     
     step5_data = {
         'password1': request.data['password1'],
@@ -184,19 +205,15 @@ def register_complete(request):
     }
     step5_serializer = RegisterStep5Serializer(data=step5_data)
     if not step5_serializer.is_valid():
-        return Response({
-            'success': False,
-            'message': 'Invalid passwords.',
-            'errors': step5_serializer.errors
-        }, status=status.HTTP_400_BAD_REQUEST)
+        return AuthErrorResponse.validation_error(step5_serializer.errors)
     
     # Create user
     try:
-        # Update the existing temporary user instead of creating a new one
+        # Update the existing temporary user
         temp_user.username = request.data['username'].lower()
         temp_user.first_name = request.data['first_name']
         temp_user.last_name = request.data['last_name']
-        temp_user.date_of_birth = datetime.strptime(request.data['date_of_birth'], '%Y-%m-%d').date()
+        temp_user.date_of_birth = birth_date
         temp_user.set_password(request.data['password1'])
         temp_user.is_active = True
         temp_user.save()
@@ -226,45 +243,25 @@ def register_complete(request):
         }, status=status.HTTP_201_CREATED)
         
     except Exception as e:
-        return Response({
-            'success': False,
-            'message': f'Error creating account: {str(e)}'
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return AuthErrorResponse.server_error({
+            'error': f'Error creating account: {str(e)}'
+        })
 
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def register_step_4_username(request):
     """Step 4: Username selection with real-time validation"""
-    print(f"🔍 Step4 request data: {request.data}")
+    serializer = RegisterStep4Serializer(data=request.data)
     
-    # Simple validation without serializer for now
-    username = request.data.get('username', '').strip()
+    if not serializer.is_valid():
+        return AuthErrorResponse.validation_error(serializer.errors)
     
-    if not username:
-        return Response({
-            'success': False,
-            'message': 'Username is required.',
-        }, status=status.HTTP_400_BAD_REQUEST)
-    
-    if len(username) < 3:
-        return Response({
-            'success': False,
-            'message': 'Username must be at least 3 characters long.',
-        }, status=status.HTTP_400_BAD_REQUEST)
-    
-    if len(username) > 30:
-        return Response({
-            'success': False,
-            'message': 'Username must be 30 characters or less.',
-        }, status=status.HTTP_400_BAD_REQUEST)
+    username = serializer.validated_data['username']
     
     # Check if username is available
-    if CustomUser.objects.filter(username=username.lower()).exists():
-        return Response({
-            'success': False,
-            'message': 'This username is already taken.',
-        }, status=status.HTTP_400_BAD_REQUEST)
+    if CustomUser.objects.filter(username=username, is_active=True).exists():
+        return AuthErrorResponse.username_already_taken(username)
     
     return Response({
         'success': True,
@@ -279,48 +276,42 @@ def resend_verification_code(request):
     """Resend a verification code"""
     serializer = ResendCodeSerializer(data=request.data)
     
-    if serializer.is_valid():
-        email = serializer.validated_data['email']
-        
-        try:
-            temp_user = CustomUser.objects.get(email=email, is_active=False)
-            
-            # Check the time between shipments
-            if temp_user.verification_code_sent_at:
-                time_since_sent = timezone.now() - temp_user.verification_code_sent_at
-                if time_since_sent.total_seconds() < EMAIL_CODE_RESEND_DELAY_SECONDS:
-                    remaining_time = int(EMAIL_CODE_RESEND_DELAY_SECONDS - time_since_sent.total_seconds())
-                    return Response({
-                        'success': False,
-                        'message': f'Please wait {remaining_time} seconds before requesting a new code.'
-                    }, status=status.HTTP_429_TOO_MANY_REQUESTS)
-            
-            # Generate and send a new code
-            new_code = generate_email_code()
-            temp_user.email_verification_code = new_code
-            temp_user.verification_code_sent_at = timezone.now()
-            temp_user.save()
-            
-            success = send_verification_email(email, new_code)
-            
-            if success:
-                return Response({
-                    'success': True,
-                    'message': 'New code sent successdully.'
-                }, status=status.HTTP_200_OK)
-            else:
-                return Response({
-                    'success': False,
-                    'message': 'Error sending code.'
-                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-                
-        except CustomUser.DoesNotExist:
-            return Response({
-                'success': False,
-                'message': 'No current registration found for this email.'
-            }, status=status.HTTP_400_BAD_REQUEST)
+    if not serializer.is_valid():
+        return AuthErrorResponse.validation_error(serializer.errors)
     
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    email = serializer.validated_data['email']
+    
+    try:
+        temp_user = CustomUser.objects.get(email=email, is_active=False)
+        
+        # Check the time between shipments
+        if temp_user.verification_code_sent_at:
+            time_since_sent = timezone.now() - temp_user.verification_code_sent_at
+            if time_since_sent.total_seconds() < EMAIL_CODE_RESEND_DELAY_SECONDS:
+                remaining_time = int(EMAIL_CODE_RESEND_DELAY_SECONDS - time_since_sent.total_seconds())
+                return AuthErrorResponse.too_many_attempts(remaining_time)
+        
+        # Generate and send a new code
+        new_code = generate_email_code()
+        temp_user.email_verification_code = new_code
+        temp_user.verification_code_sent_at = timezone.now()
+        temp_user.save()
+        
+        success = send_verification_email(email, new_code)
+        
+        if success:
+            return Response({
+                'success': True,
+                'message': 'New verification code sent successfully.'
+            }, status=status.HTTP_200_OK)
+        else:
+            return AuthErrorResponse.server_error({
+                'email': email,
+                'error': 'Failed to send verification code'
+            })
+            
+    except CustomUser.DoesNotExist:
+        return AuthErrorResponse.session_expired()
 
 
 # ===============================
@@ -345,155 +336,129 @@ def login_api(request):
         # Step 3: TOTP 2FA
         return handle_login_step_3_totp_2fa_api(request)
     else:
-        return Response({
-            'success': False,
-            'message': 'Invalid request parameters.',
-            'errors': {'request': 'Cannot determine step from parameters'}
-        }, status=status.HTTP_400_BAD_REQUEST)
+        return AuthErrorResponse.validation_error({
+            'request': ['Cannot determine step from parameters']
+        })
 
 
 def handle_login_step_1_credentials_api(request):
     """Step 1: Credentials validation"""
     serializer = LoginSerializer(data=request.data)
     
-    if serializer.is_valid():
-        user = serializer.validated_data['user']
-        remember_device = serializer.validated_data.get('remember_device', False)
-        
-        # Check if 2FA is required
-        if user.email_2fa_enabled or user.totp_enabled:
-            # Check if this is a trusted device
-            if is_trusted_device(request, user):
-                # Trusted device - proceed directly to login
-                return handle_login_success_api(request, user, remember_device)
-            
-            # Not a trusted device - proceed with 2FA
-            # Initialize session data
-            initialize_login_session_data(request, user)
-            
-            # If both methods are enabled, go to choice step
-            if user.email_2fa_enabled and user.totp_enabled:
-                return Response({
-                    'success': True,
-                    'message': '2FA required. Please choose your method.',
-                    'next_step': 'choose_2fa',
-                    'requires_2fa': True,
-                    'available_methods': ['email', 'totp']
-                }, status=status.HTTP_200_OK)
-            
-            # If only email 2FA is enabled
-            elif user.email_2fa_enabled:
-                code = generate_email_code()
-                user.email_2fa_code = code
-                user.email_2fa_sent_at = timezone.now()
-                user.save()
-                
-                # Initialize session data and set the chosen 2FA method
-                session_data = initialize_login_session_data(request, user, code)
-                session_data["chosen_2fa_method"] = "email"
-                request.session["login_data"] = session_data
-                
-                success = send_2FA_email(user, code)
-                
-                if success:
-                    return Response({
-                        'success': True,
-                        'message': 'A verification code has been sent to your email address.',
-                        'next_step': 'email_2fa',
-                        'requires_2fa': True,
-                        'method': 'email'
-                    }, status=status.HTTP_200_OK)
-                else:
-                    return Response({
-                        'success': False,
-                        'message': 'Error sending verification code.',
-                        'errors': {'email': 'Failed to send verification code'}
-                    }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-            
-            # If only TOTP is enabled
-            elif user.totp_enabled:
-                # Initialize session data and set the chosen 2FA method
-                session_data = initialize_login_session_data(request, user)
-                session_data["chosen_2fa_method"] = "totp"
-                request.session["login_data"] = session_data
-                
-                return Response({
-                    'success': True,
-                    'message': 'Please enter your TOTP code.',
-                    'next_step': 'totp_2fa',
-                    'requires_2fa': True,
-                    'method': 'totp'
-                }, status=status.HTTP_200_OK)
-        
-        # No 2FA required, proceed to login
-        return handle_login_success_api(request, user, remember_device)
+    if not serializer.is_valid():
+        return AuthErrorResponse.validation_error(serializer.errors)
     
-    # Handle validation errors with structured error responses
-    if serializer.errors:
-        # Check for specific error types
-        if 'identifier' in serializer.errors:
-            # Could be user not found or invalid format
-            identifier = request.data.get('identifier', '')
-            if CustomUser.objects.filter(username=identifier).exists() or CustomUser.objects.filter(email=identifier).exists():
-                # User exists but password is wrong
-                return AuthErrorResponse.invalid_credentials()
-            else:
-                # User not found
-                return AuthErrorResponse.user_not_found(identifier)
-        elif 'password' in serializer.errors:
+    identifier = serializer.validated_data['identifier']
+    password = serializer.validated_data['password']
+    remember_device = serializer.validated_data.get('remember_device', False)
+    
+    # Authenticate the user
+    user = authenticate(username=identifier, password=password)
+    
+    if not user:
+        # Check if user exists to provide appropriate error message
+        if CustomUser.objects.filter(username=identifier).exists() or CustomUser.objects.filter(email=identifier).exists():
             return AuthErrorResponse.invalid_credentials()
         else:
-            # General validation error
-            return AuthErrorResponse.validation_error(serializer.errors)
+            return AuthErrorResponse.user_not_found(identifier)
     
-    # Fallback for unexpected errors
-    return AuthErrorResponse.invalid_credentials()
+    # Check if email is verified
+    if not user.is_email_verified:
+        return AuthErrorResponse.email_not_verified(identifier)
+    
+    # Check if 2FA is required
+    if user.email_2fa_enabled or user.totp_enabled:
+        # Check if this is a trusted device
+        if is_trusted_device(request, user):
+            # Trusted device - proceed directly to login
+            return handle_login_success_api(request, user, remember_device)
+        
+        # Not a trusted device - proceed with 2FA
+        # Initialize session data
+        initialize_login_session_data(request, user)
+        
+        # If both methods are enabled, go to choice step
+        if user.email_2fa_enabled and user.totp_enabled:
+            return Response({
+                'success': True,
+                'message': '2FA required. Please choose your method.',
+                'next_step': 'choose_2fa',
+                'requires_2fa': True,
+                'available_methods': ['email', 'totp']
+            }, status=status.HTTP_200_OK)
+        
+        # If only email 2FA is enabled
+        elif user.email_2fa_enabled:
+            code = generate_email_code()
+            user.email_2fa_code = code
+            user.email_2fa_sent_at = timezone.now()
+            user.save()
+            
+            # Initialize session data and set the chosen 2FA method
+            session_data = initialize_login_session_data(request, user, code)
+            session_data["chosen_2fa_method"] = "email"
+            request.session["login_data"] = session_data
+            
+            success = send_2FA_email(user, code)
+            
+            if success:
+                return Response({
+                    'success': True,
+                    'message': 'A verification code has been sent to your email address.',
+                    'next_step': 'email_2fa',
+                    'requires_2fa': True,
+                    'method': 'email'
+                }, status=status.HTTP_200_OK)
+            else:
+                return AuthErrorResponse.server_error({
+                    'email': 'Failed to send verification code'
+                })
+        
+        # If only TOTP is enabled
+        elif user.totp_enabled:
+            # Initialize session data and set the chosen 2FA method
+            session_data = initialize_login_session_data(request, user)
+            session_data["chosen_2fa_method"] = "totp"
+            request.session["login_data"] = session_data
+            
+            return Response({
+                'success': True,
+                'message': 'Please enter your TOTP code.',
+                'next_step': 'totp_2fa',
+                'requires_2FA': True,
+                'method': 'totp'
+            }, status=status.HTTP_200_OK)
+    
+    # No 2FA required, proceed to login
+    return handle_login_success_api(request, user, remember_device)
 
 
 def handle_login_step_2_2fa_choice_api(request):
     """Step 2: 2FA method choice"""
+    serializer = TwoFAMethodChoiceSerializer(data=request.data)
+    
+    if not serializer.is_valid():
+        return AuthErrorResponse.validation_error(serializer.errors)
+    
     session_data = request.session.get("login_data", {})
     user_id = session_data.get("user_id")
     
     if not user_id:
-        return Response({
-            'success': False,
-            'message': 'Session expired. Please try again.',
-            'errors': {'session': 'Session expired'}
-        }, status=status.HTTP_400_BAD_REQUEST)
+        return AuthErrorResponse.session_expired()
     
     try:
         user = CustomUser.objects.get(pk=user_id)
     except CustomUser.DoesNotExist:
-        return Response({
-            'success': False,
-            'message': 'User not found.',
-            'errors': {'user': 'User not found'}
-        }, status=status.HTTP_400_BAD_REQUEST)
+        return AuthErrorResponse.user_not_found("unknown")
     
-    method = request.data.get("chosen_method")
-    
-    if not method or method not in ['email', 'totp']:
-        return Response({
-            'success': False,
-            'message': 'Invalid 2FA method selection.',
-            'errors': {'twofa_method': 'Invalid method'}
-        }, status=status.HTTP_400_BAD_REQUEST)
+    method = serializer.validated_data["chosen_method"]
     
     # Validate that the chosen 2FA method is enabled for this user
     if method == "email" and not user.email_2fa_enabled:
-        return Response({
-            'success': False,
-            'message': 'Email 2FA is not enabled for this account.',
-            'errors': {'twofa_method': 'Email 2FA not enabled'}
-        }, status=status.HTTP_400_BAD_REQUEST)
+        return AuthErrorResponse.twofa_method_not_available("email")
     
     if method == "totp" and not user.totp_enabled:
-        return Response({
-            'success': False,
-            'message': 'TOTP 2FA is not enabled for this account.',
-            'errors': {'twofa_method': 'TOTP 2FA not enabled'}
-        }, status=status.HTTP_400_BAD_REQUEST)
+        return AuthErrorResponse.twofa_method_not_available("totp")
     
     # Store the chosen method in session for the next step
     session_data["chosen_2fa_method"] = method
@@ -521,11 +486,9 @@ def handle_login_step_2_2fa_choice_api(request):
                 'method': 'email'
             }, status=status.HTTP_200_OK)
         else:
-            return Response({
-                'success': False,
-                'message': 'Error sending verification code.',
-                'errors': {'email': 'Failed to send code'}
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return AuthErrorResponse.server_error({
+                'email': 'Failed to send verification code'
+            })
     
     elif method == "totp":
         return Response({
@@ -538,27 +501,24 @@ def handle_login_step_2_2fa_choice_api(request):
 
 def handle_login_step_3_email_2fa_api(request):
     """Step 3: Email 2FA verification"""
+    serializer = Email2FASerializer(data=request.data)
+    
+    if not serializer.is_valid():
+        return AuthErrorResponse.validation_error(serializer.errors)
+    
     session_data = request.session.get("login_data", {})
     user_id = session_data.get("user_id")
     
     if not user_id:
-        return Response({
-            'success': False,
-            'message': 'Session expired. Please try again.',
-            'errors': {'session': 'Session expired'}
-        }, status=status.HTTP_400_BAD_REQUEST)
+        return AuthErrorResponse.session_expired()
     
     try:
         user = CustomUser.objects.get(pk=user_id)
     except CustomUser.DoesNotExist:
-        return Response({
-            'success': False,
-            'message': 'User not found.',
-            'errors': {'user': 'User not found'}
-        }, status=status.HTTP_400_BAD_REQUEST)
+        return AuthErrorResponse.user_not_found("unknown")
     
     # Handle resend code request
-    if request.data.get("resend_code"):
+    if serializer.validated_data.get("resend_code"):
         # Check if enough time has passed since last code
         code_sent_at = session_data.get("code_sent_at")
         if code_sent_at:
@@ -572,11 +532,7 @@ def handle_login_step_3_email_2fa_api(request):
             
             time_since_sent = timezone.now() - sent_time
             if time_since_sent.total_seconds() < 60:  # 1 minute delay
-                return Response({
-                    'success': False,
-                    'message': 'Please wait before requesting a new code.',
-                    'errors': {'resend': 'Too soon to resend'}
-                }, status=status.HTTP_400_BAD_REQUEST)
+                return AuthErrorResponse.too_many_attempts(0)
         
         # Generate and send new code
         new_code = generate_email_code()
@@ -599,20 +555,16 @@ def handle_login_step_3_email_2fa_api(request):
                 'method': 'email'
             }, status=status.HTTP_200_OK)
         else:
-            return Response({
-                'success': False,
-                'message': 'Error sending verification code.',
-                'errors': {'email': 'Failed to send code'}
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return AuthErrorResponse.server_error({
+                'email': 'Failed to send verification code'
+            })
     
     # Handle code verification
-    submitted_code = request.data.get("verification_code")
+    submitted_code = serializer.validated_data.get("verification_code")
     if not submitted_code:
-        return Response({
-            'success': False,
-            'message': 'Verification code is required.',
-            'errors': {'twofa_code': 'Code required'}
-        }, status=status.HTTP_400_BAD_REQUEST)
+        return AuthErrorResponse.validation_error({
+            'verification_code': ['Verification code is required']
+        })
     
     stored_code = session_data.get("verification_code")
     code_sent_at = session_data.get("code_sent_at")
@@ -620,11 +572,7 @@ def handle_login_step_3_email_2fa_api(request):
     
     # Check attempt limit to prevent brute force attacks
     if attempts >= 3:
-        return Response({
-            'success': False,
-            'message': 'Too many attempts. Request a new code.',
-            'errors': {'twofa_code': 'Too many attempts'}
-        }, status=status.HTTP_400_BAD_REQUEST)
+        return AuthErrorResponse.too_many_attempts(0)
     
     # Check code expiration (10 minutes from when code was sent)
     if code_sent_at:
@@ -638,11 +586,7 @@ def handle_login_step_3_email_2fa_api(request):
         
         # Check if code has expired (10 minutes)
         if (timezone.now() - sent_time).total_seconds() > 600:  # 10 minutes
-            return Response({
-                'success': False,
-                'message': 'Code has expired. Request a new code.',
-                'errors': {'twofa_code': 'Code expired'}
-            }, status=status.HTTP_400_BAD_REQUEST)
+            return AuthErrorResponse.twofa_code_expired()
         
         # Validate the submitted code against stored code
         if submitted_code == stored_code:
@@ -654,55 +598,38 @@ def handle_login_step_3_email_2fa_api(request):
             attempts += 1
             session_data["code_attempts"] = attempts
             request.session["login_data"] = session_data
-            return Response({
-                'success': False,
-                'message': f'Incorrect code. {3-attempts} remaining attempt(s).',
-                'errors': {'twofa_code': f'Incorrect code. {3-attempts} attempts remaining'}
-            }, status=status.HTTP_400_BAD_REQUEST)
+            return AuthErrorResponse.invalid_2fa_code()
     
-    return Response({
-        'success': False,
-        'message': 'Session error. Please try again.',
-        'errors': {'session': 'Session error'}
-    }, status=status.HTTP_400_BAD_REQUEST)
+    return AuthErrorResponse.session_expired()
 
 
 def handle_login_step_3_totp_2fa_api(request):
     """Step 3: TOTP 2FA verification"""
+    serializer = TOTP2FASerializer(data=request.data)
+    
+    if not serializer.is_valid():
+        return AuthErrorResponse.validation_error(serializer.errors)
+    
     session_data = request.session.get("login_data", {})
     user_id = session_data.get("user_id")
     
     if not user_id:
-        return Response({
-            'success': False,
-            'message': 'Session expired. Please try again.',
-            'errors': {'session': 'Session expired'}
-        }, status=status.HTTP_400_BAD_REQUEST)
+        return AuthErrorResponse.session_expired()
     
     try:
         user = CustomUser.objects.get(pk=user_id)
     except CustomUser.DoesNotExist:
-        return Response({
-            'success': False,
-            'message': 'User not found.',
-            'errors': {'user': 'User not found'}
-        }, status=status.HTTP_400_BAD_REQUEST)
+        return AuthErrorResponse.user_not_found("unknown")
     
-    submitted_code = request.data.get("totp_code")
+    submitted_code = serializer.validated_data.get("totp_code")
     if not submitted_code:
-        return Response({
-            'success': False,
-            'message': 'TOTP code is required.',
-            'errors': {'twofa_code': 'Code required'}
-        }, status=status.HTTP_400_BAD_REQUEST)
+        return AuthErrorResponse.validation_error({
+            'totp_code': ['TOTP code is required']
+        })
     
     # Check if user has TOTP enabled and has a valid secret
     if not user.totp_enabled or not user.twofa_totp_secret:
-        return Response({
-            'success': False,
-            'message': 'TOTP 2FA is not enabled for this account.',
-            'errors': {'twofa_code': 'TOTP not enabled'}
-        }, status=status.HTTP_400_BAD_REQUEST)
+        return AuthErrorResponse.twofa_method_not_available("totp")
     
     # Verify TOTP code using user's secret key
     if verify_totp(user.twofa_totp_secret, submitted_code):
@@ -710,11 +637,7 @@ def handle_login_step_3_totp_2fa_api(request):
         request.session.pop("login_data", None)
         return handle_login_success_api(request, user, False)
     else:
-        return Response({
-            'success': False,
-            'message': 'Invalid TOTP code.',
-            'errors': {'twofa_code': 'Invalid code'}
-        }, status=status.HTTP_400_BAD_REQUEST)
+        return AuthErrorResponse.invalid_2fa_code()
 
 
 def handle_login_success_api(request, user, remember_device):
@@ -901,28 +824,18 @@ def resend_2fa_code_api(request):
     user_id = session_data.get("user_id")
     
     if not user_id:
-        return Response({
-            'success': False,
-            'message': 'Session expired. Please try again.',
-            'errors': {'session': 'Session expired'}
-        }, status=status.HTTP_400_BAD_REQUEST)
+        return AuthErrorResponse.session_expired()
     
     try:
         user = CustomUser.objects.get(pk=user_id)
     except CustomUser.DoesNotExist:
-        return Response({
-            'success': False,
-            'message': 'User not found.',
-            'errors': {'user': 'User not found'}
-        }, status=status.HTTP_400_BAD_REQUEST)
+        return AuthErrorResponse.user_not_found("unknown")
     
     chosen_method = session_data.get("chosen_2fa_method")
     if not chosen_method:
-        return Response({
-            'success': False,
-            'message': 'No 2FA method selected.',
-            'errors': {'method': 'No method selected'}
-        }, status=status.HTTP_400_BAD_REQUEST)
+        return AuthErrorResponse.validation_error({
+            'method': ['No 2FA method selected']
+        })
     
     # Check if enough time has passed since last code
     code_sent_at = session_data.get("code_sent_at")
@@ -938,11 +851,7 @@ def resend_2fa_code_api(request):
         time_since_sent = timezone.now() - sent_time
         if time_since_sent.total_seconds() < 60:  # 1 minute delay
             remaining_time = int(60 - time_since_sent.total_seconds())
-            return Response({
-                'success': False,
-                'message': f'Please wait {remaining_time} seconds before requesting a new code.',
-                'errors': {'resend': f'Wait {remaining_time} seconds'}
-            }, status=status.HTTP_400_BAD_REQUEST)
+            return AuthErrorResponse.too_many_attempts(remaining_time)
     
     if chosen_method == "email":
         # Generate and send new email code
@@ -966,24 +875,18 @@ def resend_2fa_code_api(request):
                 'method': 'email'
             }, status=status.HTTP_200_OK)
         else:
-            return Response({
-                'success': False,
-                'message': 'Error sending verification code.',
-                'errors': {'email': 'Failed to send code'}
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return AuthErrorResponse.server_error({
+                'email': 'Failed to send verification code'
+            })
     
     elif chosen_method == "totp":
-        return Response({
-            'success': False,
-            'message': 'Cannot resend TOTP code.',
-            'errors': {'method': 'TOTP codes cannot be resent'}
-        }, status=status.HTTP_400_BAD_REQUEST)
+        return AuthErrorResponse.validation_error({
+            'method': ['TOTP codes cannot be resent']
+        })
     
-    return Response({
-        'success': False,
-        'message': 'Invalid 2FA method.',
-        'errors': {'method': 'Invalid method'}
-    }, status=status.HTTP_400_BAD_REQUEST)
+    return AuthErrorResponse.validation_error({
+        'method': ['Invalid 2FA method']
+    })
 
 
 # ===============================
@@ -1154,10 +1057,30 @@ def user_profile_full(request):
 @api_view(['PUT'])
 @permission_classes([IsAuthenticated])
 def update_profile(request):
-    """Mettre à jour le profil utilisateur"""
-    serializer = UserSerializer(request.user, data=request.data, partial=True)
+    """Update user profile"""
+    serializer = ProfileUpdateSerializer(request.user, data=request.data, partial=True)
     
-    if serializer.is_valid():
+    if not serializer.is_valid():
+        return AuthErrorResponse.validation_error(serializer.errors)
+    
+    try:
+        # Check if password is being changed
+        current_password = serializer.validated_data.get('current_password')
+        new_password = serializer.validated_data.get('new_password')
+        
+        if new_password and not current_password:
+            return AuthErrorResponse.validation_error({
+                'current_password': ['Current password is required when changing password']
+            })
+        
+        if new_password and not request.user.check_password(current_password):
+            return AuthErrorResponse.invalid_credentials()
+        
+        # Update password if provided
+        if new_password:
+            request.user.set_password(new_password)
+        
+        # Save other fields
         serializer.save()
         
         # Log the update
@@ -1173,14 +1096,13 @@ def update_profile(request):
         return Response({
             'success': True,
             'message': 'Profile updated successfully.',
-            'user': serializer.data
+            'user': UserSerializer(request.user).data
         }, status=status.HTTP_200_OK)
-    
-    return Response({
-        'success': False,
-        'message': 'Invalid data.',
-        'errors': serializer.errors
-    }, status=status.HTTP_400_BAD_REQUEST)
+        
+    except Exception as e:
+        return AuthErrorResponse.server_error({
+            'error': f'Error updating profile: {str(e)}'
+        })
 
 
 @api_view(['POST'])
@@ -1250,24 +1172,16 @@ def check_username_availability(request):
     
     Returns JSON response with availability status and message.
     """
-    username = request.data.get("username", "").strip()
-    validator = UsernameValidator()
-
-    if not username:
-        return AuthErrorResponse.validation_error({
-            "username": ["Username is required"]
-        })
-
-    try:
-        # Use the same validator as the forms (converts to lowercase)
-        validator.validate(username)
-    except ValidationError as e:
-        return AuthErrorResponse.invalid_username_format(username, [str(e)])
-
+    serializer = RegisterStep4Serializer(data=request.data)
+    
+    if not serializer.is_valid():
+        return AuthErrorResponse.validation_error(serializer.errors)
+    
+    username = serializer.validated_data['username']
+    
     # Check availability (case-insensitive)
-    # The validator already converted username to lowercase
-    is_available = not CustomUser.objects.filter(username__iexact=username).exists()
-
+    is_available = not CustomUser.objects.filter(username=username, is_active=True).exists()
+    
     if is_available:
         return Response({
             "available": True,

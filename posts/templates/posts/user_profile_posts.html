@@ -149,7 +149,7 @@
                                                         <div class="photo-grid">
                                                             {% for photo in post.photos.all|slice:":4" %}
                                                             <div class="photo-item">
-                                                                <img src="{{ photo.thumbnail.url|default:photo.original_file.url }}" 
+                                                                <img src="{{ photo.original_file.url }}" 
                                                                      alt="{{ photo.title|default:'Photo' }}"
                                                                      class="photo-thumbnail">
                                                             </div>

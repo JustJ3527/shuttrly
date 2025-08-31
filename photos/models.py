@@ -1320,12 +1320,12 @@ class Collection(models.Model):
 
     def get_cover_photo_url(self):
         """Return the URL of the cover photo if it exists, else return the URL of the first photo"""
-        if self.cover_photo and self.cover_photo.thumbnail:
-            return self.cover_photo.thumbnail.url
+        if self.cover_photo:
+            return self.cover_photo.original_file.url
         elif self.photos.exists():
             # Use first photo as cover if no cover photo is set
             first_photo = self.photos.first()
-            return first_photo.thumbnail.url if first_photo.thumbnail else first_photo.original_file.url
+            return first_photo.original_file.url
         return None
     
     def get_tags_list(self):

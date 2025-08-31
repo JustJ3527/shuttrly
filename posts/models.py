@@ -302,11 +302,11 @@ class Post(models.Model):
     def get_cover_image_url(self):
         """Get the cover image URL for the post"""
         if self.post_type == 'single_photo':
-            return self.content_object.thumbnail.url if self.content_object.thumbnail else self.content_object.original_file.url
+            return self.content_object.original_file.url
         elif self.post_type == 'multiple_photos':
             first_photo = self.photos.first()
             if first_photo:
-                return first_photo.thumbnail.url if first_photo.thumbnail else first_photo.original_file.url
+                return first_photo.original_file.url
         elif self.post_type == 'collection':
             return self.content_object.get_cover_photo_url()
         return None

@@ -50,13 +50,18 @@ class PostListView(ListView):
     model = Post
     template_name = "posts/post_list.html"
     context_object_name = "posts"
-    paginate_by = 20
+    paginate_by = 12  # Reduced for better performance
     
     def get_queryset(self):
         """Get filtered queryset based on request parameters"""
         queryset = Post.objects.select_related(
             'author', 'content_type'
-        ).prefetch_related('photos').filter(visibility='public')
+        ).prefetch_related(
+            'photos', 
+            'comments__user',
+            'likes',
+            'saves'
+        ).filter(visibility='public')
         
         # Apply search filters
         search_query = self.request.GET.get('q', '')
@@ -93,7 +98,24 @@ class PostListView(ListView):
         context = super().get_context_data(**kwargs)
         context['trending_hashtags'] = get_trending_hashtags(limit=10)
         context['search_form'] = PostSearchForm(self.request.GET)
+        
+        # Add pagination info for infinite scroll
+        paginator = context['paginator']
+        page_obj = context['page_obj']
+        
+        context['has_next'] = page_obj.has_next()
+        context['has_previous'] = page_obj.has_previous()
+        context['total_pages'] = paginator.num_pages
+        context['current_page'] = page_obj.number
+        
         return context
+    
+    def get_template_names(self):
+        """Return appropriate template based on request type"""
+        # Check if this is an AJAX request for infinite scroll
+        if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return ["posts/partials/_post_list.html"]
+        return [self.template_name]
 
 
 class UserProfilePostsView(ListView):
@@ -302,7 +324,19 @@ def user_feed_view(request):
     except ValueError:
         page = 1
     
-    feed_data = get_user_feed_posts(request.user, page=page, per_page=15)
+    feed_data = get_user_feed_posts(request.user, page=page, per_page=12)  # Reduced for better performance
+    
+    # Get user's liked and saved posts for current page
+    current_posts = feed_data['posts']
+    user_liked_posts = set(PostLike.objects.filter(
+        user=request.user, 
+        post__in=current_posts
+    ).values_list('post_id', flat=True))
+    
+    user_saved_posts = set(PostSave.objects.filter(
+        user=request.user, 
+        post__in=current_posts
+    ).values_list('post_id', flat=True))
     
     context = {
         'posts': feed_data['posts'],
@@ -314,8 +348,15 @@ def user_feed_view(request):
         'user_posts_count': Post.objects.filter(author=request.user).count(),
         'user_likes_count': PostLike.objects.filter(user=request.user).count(),
         'user_comments_count': PostComment.objects.filter(user=request.user).count(),
-        'user_saves_count': PostSave.objects.filter(user=request.user).count()
+        'user_saves_count': PostSave.objects.filter(user=request.user).count(),
+        'user_liked_posts': user_liked_posts,
+        'user_saved_posts': user_saved_posts,
+        'user': request.user,  # Add user to context for template comparison
     }
+    
+    # Check if this is an AJAX request for infinite scroll
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return render(request, 'posts/partials/_user_feed_posts.html', context)
     
     return render(request, 'posts/user_feed.html', context)
 
@@ -405,9 +446,32 @@ def add_comment_view(request, post_id):
         
         if form.is_valid():
             comment = form.save()
-            messages.success(request, "Comment added successfully!")
+            
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': True,
+                    'message': 'Comment added successfully!',
+                    'comment': {
+                        'id': comment.id,
+                        'content': comment.content,
+                        'user': comment.user.username,
+                        'created_at': comment.created_at.isoformat(),
+                    }
+                })
+            else:
+                messages.success(request, "Comment added successfully!")
         else:
-            messages.error(request, "Error adding comment. Please check your input.")
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Error adding comment. Please check your input.',
+                    'errors': form.errors
+                }, status=400)
+            else:
+                messages.error(request, "Error adding comment. Please check your input.")
+    
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({'error': 'Invalid request'}, status=400)
     
     return redirect('posts:post_detail', pk=post_id)
 
@@ -419,17 +483,25 @@ def delete_comment_view(request, comment_id):
     comment = get_object_or_404(PostComment, id=comment_id)
     
     if comment.user != request.user:
-        messages.error(request, "You can only delete your own comments.")
-        return redirect('posts:post_detail', pk=comment.post.pk)
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'success': False,
+                'message': 'You can only delete your own comments.'
+            }, status=403)
+        else:
+            messages.error(request, "You can only delete your own comments.")
+            return redirect('posts:post_detail', pk=comment.post.pk)
     
     result = delete_post_comment(request.user, comment)
     
-    if result['success']:
-        messages.success(request, result['message'])
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse(result)
     else:
-        messages.error(request, result['message'])
-    
-    return redirect('posts:post_detail', pk=comment.post.pk)
+        if result['success']:
+            messages.success(request, result['message'])
+        else:
+            messages.error(request, result['message'])
+        return redirect('posts:post_detail', pk=comment.post.pk)
 
 
 # === POST SEARCH AND FILTERING ===

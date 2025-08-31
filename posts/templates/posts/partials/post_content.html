@@ -25,7 +25,7 @@
                          data-description="{{ photo.description|default:'' }}"
                          data-tags="{{ photo.tags|default:'' }}"
                          data-date="{{ photo.uploaded_at|date:'M d, Y'|default:'' }}">
-                        <img src="{{ photo.thumbnail.url|default:photo.original_file.url }}" 
+                        <img src="{{ photo.original_file.url }}" 
                              alt="{{ photo.title|default:'Photo' }}"
                              class="photo-thumbnail">
                         <div class="photo-overlay">
@@ -77,7 +77,7 @@
                          data-description="{{ photo.description|default:'' }}"
                          data-tags="{{ photo.tags|default:'' }}"
                          data-date="{{ photo.uploaded_at|date:'M d, Y'|default:'' }}">
-                        <img src="{{ photo.thumbnail.url|default:photo.original_file.url }}" 
+                        <img src="{{ photo.original_file.url }}" 
                              alt="{{ photo.title|default:'Photo' }}"
                              class="photo-thumbnail">
                         <div class="photo-overlay">

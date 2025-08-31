@@ -159,8 +159,8 @@
                                     <div class="multiple-photos-container">
                                         <div class="photos-grid">
                                             {% for photo in post.photos.all %}
-                                            <div class="photo-grid-item" onclick="openImageViewer('{{ photo.thumbnail.url|default:photo.original_file.url }}')">
-                                                <img src="{{ photo.thumbnail.url|default:photo.original_file.url }}" 
+                                            <div class="photo-grid-item" onclick="openImageViewer('{{ photo.original_file.url }}')">
+                                                <img src="{{ photo.original_file.url }}" 
                                                      alt="{{ photo.title|default:'Photo' }}"
                                                      class="photo-grid-image">
                                                 {% if forloop.counter > 4 and forloop.last %}
@@ -182,8 +182,8 @@
                                         </div>
                                         <div class="collection-photos-preview">
                                             {% for photo in post.content_object.photos.all|slice:":6" %}
-                                            <div class="collection-photo-item" onclick="openImageViewer('{{ photo.thumbnail.url|default:photo.original_file.url }}')">
-                                                <img src="{{ photo.thumbnail.url|default:photo.original_file.url }}" 
+                                            <div class="collection-photo-item" onclick="openImageViewer('{{ photo.original_file.url }}')">
+                                                <img src="{{ photo.original_file.url }}" 
                                                      alt="{{ photo.title|default:'Collection photo' }}"
                                                      class="collection-photo-thumbnail">
                                             </div>

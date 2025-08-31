@@ -1,0 +1,525 @@
+{% comment %}
+Unified Post Item Partial Template
+This template is used across all post templates to ensure consistency
+
+Parameters that can be passed:
+- show_comments: boolean (default: true) - whether to show comments section
+- show_actions: boolean (default: true) - whether to show post actions dropdown
+- show_engagement: boolean (default: true) - whether to show engagement stats and actions
+- template_context: string - context for conditional styling/behavior
+{% endcomment %}
+
+{% load static %}
+
+<div class="post-item mb-4" data-post-id="{{ post.pk }}">
+    <div class="card">
+        <!-- Post Header -->
+        <div class="card-header">
+            <div class="post-author">
+                <div class="author-avatar">
+                    {% if post.author.profile_picture %}
+                        <img src="{{ post.author.profile_picture.url }}" 
+                             alt="{{ post.author.username }}"
+                             class="avatar-img"
+                             loading="lazy">
+                    {% else %}
+                        <div class="avatar-placeholder">
+                            <i class="fas fa-user"></i>
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="author-info">
+                    <div class="author-name">
+                        <a href="{% url 'posts:user_profile_posts' post.author.username %}" class="author-link">
+                            {{ post.author.username }}
+                        </a>
+                        {% if post.author.is_staff %}
+                            <i class="fas fa-check-circle verified-badge"></i>
+                        {% endif %}
+                    </div>
+                    <div class="post-meta">
+                        <small class="text-muted">
+                            <i class="fas fa-clock"></i> {{ post.created_at|timesince }} ago
+                            {% if post.location %}
+                                <span class="mx-2">•</span>
+                                <i class="fas fa-map-marker-alt"></i> {{ post.location }}
+                            {% endif %}
+                        </small>
+                    </div>
+                </div>
+            </div>
+            
+            {% if show_actions|default:True %}
+            <div class="post-actions-dropdown">
+                <div class="dropdown">
+                    <button class="btn btn-link dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        <i class="fas fa-ellipsis-h"></i>
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="{% url 'posts:post_detail' post.pk %}">
+                            <i class="fas fa-eye"></i> View Post
+                        </a></li>
+                        {% if user == post.author %}
+                        <li><a class="dropdown-item" href="{% url 'posts:post_edit' post.pk %}">
+                            <i class="fas fa-edit"></i> Edit Post
+                        </a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-danger" href="{% url 'posts:post_delete' post.pk %}">
+                            <i class="fas fa-trash"></i> Delete Post
+                        </a></li>
+                        {% endif %}
+                        <li><a class="dropdown-item" href="#">
+                            <i class="fas fa-flag"></i> Report Post
+                        </a></li>
+                    </ul>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Post Media -->
+        <div class="post-media">
+            {% if post.post_type == 'single_photo' %}
+                <div class="single-photo">
+                    {% if post.get_cover_image_url %}
+                        <img src="{{ post.get_cover_image_url }}" 
+                             alt="{{ post.title|default:'Post image' }}"
+                             class="post-image"
+                             loading="lazy"
+                             onclick="openImageViewer(this.src, '{{ post.title|default:"Post image" }}')">
+                    {% else %}
+                        <div class="no-image">
+                            <i class="fas fa-image"></i>
+                        </div>
+                    {% endif %}
+                </div>
+            {% elif post.post_type == 'multiple_photos' %}
+                <div class="multiple-photos-grid">
+                    {% if post.photos.count == 1 %}
+                        <!-- Single photo -->
+                        <div class="single-photo-full">
+                            <img src="{{ post.photos.first.original_file.url }}" 
+                                 alt="{{ post.photos.first.title|default:'Photo' }}"
+                                 class="post-image"
+                                 loading="lazy"
+                                 onclick="openImageViewer(this.src, '{{ post.photos.first.title|default:"Photo" }}')">
+                        </div>
+                    {% elif post.photos.count == 2 %}
+                        <!-- Two photos side by side -->
+                        <div class="two-photos-layout">
+                            <div class="photo-left">
+                                <img src="{{ post.photos.first.original_file.url }}" 
+                                     alt="{{ post.photos.first.title|default:'Photo' }}"
+                                     class="post-image"
+                                     loading="lazy"
+                                     onclick="openImageViewer(this.src, '{{ post.photos.first.title|default:"Photo" }}')">
+                            </div>
+                            <div class="photo-right">
+                                <img src="{{ post.photos.all.1.original_file.url }}" 
+                                     alt="{{ post.photos.all.1.title|default:'Photo' }}"
+                                     class="post-image"
+                                     loading="lazy"
+                                     onclick="openImageViewer(this.src, '{{ post.photos.all.1.title|default:"Photo" }}')">
+                            </div>
+                        </div>
+                    {% elif post.photos.count == 3 %}
+                        <!-- Three photos: large left, 2 stacked right -->
+                        <div class="three-photos-layout">
+                            <div class="photo-left-large">
+                                <img src="{{ post.photos.first.original_file.url }}" 
+                                     alt="{{ post.photos.first.title|default:'Photo' }}"
+                                     class="post-image"
+                                     loading="lazy"
+                                     onclick="openImageViewer(this.src, '{{ post.photos.first.title|default:"Photo" }}')">
+                            </div>
+                            <div class="photos-right-stacked">
+                                <div class="photo-right-top">
+                                    <img src="{{ post.photos.all.1.original_file.url }}" 
+                                         alt="{{ post.photos.all.1.title|default:'Photo' }}"
+                                         class="post-image"
+                                         loading="lazy"
+                                         onclick="openImageViewer(this.src, '{{ post.photos.all.1.title|default:"Photo" }}')">
+                                </div>
+                                <div class="photo-right-bottom">
+                                    <img src="{{ post.photos.all.2.original_file.url }}" 
+                                         alt="{{ post.photos.all.2.title|default:'Photo' }}"
+                                         class="post-image"
+                                         loading="lazy"
+                                         onclick="openImageViewer(this.src, '{{ post.photos.all.2.title|default:"Photo" }}')">
+                                </div>
+                            </div>
+                        </div>
+                    {% elif post.photos.count == 4 %}
+                        <!-- Four photos: large left, 3 stacked right -->
+                        <div class="four-photos-layout">
+                            <div class="photo-left-large">
+                                <img src="{{ post.photos.first.original_file.url }}" 
+                                     alt="{{ post.photos.first.title|default:'Photo' }}"
+                                     class="post-image"
+                                     loading="lazy"
+                                     onclick="openImageViewer(this.src, '{{ post.photos.first.title|default:"Photo" }}')">
+                            </div>
+                            <div class="photos-right-stacked">
+                                <div class="photo-right-top">
+                                    <img src="{{ post.photos.all.1.original_file.url }}" 
+                                         alt="{{ post.photos.all.1.title|default:'Photo' }}"
+                                         class="post-image"
+                                         loading="lazy"
+                                         onclick="openImageViewer(this.src, '{{ post.photos.all.1.title|default:"Photo" }}')">
+                                </div>
+                                <div class="photo-right-middle">
+                                    <img src="{{ post.photos.all.2.original_file.url }}" 
+                                         alt="{{ post.photos.all.2.title|default:'Photo' }}"
+                                         class="post-image"
+                                         loading="lazy"
+                                         onclick="openImageViewer(this.src, '{{ post.photos.all.2.title|default:"Photo" }}')">
+                                </div>
+                                <div class="photo-right-bottom">
+                                    <img src="{{ post.photos.all.3.original_file.url }}" 
+                                         alt="{{ post.photos.all.3.title|default:'Photo' }}"
+                                         class="post-image"
+                                         loading="lazy"
+                                         onclick="openImageViewer(this.src, '{{ post.photos.all.3.title|default:"Photo" }}')">
+                                </div>
+                            </div>
+                        </div>
+                    {% elif post.photos.count >= 5 %}
+                        <!-- Five or more photos: large left, 4 thumbnails right -->
+                        <div class="five-plus-photos-layout">
+                            <div class="photo-left-large">
+                                <img src="{{ post.photos.first.original_file.url }}" 
+                                     alt="{{ post.photos.first.title|default:'Photo' }}"
+                                     class="post-image"
+                                     loading="lazy"
+                                     onclick="openImageViewer(this.src, '{{ post.photos.first.title|default:"Photo" }}')">
+                            </div>
+                            <div class="photos-right-thumbnails">
+                                <div class="thumbnail-grid">
+                                    {% for photo in post.photos.all|slice:"1:5" %}
+                                    <div class="thumbnail-item">
+                                        <img src="{{ photo.thumbnail.url|default:photo.original_file.url }}" 
+                                             alt="{{ photo.title|default:'Photo' }}"
+                                             class="thumbnail-image"
+                                             loading="lazy"
+                                             onclick="openImageViewer(this.src, '{{ photo.title|default:"Photo" }}')">
+                                        {% if forloop.counter == 4 and post.photos.count > 5 %}
+                                            <div class="more-photos-overlay">
+                                                <span class="more-count">+{{ post.photos.count|add:"-5" }}</span>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+            {% elif post.post_type == 'collection' %}
+                <div class="collection-grid">
+                    {% if post.content_object %}
+                        {% with collection=post.content_object %}
+                        {% if collection.photos.count == 1 %}
+                            <!-- Single photo from collection -->
+                            <div class="single-photo-full">
+                                <img src="{{ collection.photos.first.original_file.url }}" 
+                                     alt="{{ collection.name }}"
+                                     class="post-image"
+                                     loading="lazy"
+                                     onclick="openImageViewer(this.src, '{{ collection.name }}')">
+                                <div class="collection-overlay">
+                                    <span class="collection-name">{{ collection.name }}</span>
+                                    <span class="photo-count">{{ collection.get_photo_count }} photos</span>
+                                </div>
+                            </div>
+                        {% elif collection.photos.count == 2 %}
+                            <!-- Two photos from collection side by side -->
+                            <div class="two-photos-layout">
+                                <div class="photo-left">
+                                    <img src="{{ collection.photos.first.original_file.url }}" 
+                                         alt="{{ collection.name }}"
+                                         class="post-image"
+                                         loading="lazy"
+                                         onclick="openImageViewer(this.src, '{{ collection.name }}')">
+                                </div>
+                                <div class="photo-right">
+                                    <img src="{{ collection.photos.all.1.original_file.url }}" 
+                                         alt="{{ collection.name }}"
+                                         class="post-image"
+                                         loading="lazy"
+                                         onclick="openImageViewer(this.src, '{{ collection.name }}')">
+                                </div>
+                                <div class="collection-overlay">
+                                    <span class="collection-name">{{ collection.name }}</span>
+                                    <span class="photo-count">{{ collection.get_photo_count }} photos</span>
+                                </div>
+                            </div>
+                        {% elif collection.photos.count == 3 %}
+                            <!-- Three photos: large left, 2 stacked right -->
+                            <div class="three-photos-layout">
+                                <div class="photo-left-large">
+                                    <img src="{{ collection.photos.first.original_file.url }}" 
+                                         alt="{{ collection.name }}"
+                                         class="post-image"
+                                         loading="lazy"
+                                         onclick="openImageViewer(this.src, '{{ collection.name }}')">
+                                </div>
+                                <div class="photos-right-stacked">
+                                    <div class="photo-right-top">
+                                        <img src="{{ collection.photos.all.1.original_file.url }}" 
+                                             alt="{{ collection.name }}"
+                                             class="post-image"
+                                             loading="lazy"
+                                             onclick="openImageViewer(this.src, '{{ collection.name }}')">
+                                    </div>
+                                    <div class="photo-right-bottom">
+                                        <img src="{{ collection.photos.all.2.original_file.url }}" 
+                                             alt="{{ collection.name }}"
+                                             class="post-image"
+                                             loading="lazy"
+                                             onclick="openImageViewer(this.src, '{{ collection.name }}')">
+                                    </div>
+                                </div>
+                                <div class="collection-overlay">
+                                    <span class="collection-name">{{ collection.name }}</span>
+                                    <span class="photo-count">{{ collection.get_photo_count }} photos</span>
+                                </div>
+                            </div>
+                        {% elif collection.photos.count == 4 %}
+                            <!-- Four photos: large left, 3 stacked right -->
+                            <div class="four-photos-layout">
+                                <div class="photo-left-large">
+                                    <img src="{{ collection.photos.first.original_file.url }}" 
+                                         alt="{{ collection.name }}"
+                                         class="post-image"
+                                         loading="lazy"
+                                         onclick="openImageViewer(this.src, '{{ collection.name }}')">
+                                </div>
+                                <div class="photos-right-stacked">
+                                    <div class="photo-right-top">
+                                        <img src="{{ collection.photos.all.1.original_file.url }}" 
+                                             alt="{{ collection.name }}"
+                                             class="post-image"
+                                             loading="lazy"
+                                             onclick="openImageViewer(this.src, '{{ collection.name }}')">
+                                    </div>
+                                    <div class="photo-right-middle">
+                                        <img src="{{ collection.photos.all.2.original_file.url }}" 
+                                             alt="{{ collection.name }}"
+                                             class="post-image"
+                                             loading="lazy"
+                                             onclick="openImageViewer(this.src, '{{ collection.name }}')">
+                                    </div>
+                                    <div class="photo-right-bottom">
+                                        <img src="{{ collection.photos.all.3.original_file.url }}" 
+                                             alt="{{ collection.name }}"
+                                             class="post-image"
+                                             loading="lazy"
+                                             onclick="openImageViewer(this.src, '{{ collection.name }}')">
+                                    </div>
+                                </div>
+                                <div class="collection-overlay">
+                                    <span class="collection-name">{{ collection.name }}</span>
+                                    <span class="photo-count">{{ collection.get_photo_count }} photos</span>
+                                </div>
+                            </div>
+                        {% elif collection.photos.count >= 5 %}
+                            <!-- Five or more photos: large left, 4 thumbnails right -->
+                            <div class="five-plus-photos-layout">
+                                <div class="photo-left-large">
+                                    <img src="{{ collection.photos.first.original_file.url }}" 
+                                         alt="{{ collection.name }}"
+                                         class="post-image"
+                                         loading="lazy"
+                                         onclick="openImageViewer(this.src, '{{ collection.name }}')">
+                                </div>
+                                <div class="photos-right-thumbnails">
+                                    <div class="thumbnail-grid">
+                                        {% for photo in collection.photos.all|slice:"1:5" %}
+                                        <div class="thumbnail-item">
+                                            <img src="{{ photo.thumbnail.url|default:photo.original_file.url }}" 
+                                                 alt="{{ collection.name }}"
+                                                 class="thumbnail-image"
+                                                 loading="lazy"
+                                                 onclick="openImageViewer(this.src, '{{ collection.name }}')">
+                                            {% if forloop.counter == 4 and collection.photos.count > 5 %}
+                                                <div class="more-photos-overlay">
+                                                    <span class="more-count">+{{ collection.photos.count|add:"-5" }}</span>
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                <div class="collection-overlay">
+                                    <span class="collection-name">{{ collection.name }}</span>
+                                    <span class="photo-count">{{ collection.get_photo_count }} photos</span>
+                                </div>
+                            </div>
+                        {% else %}
+                            <!-- No photos in collection -->
+                            <div class="no-collection-photos">
+                                <div class="no-image">
+                                    <i class="fas fa-folder"></i>
+                                </div>
+                                <div class="collection-overlay">
+                                    <span class="collection-name">{{ collection.name }}</span>
+                                    <span class="photo-count">No photos</span>
+                                </div>
+                            </div>
+                        {% endif %}
+                        {% endwith %}
+                    {% else %}
+                        <!-- Collection not found -->
+                        <div class="no-collection">
+                            <div class="no-image">
+                                <i class="fas fa-folder"></i>
+                            </div>
+                            <div class="collection-overlay">
+                                <span class="collection-name">Collection not found</span>
+                                <span class="photo-count">0 photos</span>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Post Content -->
+        <div class="card-body">
+            {% if post.title %}
+                <h5 class="post-title">{{ post.title }}</h5>
+            {% endif %}
+            {% if post.description %}
+                <p class="post-description">{{ post.description|linebreaks }}</p>
+            {% endif %}
+            
+            <!-- Post Tags -->
+            {% if post.tags %}
+                <div class="post-tags">
+                    {% for tag in post.get_tags_list %}
+                        {% if tag %}
+                            <a href="{% url 'posts:hashtag_posts' tag %}" class="tag">#{{ tag }}</a>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+
+        {% if show_engagement|default:True %}
+        <!-- Post Engagement -->
+        <div class="card-footer">
+            <div class="engagement-stats">
+                <div class="stat-item">
+                    <i class="fas fa-eye"></i>
+                    <span>{{ post.views_count }}</span>
+                </div>
+                <div class="stat-item">
+                    <i class="fas fa-heart"></i>
+                    <span>{{ post.likes_count }}</span>
+                </div>
+                <div class="stat-item">
+                    <i class="fas fa-comment"></i>
+                    <span>{{ post.comments_count }}</span>
+                </div>
+                <div class="stat-item">
+                    <i class="fas fa-bookmark"></i>
+                    <span>{{ post.saves_count }}</span>
+                </div>
+            </div>
+            
+            <div class="engagement-actions">
+                <button class="btn btn-link like-btn {% if post.pk in user_liked_posts %}liked{% endif %}" 
+                        data-post-id="{{ post.pk }}" 
+                        onclick="toggleLike({{ post.pk }}, this)">
+                    <i class="fas fa-heart {% if post.pk in user_liked_posts %}text-danger{% endif %}"></i> 
+                    <span class="like-text">{% if post.pk in user_liked_posts %}Liked{% else %}Like{% endif %}</span>
+                </button>
+                <button class="btn btn-link comment-btn" onclick="focusCommentInput({{ post.pk }})">
+                    <i class="fas fa-comment"></i> Comment
+                </button>
+                <button class="btn btn-link save-btn {% if post.pk in user_saved_posts %}saved{% endif %}" 
+                        data-post-id="{{ post.pk }}" 
+                        onclick="toggleSave({{ post.pk }}, this)">
+                    <i class="fas fa-bookmark {% if post.pk in user_saved_posts %}text-warning{% endif %}"></i> 
+                    <span class="save-text">{% if post.pk in user_saved_posts %}Saved{% else %}Save{% endif %}</span>
+                </button>
+                <button class="btn btn-link share-btn" onclick="sharePost({{ post.pk }})">
+                    <i class="fas fa-share"></i> Share
+                </button>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if show_comments|default:True %}
+        <!-- Comments Section -->
+        <div class="comments-section">
+            <div class="comments-header">
+                <h6>Comments ({{ post.comments_count }})</h6>
+            </div>
+            
+            <div class="comments-list">
+                {% for comment in post.comments.all|slice:":3" %}
+                <div class="comment-item">
+                    <div class="comment-avatar">
+                        {% if comment.user.profile_picture %}
+                            <img src="{{ comment.user.profile_picture.url }}" 
+                                 alt="{{ comment.user.username }}"
+                                 class="comment-avatar-img"
+                                 loading="lazy">
+                        {% else %}
+                            <div class="comment-avatar-placeholder">
+                                <i class="fas fa-user"></i>
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="comment-content">
+                        <div class="comment-header">
+                            <span class="comment-author">{{ comment.user.username }}</span>
+                            <small class="comment-time">{{ comment.created_at|timesince }} ago</small>
+                        </div>
+                        <p class="comment-text">{{ comment.content }}</p>
+                        <div class="comment-actions">
+                            <button class="btn btn-sm btn-link reply-btn" onclick="showReplyForm({{ comment.pk }})">
+                                Reply
+                            </button>
+                            {% if user == comment.user %}
+                            <button class="btn btn-sm btn-link text-danger" onclick="deleteComment({{ comment.pk }})">
+                                Delete
+                            </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="no-comments">
+                    <p class="text-muted">No comments yet. Be the first to comment!</p>
+                </div>
+                {% endfor %}
+            </div>
+            
+            {% if post.comments_count > 3 %}
+                <div class="view-all-comments">
+                    <a href="{% url 'posts:post_detail' post.pk %}" class="btn btn-link">
+                        View all {{ post.comments_count }} comments
+                    </a>
+                </div>
+            {% endif %}
+            
+            <!-- Add Comment Form -->
+            <div class="add-comment-form">
+                <form class="comment-form" onsubmit="submitComment(event, {{ post.pk }}, this)">
+                    {% csrf_token %}
+                    <div class="input-group">
+                        <input type="text" class="form-control comment-input" 
+                               placeholder="Add a comment..." 
+                               name="content" required>
+                        <button type="submit" class="btn btn-primary comment-submit">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>

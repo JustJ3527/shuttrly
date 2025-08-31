@@ -54,7 +54,7 @@
         <div class="navbar-menu">
           <ul>
             <li><a href="{% url "home" %}" hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true"><span>Home</span></a></li>
-            <li><a href="#"><span>Discover</span></a></li>
+            <li><a href="{% url "posts:user_feed" %}" hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true"><span>Discover</span></a></li>
             <li><a href="#"><span>Search</span></a></li>
             <li><a href="{% url "photos:gallery" %}" hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true"><span>Gallery</span></a></li>
             <li><a href="{% url "photos:collection_list" %}" hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true"><span>Collections</span></a></li>

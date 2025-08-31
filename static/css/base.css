@@ -26,17 +26,17 @@
 @font-face {
   font-family: "The_Seasons";
   font-weight: normal;
-  src: url("../../assets/fonts/the-seasons/TheSeasons-Regular.otf") format("opentype");
+  src: url("../fonts/the-seasons/TheSeasons-Regular.otf") format("opentype");
 }
 @font-face {
   font-family: "The_Seasons";
   font-weight: bold;
-  src: url("../../assets/fonts/the-seasons/TheSeasons-Bold.otf") format("opentype");
+  src: url("../fonts/the-seasons/TheSeasons-Bold.otf") format("opentype");
 }
 @font-face {
   font-family: "The_Seasons";
   font-weight: lighter;
-  src: url("../../assets/fonts/the-seasons/TheSeasons-Lighter.otf") format("opentype");
+  src: url("../fonts/the-seasons/TheSeasons-Lighter.otf") format("opentype");
 }
 /* Variables par défaut (fallback) */
 :root {
@@ -285,7 +285,6 @@ nav.navbar {
   -webkit-user-select: none;
   -webkit-touch-callout: none;
   -moz-user-select: none;
-  -ms-user-select: none;
   user-select: none;
 }
 
@@ -306,7 +305,6 @@ nav.navbar {
   -webkit-user-select: none;
   -webkit-touch-callout: none;
   -moz-user-select: none;
-  -ms-user-select: none;
   user-select: none;
 }
 
@@ -899,6 +897,4 @@ footer p {
 .container-fluid {
   max-width: 120rem;
   width: 100%;
-}
-
-/*# sourceMappingURL=base.css.map */
+}/*# sourceMappingURL=base.css.map */

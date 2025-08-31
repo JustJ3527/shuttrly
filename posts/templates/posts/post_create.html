@@ -3,40 +3,29 @@
 
 {% block title %}Create Post - Shuttrly{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/posts.css' %}">
+<link rel="stylesheet" href="{% static 'css/post-create.css' %}">
+{% endblock %}
+
 {% block content %}
 <div class="posts-container">
     <!-- Posts Header -->
     <div class="posts-header">
-        <h1>Create New Post</h1>
-        <p>Share your photos and collections with the world</p>
-    </div>
-    
-    <!-- Posts Navigation -->
-    <div class="posts-navigation">
-        <div class="posts-nav-tabs">
-            <a href="{% url 'posts:post_list' %}" class="posts-nav-tab">
-                <i class="fas fa-globe"></i> All Posts
-            </a>
-            <a href="{% url 'posts:user_feed' %}" class="posts-nav-tab">
-                <i class="fas fa-rss"></i> My Feed
-            </a>
-            <a href="{% url 'posts:post_search' %}" class="posts-nav-tab">
-                <i class="fas fa-search"></i> Search
-            </a>
-            <a href="{% url 'posts:post_create' %}" class="posts-nav-tab active">
-                <i class="fas fa-plus"></i> Create Post
-            </a>
+        <div class="container">
+            <h1>Create New Post</h1>
+            <p class="subtitle">Share your photos and collections with the world</p>
         </div>
     </div>
     
-    <!-- Post Type Selection -->
-    <div class="post-type-selection mb-4">
-        <div class="card">
+    <div class="container">
+        <!-- Post Type Selection Card -->
+        <div class="card mb-4">
             <div class="card-header">
                 <h5 class="mb-0"><i class="fas fa-layer-group"></i> Choose Post Type</h5>
             </div>
             <div class="card-body">
-                <div class="row">
+                <div class="row g-3">
                     <div class="col-md-4">
                         <div class="post-type-option {% if post_type == 'single_photo' %}active{% endif %}" 
                              data-type="single_photo"
@@ -85,955 +74,466 @@
                 </div>
             </div>
         </div>
-    </div>
     
-    <!-- Loading Indicator -->
-    <div id="loading-indicator" class="htmx-indicator text-center py-4" style="display: none;">
-        <div class="spinner-border text-primary" role="status">
-            <span class="visually-hidden">Loading...</span>
+        <!-- Loading Indicator -->
+        <div id="loading-indicator" class="loading-indicator htmx-indicator text-center py-4" style="display: none;">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2 text-muted">Loading post type...</p>
         </div>
-        <p class="mt-2 text-muted">Loading post type...</p>
-    </div>
     
-    <!-- Main Content Area -->
-    <div id="post-content-area">
-        <div class="row">
-        <!-- Main Content -->
-        <div class="col-lg-8">
-            <div class="posts-content">
-                <!-- Content Selection Area -->
-                <div class="content-selection-area mb-4">
-                    {% if post_type == 'single_photo' %}
-                        <!-- Single Photo Selection -->
-                        <div class="card">
-                            <div class="card-header">
-                                <h5 class="mb-0"><i class="fas fa-camera"></i> Select Photo</h5>
-                            </div>
-                            <div class="card-body">
-                                <!-- Photo Search Bar -->
-                                <div class="photo-search-container">
-                                    <input type="text" 
-                                           class="photo-search-input" 
-                                           placeholder="Search photos by title, description, tags, or date..."
-                                           autocomplete="off">
-                                    <div class="photo-search-results"></div>
-                                </div>
-                                
-                                <div class="photo-grid">
-                                    {% for photo in photos %}
-                                    <div class="photo-item" 
-                                         data-photo-id="{{ photo.id }}"
-                                         data-description="{{ photo.description|default:'' }}"
-                                         data-tags="{{ photo.tags|default:'' }}"
-                                         data-date="{{ photo.uploaded_at|date:'M d, Y'|default:'' }}">
-                                        <img src="{{ photo.thumbnail.url|default:photo.original_file.url }}" 
-                                             alt="{{ photo.title|default:'Photo' }}"
-                                             class="photo-thumbnail">
-                                        <div class="photo-overlay">
-                                            <div class="photo-info">
-                                                <small class="text-white">{{ photo.title|default:'Untitled' }}</small>
+        <!-- Main Content Area -->
+        <div id="post-content-area">
+            <div class="row g-4">
+            <!-- Main Content -->
+            <div class="col-lg-8">
+                <div class="card">
+                    <div class="card-body">
+                        <!-- Content Selection Area -->
+                        <div class="content-selection-area mb-4">
+                            {% if post_type == 'single_photo' %}
+                                <!-- Single Photo Selection -->
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="mb-0"><i class="fas fa-camera"></i> Select Photo</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <!-- Photo Search Bar -->
+                                        <div class="photo-search-container mb-3">
+                                            <input type="text" 
+                                                   class="form-control photo-search-input" 
+                                                   placeholder="Search photos by title, description, tags, or date..."
+                                                   autocomplete="off">
+                                            <div class="photo-search-results"></div>
+                                        </div>
+                                        
+                                        <!-- Lazy Loading Photo Grid -->
+                                        <div class="photo-grid" id="photo-grid-single">
+                                            <div class="grid-header d-flex justify-content-between align-items-center mb-3">
+                                                <span class="text-muted">{{ photos|length }} photos available</span>
+                                                <div class="grid-controls">
+                                                    <button class="btn btn-sm btn-outline-primary" id="load-more-photos" style="display: none;">
+                                                        <i class="fas fa-plus"></i> Load More
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div class="photo-grid-container">
+                                                <!-- Initial photos (first 12) -->
+                                                {% for photo in photos|slice:":12" %}
+                                                <div class="photo-item" 
+                                                     data-photo-id="{{ photo.id }}"
+                                                     data-description="{{ photo.description|default:'' }}"
+                                                     data-tags="{{ photo.tags|default:'' }}"
+                                                     data-date="{{ photo.uploaded_at|date:'M d, Y'|default:'' }}">
+                                                    <img src="{{ photo.original_file.url }}" 
+                                                         alt="{{ photo.title|default:'Photo' }}"
+                                                         class="photo-thumbnail"
+                                                         loading="lazy">
+                                                    <div class="photo-overlay">
+                                                        <div class="photo-info">
+                                                            <small class="text-white">{{ photo.title|default:'Untitled' }}</small>
+                                                        </div>
+                                                    </div>
+                                                    <div class="photo-checkbox">
+                                                        <input type="radio" name="selected_photo" value="{{ photo.id }}" 
+                                                               id="photo_{{ photo.id }}" class="form-check-input">
+                                                        <label for="photo_{{ photo.id }}" class="form-check-label"></label>
+                                                    </div>
+                                                </div>
+                                                {% empty %}
+                                                <div class="no-photos">
+                                                    <i class="fas fa-camera fa-3x text-muted mb-3"></i>
+                                                    <h5>No photos found</h5>
+                                                    <p class="text-muted">Upload some photos first to create a post</p>
+                                                    <a href="{% url 'photos:upload' %}" class="btn btn-primary">
+                                                        <i class="fas fa-upload"></i> Upload Photos
+                                                    </a>
+                                                </div>
+                                                {% endfor %}
+                                                
+                                                <!-- Hidden photos for lazy loading -->
+                                                {% if photos|length > 12 %}
+                                                <div class="hidden-photos" style="display: none;">
+                                                    {% for photo in photos|slice:"12:" %}
+                                                    <div class="photo-item" 
+                                                         data-photo-id="{{ photo.id }}"
+                                                         data-description="{{ photo.description|default:'' }}"
+                                                         data-tags="{{ photo.tags|default:'' }}"
+                                                         data-date="{{ photo.uploaded_at|date:'M d, Y'|default:'' }}">
+                                                        <img data-src="{{ photo.original_file.url }}" 
+                                                             src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150'%3E%3Crect width='150' height='150' fill='%23f8f9fa'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%23dee2e6'%3E%3C/text%3E%3C/svg%3E"
+                                                             alt="{{ photo.title|default:'Photo' }}"
+                                                             class="photo-thumbnail lazy">
+                                                        <div class="photo-overlay">
+                                                            <div class="photo-info">
+                                                                <small class="text-white">{{ photo.title|default:'Untitled' }}</small>
+                                                            </div>
+                                                        </div>
+                                                        <div class="photo-checkbox">
+                                                            <input type="radio" name="selected_photo" value="{{ photo.id }}" 
+                                                                   id="photo_{{ photo.id }}" class="form-check-input">
+                                                            <label for="photo_{{ photo.id }}" class="form-check-label"></label>
+                                                        </div>
+                                                    </div>
+                                                    {% endfor %}
+                                                </div>
+                                                {% endif %}
                                             </div>
                                         </div>
-                                        <div class="photo-checkbox">
-                                            <input type="radio" name="selected_photo" value="{{ photo.id }}" 
-                                                   id="photo_{{ photo.id }}" class="form-check-input">
-                                            <label for="photo_{{ photo.id }}" class="form-check-label"></label>
+                            </div>
+                                </div>
+                            {% elif post_type == 'multiple_photos' %}
+                                <!-- Multiple Photos Selection -->
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="mb-0"><i class="fas fa-images"></i> Select Photos</h5>
+                                        <small class="text-muted">Choose multiple photos for your post</small>
+                                    </div>
+                                    <div class="card-body">
+                                        <!-- Photo Search Bar -->
+                                        <div class="photo-search-container mb-3">
+                                            <input type="text" 
+                                                   class="form-control photo-search-input" 
+                                                   placeholder="Search photos by title, description, tags, or date..."
+                                                   autocomplete="off">
+                                            <div class="photo-search-results"></div>
+                                        </div>
+                                        
+                                        <!-- Lazy Loading Photo Grid -->
+                                        <div class="photo-grid" id="photo-grid-multiple">
+                                            <div class="grid-header d-flex justify-content-between align-items-center mb-3">
+                                                <span class="text-muted">{{ photos|length }} photos available</span>
+                                                <div class="grid-controls">
+                                                    <button class="btn btn-sm btn-outline-primary" id="select-all-photos">
+                                                        <i class="fas fa-check-square"></i> Select All Visible
+                                                    </button>
+                                                    <button class="btn btn-sm btn-outline-secondary" id="clear-selection">
+                                                        <i class="fas fa-times"></i> Clear
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div class="photo-grid-container">
+                                                <!-- Initial photos (first 12) -->
+                                                {% for photo in photos|slice:":12" %}
+                                                <div class="photo-item" 
+                                                     data-photo-id="{{ photo.id }}"
+                                                     data-description="{{ photo.description|default:'' }}"
+                                                     data-tags="{{ photo.tags|default:'' }}"
+                                                     data-date="{{ photo.uploaded_at|date:'M d, Y'|default:'' }}">
+                                                    <img src="{{ photo.original_file.url }}" 
+                                                         alt="{{ photo.title|default:'Photo' }}"
+                                                         class="photo-thumbnail"
+                                                         loading="lazy">
+                                                    <div class="photo-overlay">
+                                                        <div class="photo-info">
+                                                            <small class="text-white">{{ photo.title|default:'Untitled' }}</small>
+                                                        </div>
+                                                    </div>
+                                                    <div class="photo-checkbox">
+                                                        <input type="checkbox" name="selected_photos" value="{{ photo.id }}" 
+                                                               id="photo_{{ photo.id }}" class="form-check-input">
+                                                        <label for="photo_{{ photo.id }}" class="form-check-label"></label>
+                                                    </div>
+                                                </div>
+                                                {% empty %}
+                                                <div class="no-photos">
+                                                    <i class="fas fa-images fa-3x text-muted mb-3"></i>
+                                                    <h5>No photos found</h5>
+                                                    <p class="text-muted">Upload some photos first to create a post</p>
+                                                    <a href="{% url 'photos:upload' %}" class="btn btn-primary">
+                                                        <i class="fas fa-upload"></i> Upload Photos
+                                                    </a>
+                                                </div>
+                                                {% endfor %}
+                                                
+                                                <!-- Hidden photos for lazy loading -->
+                                                {% if photos|length > 12 %}
+                                                <div class="hidden-photos" style="display: none;">
+                                                    {% for photo in photos|slice:"12:" %}
+                                                    <div class="photo-item" 
+                                                         data-photo-id="{{ photo.id }}"
+                                                         data-description="{{ photo.description|default:'' }}"
+                                                         data-tags="{{ photo.tags|default:'' }}"
+                                                         data-date="{{ photo.uploaded_at|date:'M d, Y'|default:'' }}">
+                                                        <img data-src="{{ photo.original_file.url }}" 
+                                                             src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150'%3E%3Crect width='150' height='150' fill='%23f8f9fa'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%23dee2e6'%3E%3C/text%3E%3C/svg%3E"
+                                                             alt="{{ photo.title|default:'Photo' }}"
+                                                             class="photo-thumbnail lazy">
+                                                        <div class="photo-overlay">
+                                                            <div class="photo-info">
+                                                                <small class="text-white">{{ photo.title|default:'Untitled' }}</small>
+                                                            </div>
+                                                        </div>
+                                                        <div class="photo-checkbox">
+                                                            <input type="checkbox" name="selected_photos" value="{{ photo.id }}" 
+                                                                   id="photo_{{ photo.id }}" class="form-check-input">
+                                                            <label for="photo_{{ photo.id }}" class="form-check-label"></label>
+                                                        </div>
+                                                    </div>
+                                                    {% endfor %}
+                                                </div>
+                                                {% endif %}
+                                            </div>
                                         </div>
                                     </div>
-                                    {% empty %}
-                                    <div class="no-photos">
-                                        <i class="fas fa-camera fa-3x text-muted mb-3"></i>
-                                        <h5>No photos found</h5>
-                                        <p class="text-muted">Upload some photos first to create a post</p>
-                                        <a href="{% url 'photos:upload' %}" class="btn btn-primary">
-                                            <i class="fas fa-upload"></i> Upload Photos
-                                        </a>
+                                </div>
+                        
+                            {% elif post_type == 'collection' %}
+                                <!-- Collection Selection -->
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="mb-0"><i class="fas fa-folder"></i> Select Collection</h5>
                                     </div>
-                                    {% endfor %}
+                                    <div class="card-body">
+                                        <div class="collection-grid-container">
+                                            {% for collection in collections %}
+                                            <div class="collection-item" data-collection-id="{{ collection.id }}">
+                                                <div class="collection-cover">
+                                                    {% if collection.get_cover_photo_url %}
+                                                        <img src="{{ collection.get_cover_photo_url }}" 
+                                                             alt="{{ collection.name }}"
+                                                             class="collection-thumbnail"
+                                                             loading="lazy">
+                                                    {% else %}
+                                                        <div class="collection-placeholder">
+                                                            <i class="fas fa-folder"></i>
+                                                        </div>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="collection-info">
+                                                    <h6 class="collection-name">{{ collection.name }}</h6>
+                                                    <p class="collection-description">{{ collection.description|truncatewords:10 }}</p>
+                                                    <small class="text-muted">{{ collection.get_photo_count }} photos</small>
+                                                </div>
+                                                <div class="collection-checkbox">
+                                                    <input type="radio" name="selected_collection" value="{{ collection.id }}" 
+                                                           id="collection_{{ collection.id }}" class="form-check-input">
+                                                    <label for="collection_{{ collection.id }}" class="form-check-label"></label>
+                                                </div>
+                                            </div>
+                                            {% empty %}
+                                            <div class="no-collections">
+                                                <i class="fas fa-folder fa-3x text-muted mb-3"></i>
+                                                <h5>No collections found</h5>
+                                                <p class="text-muted">Create some collections first to share them</p>
+                                                <a href="{% url 'photos:collection_create' %}" class="btn btn-primary">
+                                                    <i class="fas fa-plus"></i> Create Collection
+                                                </a>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Post Creation Form -->
+                        <div class="post-creation-form mt-4">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0"><i class="fas fa-edit"></i> Post Details</h5>
+                                </div>
+                                <div class="card-body">
+                                    <form method="post" id="post-create-form">
+                                        {% csrf_token %}
+                                        
+                                        <!-- Hidden fields for selected content -->
+                                        {% if post_type == 'single_photo' %}
+                                            {{ form.photo_ids }}
+                                        {% elif post_type == 'multiple_photos' %}
+                                            {{ form.photo_ids }}
+                                        {% elif post_type == 'collection' %}
+                                            {{ form.collection_id }}
+                                        {% endif %}
+                                        
+                                        <!-- Post Title -->
+                                        <div class="mb-3">
+                                            <label for="{{ form.title.id_for_label }}" class="form-label">
+                                                <i class="fas fa-heading"></i> Post Title (Optional)
+                                            </label>
+                                            {{ form.title }}
+                                            {% if form.title.errors %}
+                                                <div class="invalid-feedback d-block">
+                                                    {{ form.title.errors.0 }}
+                                                </div>
+                                            {% endif %}
+                                            <div class="form-text">Give your post a catchy title to grab attention</div>
+                                        </div>
+                                        
+                                        <!-- Post Description -->
+                                        <div class="mb-3">
+                                            <label for="{{ form.description.id_for_label }}" class="form-label">
+                                                <i class="fas fa-align-left"></i> Description
+                                            </label>
+                                            {{ form.description }}
+                                            {% if form.description.errors %}
+                                                <div class="invalid-feedback d-block">
+                                                    {{ form.description.errors.0 }}
+                                                </div>
+                                            {% endif %}
+                                            <div class="form-text">
+                                                <i class="fas fa-info-circle text-info"></i> 
+                                                {{ form.description.help_text }}
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Post Visibility -->
+                                        <div class="mb-3">
+                                            <label for="{{ form.visibility.id_for_label }}" class="form-label">
+                                                <i class="fas fa-eye"></i> Visibility
+                                            </label>
+                                            {{ form.visibility }}
+                                            {% if form.visibility.errors %}
+                                                <div class="invalid-feedback d-block">
+                                                    {{ form.visibility.errors.0 }}
+                                                </div>
+                                            {% endif %}
+                                            <div class="form-text">Choose who can see your post</div>
+                                        </div>
+                                        
+                                        <!-- Form Errors -->
+                                        {% if form.non_field_errors %}
+                                        <div class="alert alert-danger">
+                                            <i class="fas fa-exclamation-triangle"></i>
+                                            {{ form.non_field_errors.0 }}
+                                        </div>
+                                        {% endif %}
+                                        
+                                        <!-- Submit Buttons -->
+                                        <div class="d-flex gap-2">
+                                            <button type="submit" class="btn btn-primary btn-lg" id="submit-btn">
+                                                <i class="fas fa-paper-plane"></i> Create Post
+                                            </button>
+                                            <a href="{% url 'posts:post_list' %}" class="btn btn-outline-secondary btn-lg">
+                                                <i class="fas fa-times"></i> Cancel
+                                            </a>
+                                        </div>
+                                    </form>
                                 </div>
                             </div>
                         </div>
-                        
-                    {% elif post_type == 'multiple_photos' %}
-                        <!-- Multiple Photos Selection -->
-                        <div class="card">
-                            <div class="card-header">
-                                <h5 class="mb-0"><i class="fas fa-images"></i> Select Photos</h5>
-                                <small class="text-muted">Choose multiple photos for your post</small>
-                            </div>
-                            <div class="card-body">
-                                <!-- Photo Search Bar -->
-                                <div class="photo-search-container">
-                                    <input type="text" 
-                                           class="photo-search-input" 
-                                           placeholder="Search photos by title, description, tags, or date..."
-                                           autocomplete="off">
-                                    <div class="photo-search-results"></div>
+            </div>
+        </div>
+                    
+            <!-- Sidebar -->
+            <div class="col-lg-4">
+                <div class="posts-sidebar">
+                    <!-- Post Type Info -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="fas fa-info-circle"></i> Post Type Info</h5>
+                        </div>
+                        <div class="card-body">
+                            {% if post_type == 'single_photo' %}
+                                <div class="text-center">
+                                    <i class="fas fa-camera fa-3x text-primary mb-3"></i>
+                                    <h6>Single Photo Post</h6>
+                                    <p class="text-muted">Perfect for sharing your best shots. Great for storytelling and showcasing individual photos.</p>
                                 </div>
-                                
-                                <div class="photo-grid">
-                                    {% for photo in photos %}
-                                    <div class="photo-item" 
-                                         data-photo-id="{{ photo.id }}"
-                                         data-description="{{ photo.description|default:'' }}"
-                                         data-tags="{{ photo.tags|default:'' }}"
-                                         data-date="{{ photo.uploaded_at|date:'M d, Y'|default:'' }}">
-                                        <img src="{{ photo.thumbnail.url|default:photo.original_file.url }}" 
-                                             alt="{{ photo.title|default:'Photo' }}"
-                                             class="photo-thumbnail">
-                                        <div class="photo-overlay">
-                                            <div class="photo-info">
-                                                <small class="text-white">{{ photo.title|default:'Untitled' }}</small>
-                                            </div>
-                                        </div>
-                                        <div class="photo-checkbox">
-                                            <input type="checkbox" name="selected_photos" value="{{ photo.id }}" 
-                                                   id="photo_{{ photo.id }}" class="form-check-input">
-                                            <label for="photo_{{ photo.id }}" class="form-check-label"></label>
-                                        </div>
-                                    </div>
-                                    {% empty %}
-                                    <div class="no-photos">
-                                        <i class="fas fa-images fa-3x text-muted mb-3"></i>
-                                        <h5>No photos found</h5>
-                                        <p class="text-muted">Upload some photos first to create a post</p>
-                                        <a href="{% url 'photos:upload' %}" class="btn btn-primary">
-                                            <i class="fas fa-upload"></i> Upload Photos
-                                        </a>
-                                    </div>
-                                    {% endfor %}
+                            {% elif post_type == 'multiple_photos' %}
+                                <div class="text-center">
+                                    <i class="fas fa-images fa-3x text-success mb-3"></i>
+                                    <h6>Multiple Photos Post</h6>
+                                    <p class="text-muted">Share a series of related photos. Ideal for events, trips, or photo stories.</p>
+                                </div>
+                            {% elif post_type == 'collection' %}
+                                <div class="text-center">
+                                    <i class="fas fa-folder fa-3x text-warning mb-3"></i>
+                                    <h6>Collection Post</h6>
+                                    <p class="text-muted">Share an entire collection of photos. Perfect for themed galleries and portfolios.</p>
+                                </div>
+                            {% else %}
+                                <div class="text-center">
+                                    <i class="fas fa-plus fa-3x text-info mb-3"></i>
+                                    <h6>Choose a Post Type</h6>
+                                    <p class="text-muted">Select a post type above to get started with creating your post.</p>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <!-- Tips -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="fas fa-lightbulb"></i> Posting Tips</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-grid gap-2">
+                                <div class="p-2 bg-light rounded">
+                                    <i class="fas fa-hashtag text-primary me-2"></i>
+                                    <small>Use relevant hashtags for better discoverability</small>
+                                </div>
+                                <div class="p-2 bg-light rounded">
+                                    <i class="fas fa-pen text-success me-2"></i>
+                                    <small>Write engaging descriptions to tell your story</small>
+                                </div>
+                                <div class="p-2 bg-light rounded">
+                                    <i class="fas fa-clock text-warning me-2"></i>
+                                    <small>Post at optimal times for maximum engagement</small>
+                                </div>
+                                <div class="p-2 bg-light rounded">
+                                    <i class="fas fa-users text-info me-2"></i>
+                                    <small>Choose the right visibility for your audience</small>
                                 </div>
                             </div>
                         </div>
-                        
-                    {% elif post_type == 'collection' %}
-                        <!-- Collection Selection -->
-                        <div class="card">
-                            <div class="card-header">
-                                <h5 class="mb-0"><i class="fas fa-folder"></i> Select Collection</h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="collection-grid">
-                                    {% for collection in collections %}
-                                    <div class="collection-item" data-collection-id="{{ collection.id }}">
-                                        <div class="collection-cover">
-                                            {% if collection.get_cover_photo_url %}
-                                                <img src="{{ collection.get_cover_photo_url }}" 
-                                                     alt="{{ collection.name }}"
-                                                     class="collection-thumbnail">
+                    </div>
+                    
+                    <!-- Recent Posts Preview -->
+                    {% if user.is_authenticated %}
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="fas fa-history"></i> Your Recent Posts</h5>
+                        </div>
+                        <div class="card-body">
+                            {% with user.posts.all|slice:":3" as recent_posts %}
+                                {% if recent_posts %}
+                                    {% for post in recent_posts %}
+                                    <div class="d-flex align-items-center mb-3 {% if not forloop.last %}border-bottom pb-2{% endif %}">
+                                        <div class="flex-shrink-0 me-3">
+                                            {% if post.get_cover_image_url %}
+                                                <img src="{{ post.get_cover_image_url }}" 
+                                                     alt="Recent post" 
+                                                     class="rounded" 
+                                                     style="width: 50px; height: 50px; object-fit: cover;">
                                             {% else %}
-                                                <div class="collection-placeholder">
-                                                    <i class="fas fa-folder"></i>
+                                                <div class="bg-light rounded d-flex align-items-center justify-content-center" 
+                                                     style="width: 50px; height: 50px;">
+                                                    <i class="fas fa-image text-muted"></i>
                                                 </div>
                                             {% endif %}
                                         </div>
-                                        <div class="collection-info">
-                                            <h6 class="collection-name">{{ collection.name }}</h6>
-                                            <p class="collection-description">{{ collection.description|truncatewords:10 }}</p>
-                                            <small class="text-muted">{{ collection.get_photo_count }} photos</small>
+                                        <div class="flex-grow-1 min-w-0">
+                                            <h6 class="mb-1 text-truncate">{{ post.title|default:"Untitled" }}</h6>
+                                            <small class="text-muted">{{ post.created_at|timesince }} ago</small>
                                         </div>
-                                        <div class="collection-checkbox">
-                                            <input type="radio" name="selected_collection" value="{{ collection.id }}" 
-                                                   id="collection_{{ collection.id }}" class="form-check-input">
-                                            <label for="collection_{{ collection.id }}" class="form-check-label"></label>
-                                        </div>
-                                    </div>
-                                    {% empty %}
-                                    <div class="no-collections">
-                                        <i class="fas fa-folder fa-3x text-muted mb-3"></i>
-                                        <h5>No collections found</h5>
-                                        <p class="text-muted">Create some collections first to share them</p>
-                                        <a href="{% url 'photos:collection_create' %}" class="btn btn-primary">
-                                            <i class="fas fa-plus"></i> Create Collection
-                                        </a>
                                     </div>
                                     {% endfor %}
-                                </div>
-                            </div>
-                        </div>
-                    {% endif %}
-                </div>
-                
-                <!-- Post Creation Form -->
-                <div class="post-creation-form">
-                    <div class="card">
-                        <div class="card-header">
-                            <h5 class="mb-0"><i class="fas fa-edit"></i> Post Details</h5>
-                        </div>
-                        <div class="card-body">
-                            <form method="post" id="post-create-form">
-                                {% csrf_token %}
-                                
-                                <!-- Hidden fields for selected content -->
-                                {% if post_type == 'single_photo' %}
-                                    {{ form.photo_ids }}
-                                {% elif post_type == 'multiple_photos' %}
-                                    {{ form.photo_ids }}
-                                {% elif post_type == 'collection' %}
-                                    {{ form.collection_id }}
+                                {% else %}
+                                    <p class="text-muted text-center">No posts yet. This will be your first one!</p>
                                 {% endif %}
-                                
-                                <!-- Post Title -->
-                                <div class="mb-3">
-                                    <label for="{{ form.title.id_for_label }}" class="form-label">
-                                        <i class="fas fa-heading"></i> Post Title (Optional)
-                                    </label>
-                                    {{ form.title }}
-                                    {% if form.title.errors %}
-                                        <div class="invalid-feedback d-block">
-                                            {{ form.title.errors.0 }}
-                                        </div>
-                                    {% endif %}
-                                    <div class="form-text">Give your post a catchy title to grab attention</div>
-                                </div>
-                                
-                                <!-- Post Description -->
-                                <div class="mb-3">
-                                    <label for="{{ form.description.id_for_label }}" class="form-label">
-                                        <i class="fas fa-align-left"></i> Description
-                                    </label>
-                                    {{ form.description }}
-                                    {% if form.description.errors %}
-                                        <div class="invalid-feedback d-block">
-                                            {{ form.description.errors.0 }}
-                                        </div>
-                                    {% endif %}
-                                    <div class="form-text">
-                                        <i class="fas fa-info-circle text-info"></i> 
-                                        {{ form.description.help_text }}
-                                    </div>
-                                </div>
-                                
-                                <!-- Post Visibility -->
-                                <div class="mb-3">
-                                    <label for="{{ form.visibility.id_for_label }}" class="form-label">
-                                        <i class="fas fa-eye"></i> Visibility
-                                    </label>
-                                    {{ form.visibility }}
-                                    {% if form.visibility.errors %}
-                                        <div class="invalid-feedback d-block">
-                                            {{ form.visibility.errors.0 }}
-                                        </div>
-                                    {% endif %}
-                                    <div class="form-text">Choose who can see your post</div>
-                                </div>
-                                
-                                <!-- Form Errors -->
-                                {% if form.non_field_errors %}
-                                <div class="alert alert-danger">
-                                    <i class="fas fa-exclamation-triangle"></i>
-                                    {{ form.non_field_errors.0 }}
-                                </div>
-                                {% endif %}
-                                
-                                <!-- Submit Buttons -->
-                                <div class="d-flex gap-2">
-                                    <button type="submit" class="btn btn-primary btn-lg" id="submit-btn">
-                                        <i class="fas fa-paper-plane"></i> Create Post
-                                    </button>
-                                    <a href="{% url 'posts:post_list' %}" class="btn btn-outline-secondary btn-lg">
-                                        <i class="fas fa-times"></i> Cancel
-                                    </a>
-                                </div>
-                            </form>
+                            {% endwith %}
                         </div>
                     </div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Sidebar -->
-        <div class="col-lg-4">
-            <div class="posts-sidebar">
-                <!-- Post Type Info -->
-                <div class="post-type-info mb-4">
-                    <h5><i class="fas fa-info-circle"></i> Post Type Info</h5>
-                    {% if post_type == 'single_photo' %}
-                        <div class="info-card">
-                            <i class="fas fa-camera text-primary"></i>
-                            <h6>Single Photo Post</h6>
-                            <p>Perfect for sharing your best shots. Great for storytelling and showcasing individual photos.</p>
-                        </div>
-                    {% elif post_type == 'multiple_photos' %}
-                        <div class="info-card">
-                            <i class="fas fa-images text-success"></i>
-                            <h6>Multiple Photos Post</h6>
-                            <p>Share a series of related photos. Ideal for events, trips, or photo stories.</p>
-                        </div>
-                    {% elif post_type == 'collection' %}
-                        <div class="info-card">
-                            <i class="fas fa-folder text-warning"></i>
-                            <h6>Collection Post</h6>
-                            <p>Share an entire collection of photos. Perfect for themed galleries and portfolios.</p>
-                        </div>
                     {% endif %}
                 </div>
-                
-                <!-- Tips -->
-                <div class="posting-tips mb-4">
-                    <h5><i class="fas fa-lightbulb"></i> Posting Tips</h5>
-                    <ul class="tips-list">
-                        <li><i class="fas fa-hashtag text-primary"></i> Use relevant hashtags for better discoverability</li>
-                        <li><i class="fas fa-pen text-success"></i> Write engaging descriptions to tell your story</li>
-                        <li><i class="fas fa-clock text-warning"></i> Post at optimal times for maximum engagement</li>
-                        <li><i class="fas fa-users text-info"></i> Choose the right visibility for your audience</li>
-                    </ul>
-                </div>
-                
-                <!-- Recent Posts Preview -->
-                {% if user.is_authenticated %}
-                <div class="recent-posts-preview">
-                    <h5><i class="fas fa-history"></i> Your Recent Posts</h5>
-                    {% with user.posts.all|slice:":3" as recent_posts %}
-                        {% if recent_posts %}
-                            {% for post in recent_posts %}
-                            <div class="recent-post-item">
-                                <div class="recent-post-image">
-                                    {% if post.get_cover_image_url %}
-                                        <img src="{{ post.get_cover_image_url }}" alt="Recent post">
-                                    {% else %}
-                                        <div class="recent-post-placeholder">
-                                            <i class="fas fa-image"></i>
-                                        </div>
-                                    {% endif %}
-                                </div>
-                                <div class="recent-post-info">
-                                    <h6>{{ post.title|default:"Untitled"|truncatechars:20 }}</h6>
-                                    <small class="text-muted">{{ post.created_at|timesince }} ago</small>
-                                </div>
-                            </div>
-                            {% endfor %}
-                        {% else %}
-                            <p class="text-muted">No posts yet. This will be your first one!</p>
-                        {% endif %}
-                    {% endwith %}
-                </div>
-                {% endif %}
             </div>
-        </div>
+            </div>
         </div>
     </div>
 </div>
+{% endblock %}
 
-<!-- Custom CSS for this template -->
-<style>
-    .posts-container {
-        max-width: 1200px;
-        margin: 0 auto;
-        padding: 20px;
-    }
-    
-    .posts-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 40px 20px;
-        margin-bottom: 30px;
-        border-radius: 15px;
-        text-align: center;
-    }
-    
-    .posts-header h1 {
-        font-size: 2.5rem;
-        font-weight: 700;
-        margin-bottom: 10px;
-    }
-    
-    .posts-header p {
-        font-size: 1.1rem;
-        opacity: 0.9;
-        margin-bottom: 0;
-    }
-    
-    .posts-navigation {
-        background: var(--background-default);
-        border-radius: 10px;
-        padding: 20px;
-        margin-bottom: 30px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    }
-    
-    .posts-nav-tabs {
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-        justify-content: center;
-    }
-    
-    .posts-nav-tab {
-        padding: 10px 20px;
-        border-radius: 25px;
-        text-decoration: none;
-        color: var(--text-default);
-        font-weight: 500;
-        transition: all 0.3s ease;
-        border: 2px solid transparent;
-    }
-    
-    .posts-nav-tab:hover {
-        color: #667eea;
-        border-color: #667eea;
-        text-decoration: none;
-    }
-    
-    .posts-nav-tab.active {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border-color: #667eea;
-    }
-    
-    .posts-content {
-        background: var(--background-default);
-        border-radius: 10px;
-        padding: 30px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        min-height: 500px;
-    }
-    
-    .posts-sidebar {
-        background: var(--background-default);
-        border-radius: 10px;
-        padding: 20px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        height: fit-content;
-    }
-    
-    /* Post Type Selection */
-    .post-type-option {
-        text-align: center;
-        padding: 20px;
-        border: 2px solid #e9ecef;
-        border-radius: 10px;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        height: 100%;
-    }
-    
-    .post-type-option:hover {
-        border-color: #667eea;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);
-    }
-    
-    .post-type-option.active {
-        border-color: #667eea;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-    }
-    
-    .post-type-option.active .text-muted {
-        color: rgba(255, 255, 255, 0.8) !important;
-    }
-    
-    .post-type-icon {
-        font-size: 2.5rem;
-        margin-bottom: 15px;
-        color: #667eea;
-    }
-    
-    .post-type-option.active .post-type-icon {
-        color: white;
-    }
-    
-    /* Photo Grid */
-    .photo-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-        gap: 15px;
-        max-height: 400px;
-        overflow-y: auto;
-        padding: 10px;
-    }
-    
-    .photo-item {
-        position: relative;
-        border-radius: 8px;
-        overflow: hidden;
-        cursor: pointer;
-        transition: all 0.3s ease;
-    }
-    
-    .photo-item:hover {
-        transform: scale(1.05);
-        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-    }
-    
-    .photo-item.selected {
-        border: 3px solid #667eea;
-        transform: scale(1.05);
-    }
-    
-    .photo-thumbnail {
-        width: 100%;
-        height: 150px;
-        object-fit: cover;
-    }
-    
-    .photo-overlay {
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        background: linear-gradient(transparent, rgba(0,0,0,0.7));
-        padding: 10px;
-        color: white;
-    }
-    
-    .photo-checkbox {
-        position: absolute;
-        top: 10px;
-        right: 10px;
-        background: rgba(255,255,255,0.9);
-        border-radius: 50%;
-        width: 24px;
-        height: 24px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    
-    .photo-checkbox input {
-        margin: 0;
-    }
-    
-    .no-photos {
-        grid-column: 1 / -1;
-        text-align: center;
-        padding: 40px;
-        color: var(--text-default);
-    }
-    
-    /* Collection Grid */
-    .collection-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-        gap: 15px;
-        max-height: 400px;
-        overflow-y: auto;
-        padding: 10px;
-    }
-    
-    .collection-item {
-        border: 2px solid #e9ecef;
-        border-radius: 8px;
-        padding: 15px;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        position: relative;
-    }
-    
-    .collection-item:hover {
-        border-color: #667eea;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);
-    }
-    
-    .collection-item.selected {
-        border-color: #667eea;
-        background: rgba(102, 126, 234, 0.1);
-    }
-    
-    .collection-cover {
-        width: 100%;
-        height: 120px;
-        border-radius: 6px;
-        overflow: hidden;
-        margin-bottom: 10px;
-    }
-    
-    .collection-thumbnail {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-    }
-    
-    .collection-placeholder {
-        width: 100%;
-        height: 100%;
-        background: #f8f9fa;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: #dee2e6;
-        font-size: 2rem;
-    }
-    
-    .collection-info h6 {
-        margin-bottom: 5px;
-        font-weight: 600;
-    }
-    
-    .collection-description {
-        font-size: 0.9rem;
-        color: var(--text-default);
-        margin-bottom: 5px;
-    }
-    
-    .collection-checkbox {
-        position: absolute;
-        top: 10px;
-        right: 10px;
-        background: rgba(255,255,255,0.9);
-        border-radius: 50%;
-        width: 24px;
-        height: 24px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    
-    .no-collections {
-        grid-column: 1 / -1;
-        text-align: center;
-        padding: 40px;
-        color: var(--text-default);
-    }
-    
-    /* Form Styles */
-    .form-control, .form-select {
-        border-radius: 8px;
-        border: 2px solid #e9ecef;
-        transition: all 0.3s ease;
-    }
-    
-    .form-control:focus, .form-select:focus {
-        border-color: #667eea;
-        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-    }
-    
-    .btn {
-        border-radius: 8px;
-        font-weight: 500;
-        transition: all 0.3s ease;
-    }
-    
-    .btn-primary {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-    }
-    
-    .btn-primary:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-    }
-    
-    /* Sidebar Styles */
-    .info-card {
-        background: #f8f9fa;
-        padding: 15px;
-        border-radius: 8px;
-        text-align: center;
-        border-left: 3px solid #667eea;
-    }
-    
-    .info-card i {
-        font-size: 2rem;
-        margin-bottom: 10px;
-    }
-    
-    .info-card h6 {
-        margin-bottom: 10px;
-        font-weight: 600;
-    }
-    
-    .info-card p {
-        font-size: 0.9rem;
-        color: var(--text-default);
-        margin-bottom: 0;
-    }
-    
-    .tips-list {
-        list-style: none;
-        padding: 0;
-        margin: 0;
-    }
-    
-    .tips-list li {
-        padding: 8px 0;
-        border-bottom: 1px solid #eee;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-    
-    .tips-list li:last-child {
-        border-bottom: none;
-    }
-    
-    .tips-list i {
-        width: 20px;
-        text-align: center;
-    }
-    
-    .recent-post-item {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 10px 0;
-        border-bottom: 1px solid #eee;
-    }
-    
-    .recent-post-item:last-child {
-        border-bottom: none;
-    }
-    
-    .recent-post-image {
-        width: 50px;
-        height: 50px;
-        border-radius: 6px;
-        overflow: hidden;
-        flex-shrink: 0;
-    }
-    
-    .recent-post-image img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-    }
-    
-    .recent-post-placeholder {
-        width: 100%;
-        height: 100%;
-        background: #f8f9fa;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: #dee2e6;
-    }
-    
-    .recent-post-info h6 {
-        margin-bottom: 2px;
-        font-size: 0.9rem;
-    }
-    
-    .recent-post-info small {
-        font-size: 0.8rem;
-    }
-    
-    /* HTMX Loading Indicator */
-    .htmx-indicator {
-        transition: opacity 0.3s ease;
-    }
-    
-    .htmx-indicator.htmx-request {
-        display: block !important;
-    }
-    
-    .htmx-indicator.htmx-request .spinner-border {
-        animation: spinner-border 0.75s linear infinite;
-    }
-    
-    /* Responsive Design */
-    @media (max-width: 768px) {
-        .posts-container {
-            padding: 10px;
-        }
-        
-        .posts-header {
-            padding: 30px 15px;
-        }
-        
-        .posts-header h1 {
-            font-size: 2rem;
-        }
-        
-        .posts-nav-tabs {
-            flex-direction: column;
-            align-items: center;
-        }
-        
-        .photo-grid {
-            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-        }
-        
-        .collection-grid {
-            grid-template-columns: 1fr;
-        }
-    }
-</style>
-
-<!-- JavaScript for this template -->
-<script src="{% static 'js/photo-search.js' %}"></script>
+{% block extra_js %}
+<!-- Load external JavaScript -->
+<script src="{% static 'js/post-create.js' %}"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Initialize photo search for current post type
-    let photoSearch = null;
-    
-    function initializePhotoSearch() {
-        const currentType = '{{ post_type }}';
-        
-        // Destroy previous instance if exists
-        if (photoSearch) {
-            photoSearch.destroy();
-        }
-        
-        // Initialize search for photo-based post types
-        if (currentType === 'single_photo' || currentType === 'multiple_photos') {
-            photoSearch = new PhotoSearch({
-                searchInputSelector: '.photo-search-input',
-                resultsContainerSelector: '.photo-search-results',
-                photoGridSelector: '.photo-grid',
-                searchDelay: 300,
-                minSearchLength: 2
-            });
-        }
-    }
-    
-    // Initialize search on page load
-    initializePhotoSearch();
-    
-    // Re-initialize search after HTMX content updates
-    document.body.addEventListener('htmx:afterSwap', function(event) {
-        // Check if the swapped content contains photo search
-        if (event.target.id === 'post-content-area') {
-            // Small delay to ensure DOM is fully updated
-            setTimeout(() => {
-                initializePhotoSearch();
-            }, 100);
-        }
-    });
-    
-    // Post type selection is now handled by HTMX
-    // No need for manual click handlers
-    
-    // Photo selection for single photo
-    const singlePhotoRadios = document.querySelectorAll('input[name="selected_photo"]');
-    singlePhotoRadios.forEach(radio => {
-        radio.addEventListener('change', function() {
-            if (this.checked) {
-                document.getElementById('{{ form.photo_ids.id_for_label }}').value = this.value;
-                // Update visual selection
-                document.querySelectorAll('.photo-item').forEach(item => {
-                    item.classList.remove('selected');
-                });
-                this.closest('.photo-item').classList.add('selected');
-            }
-        });
-    });
-    
-    // Photo selection for multiple photos
-    const multiplePhotoCheckboxes = document.querySelectorAll('input[name="selected_photos"]');
-    multiplePhotoCheckboxes.forEach(checkbox => {
-        checkbox.addEventListener('change', function() {
-            updateMultiplePhotoSelection();
-        });
-    });
-    
-    function updateMultiplePhotoSelection() {
-        const selectedPhotos = Array.from(multiplePhotoCheckboxes)
-            .filter(cb => cb.checked)
-            .map(cb => cb.value);
-        
-        document.getElementById('{{ form.photo_ids.id_for_label }}').value = selectedPhotos.join(',');
-        
-        // Update visual selection
-        document.querySelectorAll('.photo-item').forEach(item => {
-            item.classList.remove('selected');
-            const checkbox = item.querySelector('input[name="selected_photos"]');
-            if (checkbox && checkbox.checked) {
-                item.classList.add('selected');
-            }
-        });
-    }
-    
-    // Collection selection
-    const collectionRadios = document.querySelectorAll('input[name="selected_collection"]');
-    collectionRadios.forEach(radio => {
-        radio.addEventListener('change', function() {
-            if (this.checked) {
-                document.getElementById('{{ form.collection_id.id_for_label }}').value = this.value;
-                // Update visual selection
-                document.querySelectorAll('.collection-item').forEach(item => {
-                    item.classList.remove('selected');
-                });
-                this.closest('.collection-item').classList.add('selected');
-            }
-        });
-    });
-    
-    // Form validation
-    const form = document.getElementById('post-create-form');
-    const submitBtn = document.getElementById('submit-btn');
-    
-    form.addEventListener('submit', function(e) {
-        const postType = '{{ post_type }}';
-        let isValid = true;
-        
-        if (postType === 'single_photo') {
-            const photoIds = document.getElementById('{{ form.photo_ids.id_for_label }}').value;
-            if (!photoIds) {
-                alert('Please select a photo for your post');
-                isValid = false;
-            }
-        } else if (postType === 'multiple_photos') {
-            const photoIds = document.getElementById('{{ form.photo_ids.id_for_label }}').value;
-            if (!photoIds) {
-                alert('Please select at least one photo for your post');
-                isValid = false;
-            }
-        } else if (postType === 'collection') {
-            const collectionId = document.getElementById('{{ form.collection_id.id_for_label }}').value;
-            if (!collectionId) {
-                alert('Please select a collection for your post');
-                isValid = false;
-            }
-        }
-        
-        if (!isValid) {
-            e.preventDefault();
-            return false;
-        }
-        
-        // Show loading state
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating Post...';
-    });
-    
-    // Auto-save draft functionality
-    let autoSaveTimer;
-    const descriptionField = document.querySelector('#{{ form.description.id_for_label }}');
-    const titleField = document.querySelector('#{{ form.title.id_for_label }}');
-    
-    function autoSaveDraft() {
-        const draft = {
-            title: titleField.value,
-            description: descriptionField.value,
-            post_type: '{{ post_type }}',
-            timestamp: new Date().toISOString()
-        };
-        
-        localStorage.setItem('post_draft', JSON.stringify(draft));
-        console.log('Draft auto-saved');
-    }
-    
-    // Auto-save every 30 seconds
-    if (descriptionField && titleField) {
-        descriptionField.addEventListener('input', () => {
-            clearTimeout(autoSaveTimer);
-            autoSaveTimer = setTimeout(autoSaveDraft, 30000);
-        });
-        
-        titleField.addEventListener('input', () => {
-            clearTimeout(autoSaveTimer);
-            autoSaveTimer = setTimeout(autoSaveDraft, 30000);
-        });
-    }
-    
-    // Load draft on page load
-    const savedDraft = localStorage.getItem('post_draft');
-    if (savedDraft && !descriptionField.value && !titleField.value) {
-        try {
-            const draft = JSON.parse(savedDraft);
-            if (draft.post_type === '{{ post_type }}') {
-                if (draft.title) titleField.value = draft.title;
-                if (draft.description) descriptionField.value = draft.description;
-                console.log('Draft loaded');
-                // Clear draft after loading
-                localStorage.removeItem('post_draft');
-            }
-        } catch (e) {
-            console.error('Error loading draft:', e);
-        }
-    }
-});
+// Template-specific configuration
+window.currentPostType = '{{ post_type }}';
+window.photoIdsFieldId = '{{ form.photo_ids.id_for_label }}';
+window.collectionIdFieldId = '{{ form.collection_id.id_for_label }}';
+window.descriptionFieldId = '{{ form.description.id_for_label }}';
+window.titleFieldId = '{{ form.title.id_for_label }}';
 </script>
 {% endblock %}

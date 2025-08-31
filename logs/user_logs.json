@@ -18618,4 +18618,23 @@
   },
   "restored": false
 }
+,
+{
+  "log_id": "97bd2334-722e-4d4e-a32a-109227402121",
+  "user": "admin",
+  "user_id": 1,
+  "action": "session_refresh",
+  "timestamp": "2025-08-31T13:40:15.222648+00:00",
+  "ip_address": "192.168.1.73",
+  "user_agent": "ShuttrlyApp/1 CFNetwork/3860.100.1 Darwin/25.0.0",
+  "location": {
+    "city": null,
+    "region": null,
+    "country": null
+  },
+  "extra_info": {
+    "impacted_user_id": 1
+  },
+  "restored": false
+}
 ]

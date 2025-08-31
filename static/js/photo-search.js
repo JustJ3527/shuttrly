@@ -1,13 +1,16 @@
 /**
- * Photo Search Component - Real-time search for photos
- * Reusable component that can be easily integrated into other templates
+ * Enhanced Photo Search Component - Advanced search with filters
+ * Reusable component for navbar, post creation, and other templates
  * 
  * Features:
  * - Real-time search as you type
- * - Searches across multiple fields (title, description, tags, date)
+ * - Advanced filters (raw, camera, date_taken, tags, etc.)
  * - Debounced input to avoid excessive API calls
  * - Highlighted search results
- * - Responsive design using CSS variables from base.scss
+ * - Responsive design using CSS variables
+ * - Modular design for easy integration
+ * - Loading indicator in input field
+ * - Deduplicated camera choices
  */
 
 class PhotoSearch {
@@ -21,13 +24,22 @@ class PhotoSearch {
             highlightClass: 'search-highlight',
             noResultsClass: 'no-search-results',
             loadingClass: 'search-loading',
+            showFilters: true, // Show advanced filters
+            showLoadingInInput: true, // Show loading spinner in input
+            navbarMode: false, // Special mode for navbar
             ...options
         };
         
         this.searchTimeout = null;
         this.currentSearchTerm = '';
+        this.currentFilters = {
+            raw: false,
+            camera: ''
+        };
         this.allPhotos = [];
         this.filteredPhotos = [];
+        this.isInitialized = false;
+        this.cameraChoices = new Set(); // Deduplicated camera choices
         
         this.init();
     }
@@ -38,13 +50,64 @@ class PhotoSearch {
         this.photoGrid = document.querySelector(this.options.photoGridSelector);
         
         if (!this.searchInput || !this.photoGrid) {
-            console.warn('PhotoSearch: Required elements not found');
+            console.warn('PhotoSearch: Required elements not found', {
+                searchInput: this.searchInput,
+                photoGrid: this.photoGrid,
+                selectors: this.options
+            });
             return;
         }
         
         this.setupEventListeners();
         this.collectAllPhotos();
-        this.setupStyles();
+        this.setupFilters();
+        this.isInitialized = true;
+        
+        // PhotoSearch initialized successfully
+    }
+    
+    // Method to refresh the search when switching tabs
+    refresh() {
+        if (!this.isInitialized) {
+            this.init();
+            return;
+        }
+        
+        // Recollect photos data (in case new photos were added)
+        this.collectAllPhotos();
+        
+        // Repopulate camera choices after collecting photos
+        this.populateCameraChoices();
+        
+        // Clear current search
+        if (this.searchInput) {
+            this.searchInput.value = '';
+        }
+        
+        // Reset filters
+        this.resetFilters();
+        
+        // Show all photos
+        this.showAllPhotos();
+        
+        // PhotoSearch refreshed
+    }
+    
+    // Method to destroy the instance
+    destroy() {
+        if (this.searchInput) {
+            this.searchInput.removeEventListener('input', this.handleSearchInput);
+            this.searchInput.removeEventListener('keydown', this.handleKeydown);
+            this.searchInput.removeEventListener('focus', this.handleFocus);
+        }
+        
+        document.removeEventListener('click', this.handleClickOutside);
+        
+        // Remove filter event listeners
+        this.removeFilterEventListeners();
+        
+        this.isInitialized = false;
+        // PhotoSearch destroyed
     }
     
     setupEventListeners() {
@@ -55,225 +118,183 @@ class PhotoSearch {
         
         // Clear search on escape key
         this.searchInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                this.clearSearch();
-            }
+            this.handleKeydown(e);
         });
         
         // Focus management
         this.searchInput.addEventListener('focus', () => {
-            this.showResults();
+            this.handleFocus();
         });
         
         // Click outside to close results
         document.addEventListener('click', (e) => {
-            if (!this.searchInput.contains(e.target) && !this.resultsContainer.contains(e.target)) {
-                this.hideResults();
-            }
+            this.handleClickOutside(e);
         });
     }
     
-    setupStyles() {
-        // Add custom styles if not already present
-        if (!document.getElementById('photo-search-styles')) {
-            const style = document.createElement('style');
-            style.id = 'photo-search-styles';
-            style.textContent = this.getCustomStyles();
-            document.head.appendChild(style);
+    handleSearchInput(value) {
+        this.currentSearchTerm = value;
+        
+        // Clear previous timeout
+        if (this.searchTimeout) {
+            clearTimeout(this.searchTimeout);
+        }
+        
+        // Show loading indicator in input if enabled
+        if (this.options.showLoadingInInput) {
+            this.showInputLoading();
+        }
+        
+        // Debounce search
+        this.searchTimeout = setTimeout(() => {
+            this.performSearch(value);
+        }, this.options.searchDelay);
+    }
+    
+    handleKeydown(e) {
+        if (e.key === 'Escape') {
+            this.clearSearch();
         }
     }
     
-    getCustomStyles() {
-        return `
-            .photo-search-container {
-                position: relative;
-                margin-bottom: 1.5rem;
-            }
+    handleFocus() {
+        // Don't show dropdown results on focus
+        // this.showResults(); // Commented out to disable dropdown
+    }
+    
+    handleClickOutside(e) {
+        // Don't handle click outside since we don't show dropdown
+        // if (!this.searchInput.contains(e.target) && !this.resultsContainer.contains(e.target)) {
+        //     this.hideResults();
+        // }
+    }
+    
+    setupFilters() {
+        if (!this.options.showFilters) return;
+        
+        // Generate unique instance ID for this PhotoSearch instance
+        this.instanceId = Math.random().toString(36).substr(2, 9);
+        
+        // Create filters container
+        const filtersContainer = this.createFiltersContainer();
+        
+        // Find or create the search container wrapper
+        let searchContainer = this.searchInput.closest('.photo-search-container');
+        if (!searchContainer) {
+            // Wrap the search input in a container if it doesn't exist
+            searchContainer = document.createElement('div');
+            searchContainer.className = 'photo-search-container';
+            this.searchInput.parentNode.insertBefore(searchContainer, this.searchInput);
+            searchContainer.appendChild(this.searchInput);
+        }
+        
+        // Add inline-filters class to the search container
+        searchContainer.classList.add('has-inline-filters');
+        
+        // Append filters right after the search input
+        searchContainer.appendChild(filtersContainer);
+        
+        // Store reference to filters container
+        this.filtersContainer = filtersContainer;
+        
+        // Setup filter event listeners
+        this.setupFilterEventListeners();
+        
+        // Populate camera choices after filters are created
+        this.populateCameraChoices();
+    }
+    
+    createFiltersContainer() {
+        const container = document.createElement('div');
+        container.className = 'photo-search-filters-inline';
+        container.dataset.instanceId = this.instanceId;
+        container.innerHTML = `
+            <div class="inline-filter">
+                <input type="checkbox" id="filter-raw-${this.instanceId}" class="filter-checkbox-inline" data-instance="${this.instanceId}">
+                <label for="filter-raw-${this.instanceId}" class="filter-label-inline" title="Show only RAW format photos">
+                    <i class="fas fa-file-code"></i> RAW
+                </label>
+            </div>
             
-            .photo-search-input {
-                width: 100%;
-                padding: 0.75rem 1rem;
-                border: 2px solid var(--text-200);
-                border-radius: 0.5rem;
-                font-size: 1rem;
-                background: var(--background-default);
-                color: var(--text-default);
-                transition: all 0.3s ease;
-                font-family: 'Garet';
-            }
+            <div class="inline-filter">
+                <select id="filter-camera-${this.instanceId}" class="filter-select-inline" data-instance="${this.instanceId}" title="Filter by camera">
+                    <option value="">All cameras</option>
+                </select>
+            </div>
             
-            .photo-search-input:focus {
-                outline: none;
-                border-color: var(--primary-default);
-                box-shadow: 0 0 0 3px rgba(81, 31%, 52%, 0.1);
-            }
-            
-            .photo-search-input::placeholder {
-                color: var(--text-400);
-            }
-            
-            .photo-search-results {
-                position: absolute;
-                top: 100%;
-                left: 0;
-                right: 0;
-                background: var(--background-default);
-                border: 2px solid var(--text-200);
-                border-top: none;
-                border-radius: 0 0 0.5rem 0.5rem;
-                max-height: 300px;
-                overflow-y: auto;
-                z-index: 1000;
-                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-                display: none;
-            }
-            
-            .photo-search-results.active {
-                display: block;
-            }
-            
-            .search-result-item {
-                display: flex;
-                align-items: center;
-                gap: 0.75rem;
-                padding: 0.75rem 1rem;
-                border-bottom: 1px solid var(--text-200);
-                cursor: pointer;
-                transition: all 0.2s ease;
-            }
-            
-            .search-result-item:last-child {
-                border-bottom: none;
-            }
-            
-            .search-result-item:hover {
-                background: var(--text-100);
-            }
-            
-            .search-result-item.selected {
-                background: var(--primary-100);
-                color: var(--primary-default);
-            }
-            
-            .search-result-thumbnail {
-                width: 40px;
-                height: 40px;
-                border-radius: 0.25rem;
-                object-fit: cover;
-                flex-shrink: 0;
-            }
-            
-            .search-result-info {
-                flex: 1;
-                min-width: 0;
-            }
-            
-            .search-result-title {
-                font-weight: 600;
-                margin-bottom: 0.25rem;
-                color: var(--text-default);
-            }
-            
-            .search-result-meta {
-                font-size: 0.875rem;
-                color: var(--text-500);
-                display: flex;
-                gap: 1rem;
-                flex-wrap: wrap;
-            }
-            
-            .search-result-tags {
-                display: flex;
-                gap: 0.25rem;
-                flex-wrap: wrap;
-            }
-            
-            .search-result-tag {
-                background: var(--primary-100);
-                color: var(--primary-default);
-                padding: 0.125rem 0.5rem;
-                border-radius: 0.25rem;
-                font-size: 0.75rem;
-                font-weight: 500;
-            }
-            
-            .search-highlight {
-                background: var(--primary-200);
-                color: var(--primary-default);
-                padding: 0.125rem 0.25rem;
-                border-radius: 0.25rem;
-                font-weight: 600;
-            }
-            
-            .no-search-results {
-                padding: 1rem;
-                text-align: center;
-                color: var(--text-500);
-                font-style: italic;
-            }
-            
-            .search-loading {
-                padding: 1rem;
-                text-align: center;
-                color: var(--text-500);
-            }
-            
-            .search-loading::after {
-                content: '';
-                display: inline-block;
-                width: 1rem;
-                height: 1rem;
-                border: 2px solid var(--text-300);
-                border-radius: 50%;
-                border-top-color: var(--primary-default);
-                animation: spin 1s linear infinite;
-                margin-left: 0.5rem;
-            }
-            
-            @keyframes spin {
-                to { transform: rotate(360deg); }
-            }
-            
-            .photo-search-stats {
-                margin-top: 0.5rem;
-                font-size: 0.875rem;
-                color: var(--text-500);
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-            }
-            
-            .search-clear-btn {
-                background: none;
-                border: none;
-                color: var(--text-400);
-                cursor: pointer;
-                padding: 0.25rem;
-                border-radius: 0.25rem;
-                transition: all 0.2s ease;
-            }
-            
-            .search-clear-btn:hover {
-                color: var(--text-default);
-                background: var(--text-100);
-            }
-            
-            /* Responsive adjustments */
-            @media (max-width: 768px) {
-                .photo-search-results {
-                    max-height: 250px;
-                }
-                
-                .search-result-item {
-                    padding: 0.5rem 0.75rem;
-                }
-                
-                .search-result-thumbnail {
-                    width: 35px;
-                    height: 35px;
-                }
-            }
+            <button type="button" class="btn-clear-filters-inline" data-instance="${this.instanceId}" title="Clear all filters">
+                <i class="fas fa-times"></i>
+            </button>
         `;
+        
+        return container;
+    }
+    
+    setupFilterEventListeners() {
+        if (!this.filtersContainer) return;
+        
+        // Use scoped selectors for this instance - simplified for inline filters
+        const clearFiltersBtn = this.filtersContainer.querySelector(`[data-instance="${this.instanceId}"].btn-clear-filters-inline`);
+        
+        if (clearFiltersBtn) {
+            clearFiltersBtn.addEventListener('click', () => {
+                this.resetFilters();
+            });
+        }
+        
+        // Individual filter change listeners with instant filtering
+        const rawCheckbox = this.filtersContainer.querySelector(`#filter-raw-${this.instanceId}`);
+        const cameraSelect = this.filtersContainer.querySelector(`#filter-camera-${this.instanceId}`);
+        
+        if (rawCheckbox) {
+            rawCheckbox.addEventListener('change', (e) => {
+                this.currentFilters.raw = e.target.checked;
+                this.performSearch(this.currentSearchTerm);
+            });
+        }
+        
+        if (cameraSelect) {
+            cameraSelect.addEventListener('change', (e) => {
+                this.currentFilters.camera = e.target.value;
+                this.performSearch(this.currentSearchTerm);
+            });
+        }
+    }
+    
+    removeFilterEventListeners() {
+        // Remove the specific filters container for this instance
+        if (this.filtersContainer && this.filtersContainer.parentNode) {
+            this.filtersContainer.parentNode.removeChild(this.filtersContainer);
+        }
+    }
+    
+    resetFilters() {
+        this.currentFilters = {
+            raw: false,
+            camera: ''
+        };
+        
+        // Reset UI with instance-specific selectors
+        if (this.instanceId && this.filtersContainer) {
+            const rawCheckbox = this.filtersContainer.querySelector(`#filter-raw-${this.instanceId}`);
+            const cameraSelect = this.filtersContainer.querySelector(`#filter-camera-${this.instanceId}`);
+            
+            if (rawCheckbox) rawCheckbox.checked = false;
+            if (cameraSelect) cameraSelect.value = '';
+        }
+        
+        // Refresh search
+        this.performSearch(this.currentSearchTerm);
+    }
+    
+    applyFilters() {
+        this.performSearch(this.currentSearchTerm);
+    }
+    
+    setupStyles() {
+        // Styles are now loaded via external CSS file (photo-search.css)
+        // This method is kept for backward compatibility but does nothing
+        // Using external CSS file (photo-search.css)
     }
     
     collectAllPhotos() {
@@ -287,7 +308,14 @@ class PhotoSearch {
             // Extract additional data from data attributes or hidden fields
             const description = item.dataset.description || '';
             const tags = item.dataset.tags || '';
-            const date = item.dataset.date || '';
+            const dateTaken = item.dataset.dateTaken || item.dataset.date || ''; // Prioritize date_taken
+            const camera = item.dataset.camera || '';
+            const isRaw = item.dataset.raw === 'true' || item.dataset.raw === '1';
+            
+            // Add camera to choices if not empty
+            if (camera && camera.trim()) {
+                this.cameraChoices.add(camera);
+            }
             
             return {
                 element: item,
@@ -295,33 +323,53 @@ class PhotoSearch {
                 title: title,
                 description: description,
                 tags: tags,
-                date: date,
                 thumbnail: img?.src || '',
-                searchText: `${title} ${description} ${tags} ${date}`.toLowerCase()
+                dateTaken: dateTaken,
+                camera: camera,
+                isRaw: isRaw,
+                searchText: `${title} ${description} ${tags} ${dateTaken} ${camera}`.toLowerCase()
             };
         });
         
         this.filteredPhotos = [...this.allPhotos];
     }
     
-    handleSearchInput(searchTerm) {
-        // Clear previous timeout
-        if (this.searchTimeout) {
-            clearTimeout(this.searchTimeout);
+    populateCameraChoices() {
+        if (!this.instanceId || !this.filtersContainer) {
+            return;
         }
         
-        // Set new timeout for debounced search
-        this.searchTimeout = setTimeout(() => {
-            this.performSearch(searchTerm);
-        }, this.options.searchDelay);
+        const cameraSelect = this.filtersContainer.querySelector(`#filter-camera-${this.instanceId}`);
+        if (!cameraSelect) {
+            return;
+        }
+        
+        // Clear existing options except "All cameras"
+        cameraSelect.innerHTML = '<option value="">All cameras</option>';
+        
+        // Add unique camera choices
+        if (this.cameraChoices.size > 0) {
+            Array.from(this.cameraChoices).sort().forEach(camera => {
+                if (camera && camera.trim()) { // Only add non-empty cameras
+                    const option = document.createElement('option');
+                    option.value = camera;
+                    option.textContent = camera;
+                    cameraSelect.appendChild(option);
+                }
+            });
+        }
     }
     
     performSearch(searchTerm) {
         this.currentSearchTerm = searchTerm.trim().toLowerCase();
         
-        if (this.currentSearchTerm.length < this.options.minSearchLength) {
+        // Hide loading indicator
+        this.hideInputLoading();
+        
+        if (this.currentSearchTerm.length < this.options.minSearchLength && !this.hasActiveFilters()) {
             this.showAllPhotos();
             this.hideResults();
+            this.removeSearchStats();
             return;
         }
         
@@ -330,12 +378,30 @@ class PhotoSearch {
             photo.searchText.includes(this.currentSearchTerm)
         );
         
+        // Apply filters
+        this.filteredPhotos = this.filteredPhotos.filter(photo => {
+            const matchesSearchTerm = photo.searchText.includes(this.currentSearchTerm);
+            
+            // Apply actual filter logic
+            if (this.currentFilters.raw && !photo.isRaw) return false;
+            if (this.currentFilters.camera && photo.camera !== this.currentFilters.camera) return false;
+
+            return matchesSearchTerm;
+        });
+        
         // Update display
         this.updatePhotoGrid();
-        this.showSearchResults();
+        
+        // Don't show dropdown results - only update the grid
+        // this.showSearchResults(); // Commented out to disable dropdown
         
         // Update search stats
         this.updateSearchStats();
+    }
+    
+    hasActiveFilters() {
+        return this.currentFilters.raw || 
+               this.currentFilters.camera;
     }
     
     updatePhotoGrid() {
@@ -391,7 +457,9 @@ class PhotoSearch {
             <div class="search-result-info">
                 <div class="search-result-title">${highlightedTitle}</div>
                 <div class="search-result-meta">
-                    ${photo.date ? `<span><i class="fas fa-calendar"></i> ${photo.date}</span>` : ''}
+                    ${photo.dateTaken ? `<span><i class="fas fa-calendar"></i> ${photo.dateTaken}</span>` : ''}
+                    ${photo.camera ? `<span><i class="fas fa-camera"></i> ${photo.camera}</span>` : ''}
+                    ${photo.isRaw ? `<span><i class="fas fa-file-code"></i> RAW</span>` : ''}
                     ${photo.tags ? `
                         <div class="search-result-tags">
                             ${photo.tags.split(',').map(tag => 
@@ -476,12 +544,10 @@ class PhotoSearch {
         this.currentSearchTerm = '';
         this.showAllPhotos();
         this.hideResults();
+        this.hideInputLoading();
         
         // Remove stats
-        const statsElement = this.searchInput.parentNode.querySelector('.photo-search-stats');
-        if (statsElement) {
-            statsElement.remove();
-        }
+        this.removeSearchStats();
     }
     
     showResults() {
@@ -496,14 +562,24 @@ class PhotoSearch {
         }
     }
     
+    removeSearchStats() {
+        const statsElement = this.searchInput.parentNode.querySelector('.photo-search-stats');
+        if (statsElement) {
+            statsElement.remove();
+        }
+    }
+    
     // Public method to refresh photos (useful when photos are dynamically added)
     refresh() {
         this.collectAllPhotos();
         if (this.currentSearchTerm) {
             this.performSearch(this.currentSearchTerm);
+        } else {
+            this.showAllPhotos();
+            this.removeSearchStats();
         }
     }
-    
+
     // Public method to destroy the component
     destroy() {
         if (this.searchTimeout) {
@@ -512,13 +588,27 @@ class PhotoSearch {
         
         // Remove event listeners
         this.searchInput.removeEventListener('input', this.handleSearchInput);
-        this.searchInput.removeEventListener('keydown', this.handleSearchInput);
-        this.searchInput.removeEventListener('focus', this.handleSearchInput);
+        this.searchInput.removeEventListener('keydown', this.handleKeydown);
+        this.searchInput.removeEventListener('focus', this.handleFocus);
         
-        // Remove custom styles
-        const customStyles = document.getElementById('photo-search-styles');
-        if (customStyles) {
-            customStyles.remove();
+        // Note: Styles are now in external CSS file (photo-search.css)
+    }
+    
+    showInputLoading() {
+        if (this.searchInput && this.options.showLoadingInInput && !this.options.navbarMode) {
+            const container = this.searchInput.closest('.photo-search-container');
+            if (container) {
+                container.classList.add('loading');
+            }
+        }
+    }
+    
+    hideInputLoading() {
+        if (this.searchInput && this.options.showLoadingInInput) {
+            const container = this.searchInput.closest('.photo-search-container');
+            if (container) {
+                container.classList.remove('loading');
+            }
         }
     }
 }

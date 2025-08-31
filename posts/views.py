@@ -239,14 +239,14 @@ class PostCreateView(LoginRequiredMixin, CreateView):
         context = super().get_context_data(**kwargs)
         post_type = self.request.GET.get('type', 'single_photo')
         
-        if post_type == 'single_photo':
-            context['photos'] = Photo.objects.filter(user=self.request.user).order_by('-created_at')
-        elif post_type == 'multiple_photos':
-            context['photos'] = Photo.objects.filter(user=self.request.user).order_by('-created_at')
-        elif post_type == 'collection':
-            context['collections'] = Collection.objects.filter(owner=self.request.user).order_by('-created_at')
+        # Load all data for all tabs since we removed HTMX dynamic loading
+        photos = Photo.objects.filter(user=self.request.user).order_by('-created_at')
+        collections = Collection.objects.filter(owner=self.request.user).order_by('-created_at')
         
+        context['photos'] = photos
+        context['collections'] = collections
         context['post_type'] = post_type
+        
         return context
     
     def get_template_names(self):

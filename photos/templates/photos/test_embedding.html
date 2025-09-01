@@ -1,0 +1,336 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Embedding System Test{% endblock %}
+
+{% block extra_css %}
+<style>
+    .loading-skeleton {
+        background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+        background-size: 200% 100%;
+        animation: loading 1.5s infinite;
+    }
+    
+    @keyframes loading {
+        0% { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
+    }
+    
+    .photo-thumbnail {
+        transition: transform 0.2s ease-in-out;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    
+    .photo-thumbnail:hover {
+        transform: scale(1.05);
+    }
+    
+    .similarity-badge {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        z-index: 10;
+    }
+    
+    .identical-badge {
+        background: linear-gradient(45deg, #28a745, #20c997);
+        animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.1); }
+        100% { transform: scale(1); }
+    }
+    
+    .photo-container {
+        position: relative;
+        display: block;
+        margin-bottom: 15px;
+    }
+    
+    .photo-thumbnail {
+        position: relative;
+        display: block;
+        width: 100%;
+    }
+    
+    .similarity-score {
+        background: rgba(162, 36, 36, 0.8);
+        color: white;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.8em;
+        font-weight: bold;
+        margin-top: 4px;
+        display: inline-block;
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+    
+    .similarity-score:hover {
+        background: rgba(162, 36, 36, 0.9);
+    }
+    
+    .photo-info {
+        margin-top: 8px;
+        padding: 0 4px;
+        display: inline-grid;
+    }
+    
+    .photo-info h6 {
+        margin-bottom: 4px;
+        line-height: 1.2;
+        height: 2.4em;
+        overflow: hidden;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>Embedding System Test</h1>
+    
+    {% if error %}
+    <div class="alert alert-warning">
+        <h5>⚠️ No photos with embeddings found</h5>
+        <p>{{ error }}</p>
+        <a href="{% url 'photos:gallery' %}" class="btn btn-primary">Back to Gallery</a>
+    </div>
+    {% else %}
+    
+    <!-- Navigation -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Navigation</h5>
+                    <span class="badge bg-primary">{{ current_index }} / {{ total_photos_with_embeddings }}</span>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            {% if prev_photo %}
+                                <a href="{% url 'photos:test_embedding_photo' prev_photo.id %}" class="btn btn-outline-primary">
+                                    ← Previous Photo
+                                </a>
+                            {% else %}
+                                <button class="btn btn-outline-secondary" disabled>← Previous Photo</button>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="text-center">
+                            <h6 class="mb-0">{{ current_photo.title }}</h6>
+                            <small class="text-muted">ID: {{ current_photo.id }}</small>
+                        </div>
+                        
+                        <div>
+                            {% if next_photo %}
+                                <a href="{% url 'photos:test_embedding_photo' next_photo.id %}" class="btn btn-outline-primary">
+                                    Next Photo →
+                                </a>
+                            {% else %}
+                                <button class="btn btn-outline-secondary" disabled>Next Photo →</button>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Statistics -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Global Statistics</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Total Photos:</strong> {{ total_photos }}</p>
+                    <p><strong>Photos with Embeddings:</strong> {{ photos_with_embeddings }}</p>
+                    <p><strong>Percentage:</strong> 
+                        {% if total_photos > 0 %}
+                            {% widthratio photos_with_embeddings total_photos 100 %}%
+                        {% else %}
+                            0%
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Current Photo</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Title:</strong> {{ current_photo.title }}</p>
+                    <p><strong>Embedding:</strong> 
+                        {% if current_photo.embedding %}
+                            ✅ Present ({{ current_photo.embedding|length }} dimensions)
+                        {% else %}
+                            ❌ Missing
+                        {% endif %}
+                    </p>
+                    {% if test_result %}
+                        <div class="alert alert-info alert-sm">
+                            {{ test_result }}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Test Photo -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Test Photo</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <img src="{{ current_photo.original_file.url }}" 
+                                 class="img-fluid rounded photo-thumbnail" 
+                                 alt="{{ current_photo.title }}"
+                                 onload="this.style.opacity=1"
+                                 style="opacity: 0; transition: opacity 0.3s;">
+                        </div>
+                        <div class="col-md-8">
+                            <h6>{{ current_photo.title }}</h6>
+                            <p><strong>ID:</strong> {{ current_photo.id }}</p>
+                            <p><strong>Dimensions:</strong> {{ current_photo.get_dimensions_display }}</p>
+                            <p><strong>Camera:</strong> {{ current_photo.get_camera_display }}</p>
+                            <p><strong>Exposure:</strong> {{ current_photo.get_exposure_display }}</p>
+                            {% if current_photo.tags %}
+                                <p><strong>Tags:</strong> {{ current_photo.tags }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Similar Photos -->
+    {% if similar_results %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Similar Photos (AI) - CLIP ViT-B/32 (512D)</h5>
+                    <small class="text-muted">Found {{ similar_results|length }} similar photos</small>
+                </div>
+                <div class="card-body">
+                    {% if similar_results.0.error %}
+                        <div class="alert alert-danger">
+                            {{ similar_results.0.error }}
+                        </div>
+                    {% else %}
+                        {% if similar_results %}
+                            <div class="row">
+                                {% for result in similar_results %}
+                                <div class="col-lg-2 col-md-3 col-sm-4 col-6 mb-3">
+                                    <div class="photo-container">
+                                        <a href="{% url 'photos:detail' result.photo.id %}">
+                                            <img src="{{ result.photo.thumbnail.url }}" 
+                                                 class="img-fluid photo-thumbnail" 
+                                                 style="width: 100%; height: 150px; object-fit: cover;"
+                                                 alt="{{ result.photo.title }}"
+                                                 onload="this.style.opacity=1"
+                                                 style="opacity: 0; transition: opacity 0.3s;">
+                                        </a>
+                                        
+                                        <!-- Identical Badge -->
+                                        {% if result.similarity >= 0.999 %}
+                                            <span class="badge identical-badge similarity-badge">IDENTICAL</span>
+                                        {% endif %}
+                                        
+                                        <!-- Photo Info -->
+                                        <div class="photo-info">
+                                            <h6 class="mb-1" style="font-size: 0.9em;">{{ result.photo.title|truncatechars:25 }}</h6>
+                                            <small class="text-muted">ID: {{ result.photo.id }}</small>
+                                            
+                                            <!-- Similarity Score (clickable) -->
+                                            <div class="similarity-score" onclick="window.location.href='{% url 'photos:test_embedding_photo' result.photo.id %}'">
+                                                Similarity: {{ result.similarity|floatformat:3 }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            
+                            <!-- Show more photos if we have them -->
+                            {% if similar_results|length >= 6 %}
+                            <div class="text-center mt-3">
+                                <small class="text-muted">
+                                    Showing top {{ similar_results|length }} most similar photos
+                                </small>
+                            </div>
+                            {% endif %}
+                        {% else %}
+                            <div class="alert alert-info">
+                                No similar photos found with the current similarity threshold.
+                            </div>
+                        {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Actions -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Actions</h5>
+                </div>
+                <div class="card-body">
+                    <a href="{% url 'photos:gallery' %}" class="btn btn-secondary">Back to Gallery</a>
+                    <a href="{% url 'photos:test_embedding' %}" class="btn btn-primary">First Photo</a>
+                    <a href="{% url 'photos:detail' current_photo.id %}" class="btn btn-outline-primary">View This Photo</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    {% endif %}
+</div>
+
+<script>
+// Add loading animation for images
+document.addEventListener('DOMContentLoaded', function() {
+    const images = document.querySelectorAll('img');
+    
+    images.forEach(img => {
+        // Add loading skeleton effect
+        img.style.background = 'linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)';
+        img.style.backgroundSize = '200% 100%';
+        img.style.animation = 'loading 1.5s infinite';
+        
+        img.addEventListener('load', function() {
+            this.style.background = 'none';
+            this.style.animation = 'none';
+            this.style.opacity = '1';
+        });
+        
+        img.addEventListener('error', function() {
+            this.style.background = '#f8f9fa';
+            this.style.animation = 'none';
+            this.style.opacity = '0.5';
+        });
+    });
+});
+</script>
+{% endblock %}

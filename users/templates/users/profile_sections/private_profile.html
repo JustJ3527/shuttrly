@@ -1,0 +1,151 @@
+<!-- Private Profile Section - Limited access for private profiles without follow access -->
+<div class="profile-section private-profile">
+    <!-- Profile Header with Banner - Facebook Style -->
+    <div class="profile-header">
+        <!-- Banner Background -->
+        <div class="profile-banner">
+            {% if profile_user.banner %}
+                <img src="{{ profile_user.banner.url }}" alt="Profile banner" class="banner-img">
+            {% else %}
+                <div class="banner-placeholder"></div>
+            {% endif %}
+        </div>
+        
+        <div class="profile-content">
+            <div class="profile-avatar">
+                {% if profile_user.profile_picture %}
+                    <img src="{{ profile_user.profile_picture.url }}" 
+                         alt="{{ profile_user.username }}'s profile picture" 
+                         class="avatar-img">
+                {% else %}
+                    <div class="avatar-placeholder">
+                        <i class="fas fa-user"></i>
+                    </div>
+                {% endif %}
+            </div>
+            
+            <div class="profile-info">
+                <div class="profile-name-section">
+                    <h1 class="profile-name">
+                        {% if profile_user.first_name and profile_user.last_name %}
+                            {{ profile_user.first_name }} {{ profile_user.last_name }}
+                        {% else %}
+                            {{ profile_user.username }}
+                        {% endif %}
+                    </h1>
+                    <p class="profile-username">@{{ profile_user.username }}</p>
+                    
+                    <!-- Privacy Status -->
+                    <div class="privacy-status">
+                        <span class="status-badge private">
+                            <i class="fas fa-lock"></i> Private Account
+                        </span>
+                    </div>
+                </div>
+                
+                <!-- Private Account Notice -->
+                <div class="private-account-notice">
+                    <div class="notice-content">
+                        <i class="fas fa-lock"></i>
+                        <h5>This Account is Private</h5>
+                        <p>Follow this user to see their posts and full profile</p>
+                    </div>
+                </div>
+                
+                <!-- Social Stats (Limited) - More relevant information -->
+                <div class="social-stats limited-stats" id="social-stats-{{ profile_user.username }}">
+                    <div class="stat-item">
+                        <span class="stat-number">-</span>
+                        <span class="stat-label">Followers</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number">-</span>
+                        <span class="stat-label">Following</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number">-</span>
+                        <span class="stat-label">Posts</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number">-</span>
+                        <span class="stat-label">Photos</span>
+                    </div>
+                </div>
+                
+                <!-- Social Actions -->
+                <div class="social-actions">
+                    <button class="btn btn-follow btn-social follow-btn" 
+                            data-username="{{ profile_user.username }}"
+                            onclick="handleFollow('{{ profile_user.username }}')">
+                        <i class="fas fa-user-plus"></i> Follow
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Limited Info Cards -->
+    <div class="info-cards">
+        <!-- Basic Info Card -->
+        <div class="info-card limited-card">
+            <div class="card-header">
+                <i class="fas fa-info-circle"></i>
+                <h3>Basic Information</h3>
+            </div>
+            <div class="card-content">
+                <div class="info-item">
+                    <i class="fas fa-calendar-alt"></i>
+                    <span>Member since {{ profile_user.date_joined|date:"F Y" }}</span>
+                </div>
+                <div class="info-item">
+                    <i class="fas fa-shield-alt"></i>
+                    <span>Account: Private</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Unlock Card -->
+        <div class="info-card unlock-card">
+            <div class="card-header">
+                <i class="fas fa-lock-open"></i>
+                <h3>Unlock Full Profile</h3>
+            </div>
+            <div class="card-content unlock-content">
+                <p>To see more information about this user, you need to follow them first.</p>
+                <ol class="unlock-steps">
+                    <li><i class="fas fa-user-plus"></i> Send a follow request</li>
+                    <li><i class="fas fa-clock"></i> Wait for approval</li>
+                    <li><i class="fas fa-eye"></i> View their full profile</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Hidden Content Notice -->
+    <div class="hidden-content-notice">
+        <div class="notice-content">
+            <i class="fas fa-eye-slash"></i>
+            <h5>Content Hidden</h5>
+            <p>This user's posts, bio, and detailed information are hidden until you follow them.</p>
+        </div>
+    </div>
+    
+    <!-- Future: Posts Section (Hidden) -->
+    <div class="posts-section">
+        <div class="section-header">
+            <h3 class="section-title">
+                <i class="fas fa-images"></i> Posts
+            </h3>
+            <p class="section-subtitle">Follow this user to see their posts</p>
+        </div>
+        <div class="posts-grid">
+            <div class="post-placeholder">
+                <i class="fas fa-lock"></i>
+                <span>Posts are private</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CSRF Token for AJAX requests -->
+{% csrf_token %}

@@ -1,302 +1,1293 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
 {% load static %}
-{% load datetime_tags %}
 
 {% block title %}
     {% if profile_user %}
-        {{ profile_user.username }}'s Profile - Shuttrly
+        {{ profile_user.username }} - Shuttrly
     {% else %}
-        User Profile - Shuttrly
+        User Not Found - Shuttrly
     {% endif %}
 {% endblock %}
 
-{% block head %}
-    {{ block.super }}
-    <link rel="stylesheet" href="{% static 'css/users.css' %}">
-{% endblock %}
-
 {% block content %}
-<div class="container-bc">
-    <div class="container-fluid">
+<div class="profile-page-container">
         {% if user_not_found %}
-            <!-- User not found -->
-            <div class="profile-container-fluid">
-                <div class="profile-not-found-fluid text-center">
-                    <div class="profile-avatar-fluid">
-                        <div class="profile-picture-placeholder-fluid">
-                            <i class="fas fa-user-slash fa-3x"></i>
+        <!-- User not found state -->
+        <div class="profile-not-found">
+            <div class="not-found-content">
+                <div class="not-found-icon">
+                    <i class="fas fa-user-slash"></i>
                         </div>
-                    </div>
-                    <div class="profile-info-fluid">
-                        <h1 class="profile-name-fluid">User Not Found</h1>
-                        <p class="profile-username-fluid">@{{ username }}</p>
-                        <p class="profile-email-fluid">The user "{{ username }}" could not be found or may have been deleted.</p>
-                        <div class="profile-actions-fluid">
+                <h1 class="not-found-title">User Not Found</h1>
+                <p class="not-found-message">The user "@{{ username }}" could not be found or may have been deleted.</p>
+                <div class="not-found-actions">
                             <a href="{% url 'home' %}" class="btn btn-primary">
                                 <i class="fas fa-home"></i> Go Home
                             </a>
                         </div>
                     </div>
                 </div>
-            </div>
-        {% elif is_private and show_limited_info %}
-            <!-- Private profile - Limited info display -->
-            <div class="profile-container-fluid">
-                <div class="profile-header-fluid">
-                    <div class="profile-avatar-fluid">
-                        {% if profile_user.profile_picture %}
-                            <img src="{{ profile_user.profile_picture.url }}" 
-                                 alt="{{ profile_user.username }}'s profile picture" 
-                                 class="profile-picture-fluid">
+    {% elif profile_user %}
+        <!-- Profile exists - determine display mode -->
+        {% if can_edit %}
+            <!-- Own profile - full access -->
+            {% include "users/profile_sections/own_profile.html" %}
+        {% elif can_see_full_profile %}
+            <!-- Public profile or private profile with access -->
+            {% include "users/profile_sections/public_profile.html" %}
                         {% else %}
-                            <div class="profile-picture-placeholder-fluid">
-                                <i class="fas fa-user"></i>
-                            </div>
-                        {% endif %}
-                    </div>
-                    
-                    <div class="profile-info-fluid">
-                        <div class="profile-name-section">
-                            <h1 class="profile-name-fluid">
-                                {% if profile_user.first_name and profile_user.last_name %}
-                                    {{ profile_user.first_name }} {{ profile_user.last_name }}
-                                {% else %}
-                                    {{ profile_user.username }}
-                                {% endif %}
-                            </h1>
-                            <p class="profile-username-fluid">@{{ profile_user.username }}</p>
-                            
-                        </div>
-                        
-                        <div class="profile-bio-fluid">
-                            <p><i class="fas fa-lock text-warning"></i> This profile is private. Only basic information is visible.</p>
-                        </div>
-                        
-                        <!-- Social Actions for Private Profiles -->
-                        {% if request.user.is_authenticated and request.user != profile_user %}
-                            <div class="profile-social-actions-fluid">
-                                <button class="btn btn-primary btn-sm follow-btn" data-username="{{ profile_user.username }}">
-                                    <i class="fas fa-user-plus"></i> Follow
-                                </button>
-                                <button class="btn btn-outline-primary btn-sm message-btn" data-username="{{ profile_user.username }}">
-                                    <i class="fas fa-envelope"></i> Message
-                                </button>
-                            </div>
-                        {% elif not request.user.is_authenticated %}
-                            <div class="profile-social-actions-fluid">
-                                <a href="{% url 'login' %}" class="btn btn-primary btn-sm">
-                                    <i class="fas fa-user-plus"></i> Follow
-                                </a>
-                                <a href="{% url 'login' %}" class="btn btn-outline-primary btn-sm">
-                                    <i class="fas fa-envelope"></i> Message
-                                </a>
-                            </div>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-        {% elif is_private %}
-            <!-- Private profile - No access -->
-            <div class="profile-container-fluid">
-                <div class="profile-private-fluid text-center">
-                    <div class="profile-avatar-fluid">
-                        <div class="profile-picture-placeholder-fluid">
-                            <i class="fas fa-lock fa-3x"></i>
-                        </div>
-                    </div>
-                    <div class="profile-info-fluid">
-                        <h1 class="profile-name-fluid">Profile is Private</h1>
-                        <p class="profile-username-fluid">@{{ username }}</p>
-                        <p class="profile-email-fluid">The profile of "{{ username }}" is set to private and cannot be viewed.</p>
-                        <div class="profile-actions-fluid">
-                            <a href="{% url 'home' %}" class="btn btn-primary">
-                                <i class="fas fa-home"></i> Go Home
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        {% elif profile_user %}
-            <!-- Public profile display - Modern fluid style -->
-            <div class="profile-container-fluid">
-                <!-- Profile Header - Fluid design -->
-                <div class="profile-header-fluid">
-                    <div class="profile-avatar-fluid">
-                        {% if profile_user.profile_picture %}
-                            <img src="{{ profile_user.profile_picture.url }}" 
-                                 alt="{{ profile_user.username }}'s profile picture" 
-                                 class="profile-picture-fluid">
-                        {% else %}
-                            <div class="profile-picture-placeholder-fluid">
-                                <i class="fas fa-user"></i>
-                            </div>
-                        {% endif %}
-                    </div>
-                    
-                    <div class="profile-info-fluid">
-                        <div class="profile-name-section">
-                            <h1 class="profile-name-fluid">
-                                {% if profile_user.first_name and profile_user.last_name %}
-                                    {{ profile_user.first_name }} {{ profile_user.last_name }}
-                                {% else %}
-                                    {{ profile_user.username }}
-                                {% endif %}
-                            </h1>
-                            <div>
-                                <p class="profile-username-fluid">@{{ profile_user.username }}</p>
-                                <span class="stat-number-fluid">
-                                    {% if profile_user.is_online %}
-                                        <span class="status-indicator online">
-                                            <i class="fas fa-circle"></i> Online
-                                        </span>
-                                    {% else %}
-                                        <span class="status-indicator offline">
-                                            <i class="fas fa-circle"></i> Offline
-                                        </span>
-                                    {% endif %}
-                                </span>
-                            </div>
-                        </div>
-                    
-                        
-                        {% if profile_user.bio %}
-                            <div class="profile-bio-fluid">
-                                <p>{{ profile_user.bio }}</p>
-                            </div>
-                        {% endif %}
-                        
-                        <!-- Profile Stats - Fluid layout -->
-                        <div class="profile-stats-fluid">
-                            <div class="stat-item-fluid">
-                                <span class="stat-number-fluid">{{ profile_user.date_joined|date:"Y" }}</span>
-                                <span class="stat-label-fluid">Joined</span>
-                            </div>
-                            <div class="stat-item-fluid">
-                                <span class="stat-number-fluid">
-                                    {% if profile_user.is_private %}
-                                        <i class="fas fa-lock"></i>
-                                    {% else %}
-                                        <i class="fas fa-globe"></i>
-                                    {% endif %}
-                                </span>
-                                <span class="stat-label-fluid">
-                                    {% if profile_user.is_private %}Private{% else %}Public{% endif %}
-                                </span>
-                            </div>
-                        </div>
-                        
-                        <!-- Social Actions - Follow and Message buttons -->
-                        {% if not can_edit and request.user.is_authenticated %}
-                            <div class="profile-social-actions-fluid">
-                                <button class="btn btn-primary btn-sm follow-btn" data-username="{{ profile_user.username }}">
-                                    <i class="fas fa-user-plus"></i> Follow
-                                </button>
-                                <button class="btn btn-outline-primary btn-sm message-btn" data-username="{{ profile_user.username }}">
-                                    <i class="fas fa-envelope"></i> Message
-                                </button>
-                            </div>
-                        {% elif not can_edit and not request.user.is_authenticated %}
-                            <div class="profile-social-actions-fluid">
-                                <a href="{% url 'login' %}" class="btn btn-primary btn-sm">
-                                    <i class="fas fa-user-plus"></i> Follow
-                                </a>
-                                <a href="{% url 'login' %}" class="btn btn-outline-primary btn-sm">
-                                    <i class="fas fa-envelope"></i> Message
-                                </a>
-                            </div>
-                        {% endif %}
-                        
-                        {% if can_edit %}
-                            <div class="profile-actions-fluid">
-                                <a href="{% url 'public_profile' %}" class="btn btn-outline-primary btn-sm">
-                                    <i class="fas fa-edit"></i> Edit Profile
-                                </a>
-                                <a href="{% url 'profile' %}" class="btn btn-outline-secondary btn-sm">
-                                    <i class="fas fa-cog"></i> Settings
-                                </a>
-                            </div>
-                        {% endif %}
-                    </div>
-                </div>
-
-                <!-- Additional Info - Fluid cards -->
-                <div class="profile-info-cards-fluid">
-                    {% if profile_user.first_name or profile_user.last_name or profile_user.last_login_date %}
-                        <div class="info-card-fluid">
-                            <div class="info-content-fluid">
-                                {% if profile_user.first_name or profile_user.last_name %}
-                                    <div class="info-item-fluid">
-                                        <i class="fas fa-user-circle"></i>
-                                        <span class="info-text-fluid">
-                                            {% if profile_user.first_name and profile_user.last_name %}
-                                                {{ profile_user.first_name }} {{ profile_user.last_name }}
-                                            {% elif profile_user.first_name %}
-                                                {{ profile_user.first_name }}
-                                            {% elif profile_user.last_name %}
-                                                {{ profile_user.last_name }}
-                                            {% endif %}
-                                        </span>
-                                    </div>
-                                {% endif %}
-                                
-                                {% if profile_user.last_login_date %}
-                                    <div class="info-item-fluid">
-                                        <i class="fas fa-clock"></i>
-                                        <span class="info-text-fluid">Last seen {{ profile_user.last_login_date|format_date }}</span>
-                                    </div>
-                                {% endif %}
-                                
-                                <div class="info-item-fluid">
-                                    <i class="fas fa-calendar-alt"></i>
-                                    <span class="info-text-fluid">Member since {{ profile_user.date_joined|format_date }}</span>
-                                </div>
-                            </div>
-                        </div>
-                    {% endif %}
-                </div>
-
-                <!-- Future: Posts Section (Placeholder) -->
-                <div class="posts-section-fluid">
-                    <div class="section-header-fluid">
-                        <h3 class="section-title-fluid">
-                            <i class="fas fa-images"></i> Posts
-                        </h3>
-                        <p class="section-subtitle-fluid">Coming soon - Photo sharing functionality</p>
-                    </div>
-                    <div class="posts-grid-fluid">
-                        <div class="post-placeholder-fluid">
-                            <i class="fas fa-image"></i>
-                            <span>Future</span>
-                        </div>
-                        <div class="post-placeholder-fluid">
-                            <i class="fas fa-image"></i>
-                            <span>Feature</span>
-                        </div>
-                        <div class="post-placeholder-fluid">
-                            <i class="fas fa-image"></i>
-                            <span>Coming</span>
-                        </div>
-                        <div class="post-placeholder-fluid">
-                            <i class="fas fa-image"></i>
-                            <span>Soon</span>
-                        </div>
-                        <div class="post-placeholder-fluid">
-                            <i class="fas fa-image"></i>
-                            <span>Soon</span>
-                        </div>
-                        <div class="post-placeholder-fluid">
-                            <i class="fas fa-image"></i>
-                            <span>Soon</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <!-- Private profile without access -->
+            {% include "users/profile_sections/private_profile.html" %}
         {% endif %}
-    </div>
-</div>
+                        {% endif %}
+                    </div>
+                    
+
+
+<!-- Follow Requests Modal -->
+{% if can_edit and profile_user.is_private %}
+<div class="modal fade" id="followRequestsModal" tabindex="-1" aria-labelledby="followRequestsModalLabel">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="followRequestsModalLabel">
+                    <i class="fas fa-user-clock"></i> Follow Requests
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+            <div class="modal-body">
+                <div id="follow-requests-container">
+                    <div class="text-center text-muted">
+                        <i class="fas fa-spinner fa-spin"></i> Loading requests...
+                    </div>
+                </div>
+                        </div>
+                    </div>
+                </div>
+                            </div>
+                        {% endif %}
 {% endblock %}
 
-{% block scripts %}
-    {{ block.super }}
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+{% block extra_css %}
+<style>
+    /* Profile page container - Full width on desktop */
+    .profile-page-container {
+        width: 100%;
+        max-width: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    /* Profile sections */
+    .profile-section {
+        width: 100%;
+        background: transparent;
+        border: none;
+        margin: 0;
+        overflow: visible;
+    }
+
+    /* Profile header - Facebook style with banner */
+    .profile-header {
+        width: 100%;
+        min-height: 350px;
+        position: relative;
+        overflow: hidden;
+        border-bottom: 1px solid var(--text-200);
+    }
+
+    /* Profile banner */
+    .profile-banner {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 300px;
+        overflow: hidden;
+        z-index: 1;
+        transition: all 0.3s ease;
+    }
+
+    .banner-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.3s ease;
+    }
+
+    .banner-img:hover {
+        transform: scale(1.02);
+    }
+
+    .banner-placeholder {
+        width: 100%;
+        height: 100%;
+        background: var(--gradient-primary);
+        animation: none;
+    }
+
+    @keyframes gradientShift {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+    }
+
+    /* Profile content overlay - Normal container */
+    .profile-content {
+        position: relative;
+        z-index: 2;
+        padding: 2rem;
+        min-height: 350px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        transition: all 0.3s ease;
+    }
+
+    /* Profile avatar - Normal positioning in container */
+    .profile-avatar {
+        margin-bottom: 2rem;
+        aspect-ratio: 1;
+    }
+
+    .avatar-img {
+        width: 168px;
+        height: 168px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 4px solid var(--background-default);
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .avatar-img:hover {
+        transform: scale(1.05);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+    }
+
+    .avatar-placeholder {
+        width: 168px;
+        height: 168px;
+        border-radius: 50%;
+        background: var(--text-200);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 4px solid var(--background-default);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .avatar-placeholder i {
+        font-size: 3rem;
+        color: var(--text-400);
+    }
+
+    /* Profile info - Centered in container */
+    .profile-info {
+        text-align: center;
+        max-width: 600px;
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+        align-items: center;
+    }
+
+    .profile-name-section {
+        text-align: left;
+        margin-bottom: 1.5rem;
+    }
+
+    .profile-name {
+        color: var(--text-default);
+        font-family: 'Tan_Nimbus';
+        font-size: 2.5rem;
+        margin: 0 0 0.5rem 0;
+        letter-spacing: 0.1rem;
+        line-height: 1.2;
+    }
+
+    .profile-username {
+        color: var(--text-600);
+        font-size: 1.25rem;
+        margin: 0;
+        font-weight: 500;
+    }
+
+    .online-status {
+        margin-top: 1rem;
+    }
+
+    .status-indicator {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        border-radius: 1.5rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+
+    .status-indicator.online {
+        background: var(--primary-100);
+        color: var(--primary-700);
+    }
+
+    .status-indicator.offline {
+        background: var(--text-100);
+        color: var(--text-600);
+    }
+
+    .status-indicator i {
+        font-size: 0.75rem;
+    }
+
+    /* Profile bio */
+    .profile-bio {
+        margin: 1.5rem 0;
+        max-width: 600px;
+    }
+
+    .profile-bio p {
+        color: var(--text-default);
+        font-size: 1.125rem;
+        line-height: 1.6;
+        margin: 0;
+    }
+
+    .text-muted {
+        color: var(--text-500) !important;
+    }
+
+    .text-link {
+        color: var(--primary-default);
+        text-decoration: none;
+        font-weight: 500;
+    }
+
+    .text-link:hover {
+        text-decoration: underline;
+    }
+
+    /* Social stats - Horizontal grid with relevant info */
+    .social-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 1.5rem;
+        margin: 2rem 0;
+        padding: 2rem;
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: 1rem;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        max-width: 700px;
+    }
+
+
+
+    .stat-item {
+        text-align: center;
+        padding: 1.5rem 1rem;
+        background: rgba(255, 255, 255, 0.02);
+        border-radius: 0.75rem;
+        transition: all 0.3s ease;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .stat-item:hover {
+        background: rgba(255, 255, 255, 0.05);
+        transform: translateY(-2px);
+    }
+
+    .stat-number {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: var(--primary-default);
+        display: block;
+        margin-bottom: 0.5rem;
+    }
+
+    .stat-label {
+        font-size: 0.875rem;
+        color: var(--text-600);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-weight: 500;
+    }
+
+    .limited-stats .stat-number {
+        color: var(--text-400);
+    }
+
+    /* Social actions */
+    .social-actions {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+        margin: 1.5rem 0;
+    }
+
+    .btn-social {
+        position: relative;
+        transition: all 0.3s ease;
+        min-width: 160px;
+        padding: 1rem 2rem;
+        font-weight: 600;
+        border-radius: 0.75rem;
+        border: none;
+        font-size: 1rem;
+    }
+
+    .btn-social:hover {
+        transform: translateY(-2px);
+    }
+
+    .btn-follow {
+        background: var(--gradient-primary);
+        color: white;
+    }
+
+    .btn-following {
+        background: linear-gradient(135deg, var(--text-400), var(--text-500));
+        color: white;
+    }
+
+    .btn-close-friend {
+        background: linear-gradient(135deg, var(--primary-400), var(--primary-500));
+        color: white;
+    }
+
+    .btn-close-friend-active {
+        background: linear-gradient(135deg, var(--accent-400), var(--accent-500));
+        color: white;
+    }
+
+    .btn-outline-primary {
+        background: transparent;
+        color: var(--primary-default);
+        border: 2px solid var(--primary-default);
+    }
+
+    .btn-outline-primary:hover {
+        background: var(--primary-default);
+        color: white;
+    }
+
+    .btn-outline-secondary {
+        background: transparent;
+        color: var(--text-600);
+        border: 2px solid var(--text-400);
+    }
+
+    .btn-outline-secondary:hover {
+        background: var(--text-400);
+        color: white;
+    }
+
+    /* Profile actions */
+    .profile-actions {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+        margin: 1.5rem 0;
+    }
+
+    /* Badge styling for follow requests count */
+    .badge {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.5rem;
+        font-weight: 600;
+    }
+
+    .bg-primary {
+        background-color: var(--primary-default) !important;
+        color: white !important;
+    }
+
+    /* Info cards - Full width grid */
+    .info-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+        gap: 2rem;
+        padding: 3rem 2rem;
+        max-width: 1400px;
+        margin: 0 auto;
+        width: 100%;
+    }
+
+    .info-card {
+        background: rgba(255, 255, 255, 0.02);
+        border-radius: 1rem;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        overflow: hidden;
+        transition: all 0.3s ease;
+    }
+
+    .info-card:hover {
+        background: rgba(255, 255, 255, 0.05);
+        transform: translateY(-3px);
+    }
+
+    .card-header {
+        background: rgba(255, 255, 255, 0.03);
+        padding: 1.5rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .card-header i {
+        font-size: 1.25rem;
+        color: var(--primary-default);
+    }
+
+    .card-header h3 {
+        color: var(--text-default);
+        margin: 0;
+        font-size: 1.25rem;
+        font-weight: 600;
+    }
+
+    .card-content {
+        padding: 1.5rem;
+    }
+
+    .info-item {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .info-item:last-child {
+        border-bottom: none;
+    }
+
+    .info-item i {
+        width: 1.5rem;
+        color: var(--text-500);
+        font-size: 1rem;
+    }
+
+    .info-item span {
+        color: var(--text-default);
+        font-weight: 500;
+    }
+
+    /* Privacy notice */
+    .privacy-notice {
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 0.75rem;
+        padding: 1rem;
+        margin: 1rem 0;
+    }
+
+    .notice-content {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        color: var(--text-600);
+        font-size: 0.875rem;
+    }
+
+    .notice-content i {
+        color: var(--primary-default);
+        font-size: 1rem;
+    }
+
+    /* Private account notice */
+    .private-account-notice {
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 1rem;
+        padding: 2rem;
+        text-align: center;
+        margin: 1.5rem 0;
+    }
+
+    .private-account-notice .notice-content {
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .private-account-notice i {
+        font-size: 3rem;
+        color: var(--text-400);
+        margin-bottom: 1rem;
+    }
+
+    .private-account-notice h5 {
+        color: var(--text-default);
+        margin: 0 0 0.5rem 0;
+        font-size: 1.5rem;
+        font-weight: 600;
+    }
+
+    .private-account-notice p {
+        color: var(--text-600);
+        margin: 0;
+        font-size: 1.125rem;
+        line-height: 1.6;
+    }
+
+    /* Privacy status */
+    .privacy-status {
+        text-align: left;
+    }
+
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        border-radius: 1rem;
+        font-weight: 600;
+        font-size: 0.875rem;
+        margin-bottom: 1rem;
+    }
+
+    .status-badge.private {
+        background: var(--text-100);
+        color: var(--text-700);
+    }
+
+    .status-badge.public {
+        background: var(--primary-100);
+        color: var(--primary-700);
+    }
+
+    .privacy-description {
+        color: var(--text-600);
+        font-size: 0.875rem;
+        line-height: 1.6;
+        margin: 0;
+    }
+
+    /* Limited card */
+    .limited-card {
+        opacity: 0.8;
+    }
+
+    .unlock-card {
+        background: rgba(255, 255, 255, 0.03);
+        border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .unlock-content p {
+        color: var(--text-600);
+        margin-bottom: 1rem;
+        font-weight: 500;
+    }
+
+    .unlock-steps {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .unlock-steps li {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.5rem 0;
+        color: var(--text-600);
+        font-size: 0.875rem;
+    }
+
+    .unlock-steps li i {
+        color: var(--primary-default);
+        width: 1rem;
+        font-size: 1rem;
+    }
+
+    /* Hidden content notice */
+    .hidden-content-notice {
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 1rem;
+        padding: 2rem;
+        text-align: center;
+        margin: 2rem;
+    }
+
+    .hidden-content-notice .notice-content {
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .hidden-content-notice i {
+        font-size: 3rem;
+        color: var(--text-400);
+        margin-bottom: 1rem;
+    }
+
+    .hidden-content-notice h5 {
+        color: var(--text-default);
+        margin: 0 0 0.5rem 0;
+        font-size: 1.5rem;
+        font-weight: 600;
+    }
+
+    .hidden-content-notice p {
+        color: var(--text-600);
+        margin: 0;
+        font-size: 1.125rem;
+        line-height: 1.6;
+    }
+
+    /* Posts section */
+    .posts-section {
+        padding: 3rem 2rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.05);
+        max-width: 1400px;
+        margin: 0 auto;
+        width: 100%;
+    }
+
+    .section-header {
+        text-align: center;
+        margin-bottom: 3rem;
+    }
+
+    .section-title {
+        color: var(--text-default);
+        font-size: 2rem;
+        font-weight: 600;
+        margin: 0 0 1rem 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.75rem;
+    }
+
+    .section-title i {
+        color: var(--primary-default);
+    }
+
+    .section-subtitle {
+        color: var(--text-500);
+        margin: 0;
+        font-size: 1.125rem;
+    }
+
+    .posts-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .post-placeholder {
+        aspect-ratio: 1;
+        background: rgba(255, 255, 255, 0.02);
+        border: 2px dashed rgba(255, 255, 255, 0.1);
+        border-radius: 0.75rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        color: var(--text-400);
+        font-size: 0.875rem;
+        transition: all 0.3s ease;
+    }
+
+    .post-placeholder:hover {
+        background: rgba(255, 255, 255, 0.05);
+        border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .post-placeholder i {
+        font-size: 2rem;
+        color: var(--text-300);
+    }
+
+    /* Follow requests modal */
+    .follow-request-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1rem;
+        background: rgba(255, 255, 255, 0.02);
+        border-radius: 0.75rem;
+        margin-bottom: 1rem;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .request-user-info {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .user-avatar {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        overflow: hidden;
+    }
+
+    .avatar-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .avatar-placeholder {
+        width: 100%;
+        height: 100%;
+        background: var(--text-200);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-400);
+    }
+
+    .user-details h6 {
+        color: var(--text-default);
+        margin: 0 0 0.25rem 0;
+        font-weight: 600;
+    }
+
+    .user-username {
+        color: var(--text-600);
+        margin: 0 0 0.5rem 0;
+        font-size: 0.875rem;
+    }
+
+    .request-message {
+        color: var(--text-500);
+        margin: 0;
+        font-size: 0.875rem;
+        font-style: italic;
+    }
+
+    .request-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .btn-accept-request {
+        background: var(--primary-default);
+        border: none;
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 0.5rem;
+        font-size: 0.875rem;
+        transition: all 0.3s ease;
+    }
+
+    .btn-accept-request:hover {
+        background: var(--primary-600);
+        transform: translateY(-1px);
+    }
+
+    .btn-reject-request {
+        background: var(--text-500);
+        border: none;
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 0.5rem;
+        font-size: 0.875rem;
+        transition: all 0.3s ease;
+    }
+
+    .btn-reject-request:hover {
+        background: var(--text-600);
+        transform: translateY(-1px);
+    }
+
+    /* Not found state */
+    .profile-not-found {
+        text-align: center;
+        padding: 4rem 2rem;
+        background: rgba(255, 255, 255, 0.02);
+        border-radius: 1rem;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        max-width: 600px;
+        margin: 3rem auto;
+    }
+
+    .not-found-icon {
+        font-size: 4rem;
+        color: var(--text-400);
+        margin-bottom: 1.5rem;
+    }
+
+    .not-found-title {
+        color: var(--text-default);
+        font-family: 'Tan_Nimbus';
+        font-size: 2.5rem;
+        margin-bottom: 1rem;
+        letter-spacing: 0.1rem;
+    }
+
+    .not-found-message {
+        color: var(--text-600);
+        font-size: 1.125rem;
+        margin-bottom: 2rem;
+        line-height: 1.6;
+    }
+
+    .not-found-actions .btn {
+        background: var(--gradient-primary);
+        border: none;
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+        border-radius: 0.75rem;
+        transition: all 0.3s ease;
+    }
+
+    .not-found-actions .btn:hover {
+        transform: translateY(-2px);
+    }
+
+    /* Toast styling */
+    .toast {
+        background: var(--background-default);
+        border: 1px solid var(--text-200);
+        color: var(--text-default);
+        border-radius: 0.75rem;
+    }
+
+    .toast-header {
+        background: var(--background-100);
+        border-bottom: 1px solid var(--text-200);
+        color: var(--text-default);
+    }
+
+    /* Modal styling */
+    .modal-content {
+        background: var(--background-default);
+        border: 1px solid var(--text-200);
+        color: var(--text-default);
+        border-radius: 1rem;
+    }
+
+    .modal-header {
+        background: var(--background-100);
+        border-bottom: 1px solid var(--text-200);
+        color: var(--text-default);
+    }
+
+    .modal-title {
+        color: var(--text-default);
+    }
+
+    /* Responsive design */
+    @media (max-width: 1200px) {
+        .info-cards {
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            padding: 2rem 1.5rem;
+        }
+        
+        .social-stats {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            padding: 1.5rem;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .profile-header {
+            min-height: auto;
+        }
+        
+        .profile-banner {
+            height: 200px;
+        }
+        
+        .profile-content {
+            padding: 0 1rem 1.5rem 1rem;
+            min-height: auto;
+        }
+        
+        .profile-avatar {
+            position: relative;
+            bottom: auto;
+            left: auto;
+            margin: 0 auto 1.5rem auto;
+            transform: translateY(-50px);
+        }
+        
+        .avatar-img,
+        .avatar-placeholder {
+            width: 120px;
+            height: 120px;
+        }
+        
+        .profile-info {
+            text-align: center;
+        }
+        
+        .profile-name {
+            font-size: 2rem;
+        }
+        
+        .social-stats {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            padding: 1.5rem;
+            max-width: 500px;
+            margin: 1.5rem auto;
+        }
+        
+        .info-cards {
+            grid-template-columns: 1fr;
+            padding: 2rem 1rem;
+            gap: 1.5rem;
+        }
+        
+        .social-actions {
+            justify-content: center;
+        }
+        
+        .btn-social {
+            min-width: 140px;
+            padding: 0.875rem 1.75rem;
+        }
+        
+        .not-found-title {
+            font-size: 2rem;
+        }
+        
+        .profile-not-found {
+            padding: 3rem 1.5rem;
+            margin: 2rem 1rem;
+        }
+        
+        .posts-section {
+            padding: 2rem 1rem;
+        }
+        
+        .posts-grid {
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        }
+    }
+
+    @media (max-width: 480px) {
+        .profile-header {
+            min-height: auto;
+        }
+        
+        .profile-banner {
+            height: 150px;
+        }
+        
+        .profile-content {
+            padding: 0 1rem 1rem 1rem;
+        }
+        
+        .profile-avatar {
+            transform: translateY(-30px);
+        }
+        
+        .profile-name {
+            font-size: 1.5rem;
+        }
+        
+        .avatar-img,
+        .avatar-placeholder {
+            width: 80px;
+            height: 80px;
+        }
+        
+        .social-stats {
+            grid-template-columns: 1fr;
+            max-width: 400px;
+            padding: 1rem;
+        }
+        
+        .social-actions {
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .btn-social {
+            width: 100%;
+            max-width: 250px;
+        }
+        
+        .info-cards {
+            padding: 1.5rem 1rem;
+        }
+        
+        .card-header {
+            padding: 1.5rem;
+        }
+        
+        .card-content {
+            padding: 1.5rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Global variables
+    const currentUsername = '{{ profile_user.username|default:"" }}';
+    const isOwnProfile = {{ can_edit|yesno:"true,false" }};
+    const canSeeFullProfile = {{ can_see_full_profile|yesno:"true,false" }};
+    const isPrivateProfile = {{ profile_user.is_private|yesno:"true,false" }};
+
+    // CSRF token for AJAX requests
+    function getCSRFToken() {
+        const tokenElement = document.querySelector('[name=csrfmiddlewaretoken]');
+        if (tokenElement) {
+            return tokenElement.value;
+        }
+        
+        // Fallback: try to get from cookie
+        const cookies = document.cookie.split(';');
+        for (let cookie of cookies) {
+            const [name, value] = cookie.trim().split('=');
+            if (name === 'csrftoken') {
+                return value;
+            }
+        }
+        
+        console.warn('CSRF token not found');
+        return '';
+    }
+
+    // Use global toast and error handling functions
+    const showToast = window.showToast;
+    const handleAjaxError = window.handleAjaxError;
+
+    // Initialize profile functionality
+    document.addEventListener('DOMContentLoaded', function() {
+        // Load initial relationship status if not own profile
+        if (!isOwnProfile && currentUsername) {
+            loadRelationshipStatus();
+        }
+        
+        // Load follow requests if own private profile
+        if (isOwnProfile && isPrivateProfile) {
+            loadFollowRequests();
+        }
+    });
+
+    // Load relationship status
+    function loadRelationshipStatus() {
+        fetch(`/ajax/get-relationship-status/?username=${currentUsername}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    updateUI(currentUsername, data.relationship_data);
+                }
+            })
+            .catch(error => {
+                console.error('Error loading relationship status:', error);
+            });
+    }
+
+    // Load follow requests
+    function loadFollowRequests() {
+        fetch('/ajax/get-follow-requests/', {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayFollowRequests(data.requests);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading follow requests:', error);
+        });
+    }
+
+    // Display follow requests
+    function displayFollowRequests(requests) {
+        const container = document.getElementById('follow-requests-container');
+        
+        if (requests.length === 0) {
+            container.innerHTML = `
+                <div class="text-center text-muted py-4">
+                    <i class="fas fa-inbox fa-2x mb-3"></i>
+                    <p>No pending follow requests</p>
+                </div>
+            `;
+            return;
+        }
+        
+        let html = '';
+        requests.forEach(request => {
+            html += `
+                <div class="follow-request-item" data-username="${request.from_user.username}">
+                    <div class="request-user-info">
+                        <div class="user-avatar">
+                            ${request.from_user.profile_picture_url ? 
+                                `<img src="${request.from_user.profile_picture_url}" alt="${request.from_user.username}" class="avatar-img">` :
+                                `<div class="avatar-placeholder"><i class="fas fa-user"></i></div>`
+                            }
+                        </div>
+                        <div class="user-details">
+                            <h6 class="user-name">${request.from_user.first_name} ${request.from_user.last_name}</h6>
+                            <p class="user-username">@${request.from_user.username}</p>
+                            ${request.message ? `<p class="request-message">"${request.message}"</p>` : ''}
+                        </div>
+                    </div>
+                    <div class="request-actions">
+                        <button class="btn btn-success btn-sm accept-request" onclick="handleFollowRequest('${request.from_user.username}', 'accept')">
+                            <i class="fas fa-check"></i> Accept
+                        </button>
+                        <button class="btn btn-danger btn-sm reject-request" onclick="handleFollowRequest('${request.from_user.username}', 'reject')">
+                            <i class="fas fa-times"></i> Reject
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+        
+        container.innerHTML = html;
+    }
+
+    // Handle follow request response
+    function handleFollowRequest(username, action) {
+        fetch('/ajax/handle-follow-request/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': getCSRFToken(),
+            },
+            body: `username=${encodeURIComponent(username)}&action=${encodeURIComponent(action)}`
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast('Success', data.message, 'success');
+                // Reload follow requests
+                loadFollowRequests();
+                // Reload relationship status if viewing own profile
+                if (!isOwnProfile) {
+                    loadRelationshipStatus();
+                }
+            } else {
+                showToast('Error', data.message, 'error');
+            }
+        })
+        .catch(error => handleAjaxError(error, 'Error handling follow request'));
+    }
+
+    // Update UI based on relationship data
+    function updateUI(username, relationshipData) {
+        // Update follow button
+        const followBtn = document.querySelector(`.follow-btn[data-username="${username}"]`);
+        if (followBtn) {
+            if (relationshipData.is_following) {
+                followBtn.innerHTML = '<i class="fas fa-user-check"></i> Following';
+                followBtn.className = 'btn btn-following btn-social follow-btn';
+                followBtn.disabled = false;
+            } else if (relationshipData.follow_request_status === 'pending') {
+                followBtn.innerHTML = '<i class="fas fa-clock"></i> Request Sent';
+                followBtn.className = 'btn btn-secondary btn-social follow-btn';
+                followBtn.disabled = true;
+            } else if (relationshipData.follow_request_status === 'rejected') {
+                followBtn.innerHTML = '<i class="fas fa-user-plus"></i> Follow';
+                followBtn.className = 'btn btn-follow btn-social follow-btn';
+                followBtn.disabled = false;
+            } else {
+                followBtn.innerHTML = '<i class="fas fa-user-plus"></i> Follow';
+                followBtn.className = 'btn btn-follow btn-social follow-btn';
+                followBtn.disabled = false;
+            }
+        }
+
+        // Update close friend button
+        const closeFriendBtn = document.querySelector(`.close-friend-btn[data-username="${username}"]`);
+        if (closeFriendBtn) {
+            if (relationshipData.is_close_friend) {
+                closeFriendBtn.innerHTML = '<i class="fas fa-heart"></i> Close Friend';
+                closeFriendBtn.className = 'btn btn-close-friend-active btn-social close-friend-btn';
+                closeFriendBtn.style.display = 'inline-block';
+            } else if (relationshipData.can_close_friend) {
+                closeFriendBtn.innerHTML = '<i class="fas fa-heart"></i> Add to Close Friends';
+                closeFriendBtn.className = 'btn btn-close-friend btn-social close-friend-btn';
+                closeFriendBtn.style.display = 'inline-block';
+            } else {
+                closeFriendBtn.style.display = 'none';
+            }
+        }
+
+        // Update social stats
+        updateSocialStats(username, relationshipData);
+    }
+
+    // Update social statistics
+    function updateSocialStats(username, relationshipData) {
+        const followersCount = document.getElementById(`followers-count-${username}`);
+        const followingCount = document.getElementById(`following-count-${username}`);
+        const friendsCount = document.getElementById(`friends-count-${username}`);
+        const closeFriendsCount = document.getElementById(`close-friends-count-${username}`);
+        const followRequestsCount = document.getElementById('follow-requests-count');
+
+        if (followersCount) followersCount.textContent = relationshipData.followers_count;
+        if (followingCount) followingCount.textContent = relationshipData.following_count;
+        if (friendsCount) friendsCount.textContent = relationshipData.friends_count;
+        if (closeFriendsCount) closeFriendsCount.textContent = relationshipData.close_friends_count;
+        
+        // Update follow requests count if available
+        if (followRequestsCount && relationshipData.follow_requests_count !== undefined) {
+            followRequestsCount.textContent = relationshipData.follow_requests_count;
+        }
+    }
+
+    // Handle follow/unfollow
+    function handleFollow(username) {
+        fetch('/ajax/toggle-follow/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': getCSRFToken(),
+            },
+            body: `username=${encodeURIComponent(username)}`
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast('Success', data.message, 'success');
+                updateUI(username, data.relationship_data);
+                
+                // If follow request was sent, show appropriate message
+                if (data.follow_request_sent) {
+                    showToast('Follow Request Sent', 'Your follow request has been sent and is pending approval.', 'info');
+                }
+            } else {
+                showToast('Error', data.message, 'error');
+            }
+        })
+        .catch(error => handleAjaxError(error, 'Error following user'));
+    }
+
+    // Handle close friend toggle
+    function handleCloseFriend(username) {
+        fetch('/ajax/toggle-close-friend/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': getCSRFToken(),
+            },
+            body: `username=${encodeURIComponent(username)}`
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast('Success', data.message, 'success');
+                updateUI(username, data.relationship_data);
+            } else {
+                showToast('Error', data.message, 'error');
+            }
+        })
+        .catch(error => handleAjaxError(error, 'Error updating close friends'));
+    }
+</script>
 {% endblock %}

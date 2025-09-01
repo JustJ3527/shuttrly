@@ -95,6 +95,12 @@ from .utils import (
     handle_disable_2fa_method,
     handle_remove_trusted_device,
     get_2fa_settings_context,
+    # User Relationships utilities
+    toggle_follow, 
+    toggle_close_friend, 
+    get_user_relationship_data,
+    send_follow_request,
+    handle_follow_request_response
 )
 
 from .utils import (
@@ -2666,34 +2672,36 @@ def public_user_profile_view(request, username):
 
         # Check if user profile is private
         is_private_profile = user.is_private
-        can_see_full_profile = (
+        can_edit = (
             hasattr(request, "user")
             and request.user
             and request.user.is_authenticated
             and request.user == user
         )
+        
+        # Check if current user can see the full profile
+        can_see_full_profile = False
+        
+        if can_edit:
+            # Profile owner can always see full profile
+            can_see_full_profile = True
+        elif not is_private_profile:
+            # Public profiles are visible to everyone
+            can_see_full_profile = True
+        elif request.user.is_authenticated:
+            # For private profiles, check if current user is following
+            can_see_full_profile = user.can_see_profile(request.user)
+            
 
-        # For private profiles, only show limited info unless it's the owner
-        if is_private_profile and not can_see_full_profile:
-            # Show limited profile info for private profiles
-            context = {
-                "profile_user": user,
-                "is_private": True,
-                "username": username,
-                "can_edit": False,
-                "show_limited_info": True,
-            }
-            return render(request, "users/public_profile.html", context)
 
         # Prepare context data
         context = {
             "profile_user": user,
-            "is_private": False,
+            "is_private": is_private_profile,
             "username": username,
-            "can_edit": hasattr(request, "user")
-            and request.user
-            and request.user.is_authenticated
-            and request.user == user,
+            "can_edit": can_edit,
+            "can_see_full_profile": can_see_full_profile,
+            "show_limited_info": is_private_profile and not can_see_full_profile,
         }
 
         return render(request, "users/public_profile.html", context)
@@ -3251,3 +3259,342 @@ def handle_advanced_security_save(request, user):
         "Advanced security settings updated successfully!",
         {"security_updated": True},
     )
+
+# =============================================================================
+# USER RELATIONSHIPS VIEWS
+# =============================================================================
+
+@require_POST
+def toggle_follow_view(request):
+    """AJAX view to toggle follow relationship"""
+    if not request.user.is_authenticated:
+        return JsonResponse({
+            'success': False,
+            'message': 'You must be logged in to perform this action'
+        }, status=401)
+    
+    try:
+        target_username = request.POST.get('username')
+        if not target_username:
+            return JsonResponse({
+                'success': False,
+                'message': 'Username is required'
+            }, status=400)
+        
+        target_user = CustomUser.objects.get(username=target_username)
+        
+        # Check if target user is private
+        if target_user.is_private and not request.user.is_following(target_user):
+            # Send follow request instead of following directly
+            success, message = send_follow_request(request_user=request.user, target_user=target_user)
+            
+            if success:
+                return JsonResponse({
+                    'success': True,
+                    'is_following': False,
+                    'follow_request_sent': True,
+                    'message': message,
+                    'relationship_data': get_user_relationship_data(request.user, target_user)
+                })
+            else:
+                return JsonResponse({
+                    'success': False,
+                    'message': message
+                }, status=400)
+        
+        # Regular follow/unfollow for public accounts or already following
+        success, is_following, message = toggle_follow(request.user, target_user)
+        
+        if success:
+            # Get updated relationship data
+            relationship_data = get_user_relationship_data(request.user, target_user)
+            
+            return JsonResponse({
+                'success': True,
+                'is_following': is_following,
+                'follow_request_sent': False,
+                'message': message,
+                'relationship_data': relationship_data
+            })
+        else:
+            return JsonResponse({
+                'success': False,
+                'message': message
+            }, status=400)
+            
+    except CustomUser.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'message': 'User not found'
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': 'An error occurred'
+        }, status=500)
+
+
+@require_POST
+def send_follow_request_view(request):
+    """AJAX view to send follow request to private account"""
+    if not request.user.is_authenticated:
+        return JsonResponse({
+            'success': False,
+            'message': 'You must be logged in to perform this action'
+        }, status=401)
+    
+    try:
+        target_username = request.POST.get('username')
+        message = request.POST.get('message', '')
+        
+        if not target_username:
+            return JsonResponse({
+                'success': False,
+                'message': 'Username is required'
+            }, status=400)
+        
+        target_user = CustomUser.objects.get(username=target_username)
+        success, message = send_follow_request(request.user, target_user, message)
+        
+        if success:
+            return JsonResponse({
+                'success': True,
+                'message': message,
+                'relationship_data': get_user_relationship_data(request.user, target_user)
+            })
+        else:
+            return JsonResponse({
+                'success': False,
+                'message': message
+            }, status=400)
+            
+    except CustomUser.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'message': 'User not found'
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': 'An error occurred'
+        }, status=500)
+
+
+@require_POST
+def handle_follow_request_response_view(request):
+    """AJAX view to accept/reject follow requests"""
+    if not request.user.is_authenticated:
+        return JsonResponse({
+            'success': False,
+            'message': 'You must be logged in to perform this action'
+        }, status=401)
+    
+    try:
+        target_username = request.POST.get('username')
+        action = request.POST.get('action')  # 'accept' or 'reject'
+        
+        if not target_username or action not in ['accept', 'reject']:
+            return JsonResponse({
+                'success': False,
+                'message': 'Invalid parameters'
+            }, status=400)
+        
+        target_user = CustomUser.objects.get(username=target_username)
+        success, message = handle_follow_request_response(request.user, target_user, action)
+        
+        if success:
+            return JsonResponse({
+                'success': True,
+                'message': message,
+                'action': action
+            })
+        else:
+            return JsonResponse({
+                'success': False,
+                'message': message
+            }, status=400)
+            
+    except CustomUser.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'message': 'User not found'
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': 'An error occurred'
+        }, status=500)
+
+
+@require_POST
+def toggle_close_friend_view(request):
+    """AJAX view to toggle close friend relationship"""
+    if not request.user.is_authenticated:
+        return JsonResponse({
+            'success': False,
+            'message': 'You must be logged in to perform this action'
+        }, status=401)
+    
+    try:
+        target_username = request.POST.get('username')
+        if not target_username:
+            return JsonResponse({
+                'success': False,
+                'message': 'Username is required'
+            }, status=400)
+        
+        target_user = CustomUser.objects.get(username=target_username)
+        success, is_close_friend, message = toggle_close_friend(request.user, target_user)
+        
+        if success:
+            # Get updated relationship data
+            relationship_data = get_user_relationship_data(request.user, target_user)
+            
+            return JsonResponse({
+                'success': True,
+                'is_close_friend': is_close_friend,
+                'message': message,
+                'relationship_data': relationship_data
+            })
+        else:
+            return JsonResponse({
+                'success': False,
+                'message': message
+            }, status=400)
+            
+    except CustomUser.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'message': 'User not found'
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': 'An error occurred'
+        }, status=500)
+
+
+def get_relationship_status_view(request):
+    """AJAX view to get current relationship status"""
+    if not request.user.is_authenticated:
+        return JsonResponse({
+            'success': False,
+            'message': 'You must be logged in to perform this action'
+        }, status=401)
+    
+    try:
+        target_username = request.GET.get('username')
+        if not target_username:
+            return JsonResponse({
+                'success': False,
+                'message': 'Username is required'
+            }, status=400)
+        
+        target_user = CustomUser.objects.get(username=target_username)
+        relationship_data = get_user_relationship_data(request.user, target_user)
+        
+        return JsonResponse({
+            'success': True,
+            'relationship_data': relationship_data
+        })
+        
+    except CustomUser.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'message': 'User not found'
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': 'An error occurred'
+        }, status=500)
+
+
+@require_POST
+def handle_follow_request_response_view(request):
+    """AJAX view to accept/reject follow requests"""
+    if not request.user.is_authenticated:
+        return JsonResponse({
+            'success': False,
+            'message': 'You must be logged in to perform this action'
+        }, status=401)
+    
+    try:
+        target_username = request.POST.get('username')
+        action = request.POST.get('action')  # 'accept' or 'reject'
+        
+        if not target_username or action not in ['accept', 'reject']:
+            return JsonResponse({
+                'success': False,
+                'message': 'Invalid parameters'
+            }, status=400)
+        
+        target_user = CustomUser.objects.get(username=target_username)
+        success, message = handle_follow_request_response(request.user, target_user, action)
+        
+        if success:
+            return JsonResponse({
+                'success': True,
+                'message': message,
+                'action': action
+            })
+        else:
+            return JsonResponse({
+                'success': False,
+                'message': message
+            }, status=400)
+            
+    except CustomUser.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'message': 'User not found'
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': 'An error occurred'
+        }, status=500)
+
+
+def get_follow_requests_view(request):
+    """AJAX view to get pending follow requests for the current user"""
+    if not request.user.is_authenticated:
+        return JsonResponse({
+            'success': False,
+            'message': 'You must be logged in to perform this action'
+        }, status=401)
+    
+    try:
+        # Get pending follow requests for the current user
+        from .models import FollowRequest
+        pending_requests = FollowRequest.objects.filter(
+            to_user=request.user,
+            status='pending'
+        ).select_related('from_user').order_by('-created_at')
+        
+        # Format the requests data
+        requests_data = []
+        for req in pending_requests:
+            requests_data.append({
+                'id': req.id,
+                'from_user': {
+                    'username': req.from_user.username,
+                    'first_name': req.from_user.first_name,
+                    'last_name': req.from_user.last_name,
+                    'profile_picture_url': req.from_user.profile_picture.url if req.from_user.profile_picture else None,
+                },
+                'message': req.message,
+                'created_at': req.created_at.isoformat(),
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'requests': requests_data
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': 'An error occurred'
+        }, status=500)
+

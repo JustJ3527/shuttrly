@@ -8,6 +8,7 @@ import exifread
 import rawpy
 from io import BytesIO
 import numpy as np
+from django.contrib.postgres.fields import ArrayField
 
 COLLECTION_TYPES = [
     ("personal", "Personal"),
@@ -132,6 +133,14 @@ class Photo(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     is_private = models.BooleanField(default=False)
     is_featured = models.BooleanField(default=False)
+    
+    embedding = ArrayField(
+        models.FloatField(), 
+        size=512, 
+        blank=True, 
+        null=True, 
+        help_text="Image embedding vector (512D) for similarity search"
+    )
 
     class Meta:
         ordering = ["-date_taken", "-created_at"]

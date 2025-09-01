@@ -28,6 +28,31 @@
     <!-- Bootstrap JavaScript Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
+    <!-- Toast styling -->
+    <style>
+        .toast {
+            background: var(--background-default, #ffffff);
+            border: 1px solid var(--text-200, #e5e7eb);
+            color: var(--text-default, #111827);
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+        
+        .toast-header {
+            background: var(--background-100, #f9fafb);
+            border-bottom: 1px solid var(--text-200, #e5e7eb);
+            color: var(--text-default, #111827);
+            border-radius: 0.75rem 0.75rem 0 0;
+        }
+        
+        .toast-body {
+            color: var(--text-default, #111827);
+        }
+        
+        .toast .btn-close {
+            filter: var(--btn-close-filter, invert(0.5));
+        }
+    </style>
 
     {% endblock %}
 
@@ -37,6 +62,20 @@
   {% endblock %}
     <!-- CSRF Token for AJAX requests -->
     {% csrf_token %}
+
+    <!-- Toast container for notifications -->
+    <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1055;">
+        <div id="toast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header">
+                <i class="fas fa-info-circle me-2"></i>
+                <strong class="me-auto" id="toast-title">Notification</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+            <div class="toast-body" id="toast-message">
+                <!-- Toast message content -->
+            </div>
+        </div>
+    </div>
 
     <!-- Navigation bar -->
     {% block navbar %}
@@ -187,6 +226,63 @@
     
     <!-- HTMX -->
     <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+
+    <!-- Global utility functions -->
+    <script>
+        // Global toast notification system
+        window.showToast = function(title, message, type = 'info') {
+            const toast = document.getElementById('toast');
+            const toastTitle = document.getElementById('toast-title');
+            const toastMessage = document.getElementById('toast-message');
+            
+            // Check if toast elements exist
+            if (!toast || !toastTitle || !toastMessage) {
+                // Fallback: use console and alert if toast is not available
+                console.log(`${title}: ${message}`);
+                if (type === 'error') {
+                    alert(`Error: ${message}`);
+                } else if (type === 'success') {
+                    alert(`Success: ${message}`);
+                } else {
+                    alert(`${title}: ${message}`);
+                }
+                return;
+            }
+            
+            toastTitle.textContent = title;
+            toastMessage.textContent = message;
+            
+            // Set icon based on type
+            const icon = toastTitle.querySelector('i');
+            if (icon) {
+                icon.className = `fas me-2 ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'}`;
+            }
+            
+            // Show toast
+            try {
+                const bsToast = new bootstrap.Toast(toast);
+                bsToast.show();
+            } catch (error) {
+                console.error('Error showing toast:', error);
+                // Fallback to alert
+                alert(`${title}: ${message}`);
+            }
+        };
+
+        // Global AJAX error handler
+        window.handleAjaxError = function(error, defaultMessage = 'An error occurred') {
+            console.error('AJAX Error:', error);
+            let message = defaultMessage;
+            
+            if (error.responseJSON && error.responseJSON.message) {
+                message = error.responseJSON.message;
+            } else if (error.message) {
+                message = error.message;
+            }
+            
+            window.showToast('Error', message, 'error');
+        };
+    </script>
 
     {% comment %} <script>
         function updateNavbarActive() {

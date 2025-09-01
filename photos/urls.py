@@ -45,4 +45,7 @@ urlpatterns = [
     path("tags/", views.tag_list, name="tag_list"),
     path("tags/<str:tag_name>/", views.tag_detail, name="tag_detail"),
     path("tags/search/", views.search_by_tags, name="search_by_tags"),
+    # Embedding system test
+    path("test-embedding/", views.test_embedding_system, name="test_embedding"),
+    path("test-embedding/<int:photo_id>/", views.test_embedding_system, name="test_embedding_photo"),
 ]

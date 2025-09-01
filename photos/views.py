@@ -26,6 +26,7 @@ from django.conf import settings
 
 from .models import Photo, Collection, CollectionPhoto
 from .forms import PhotoUploadForm, PhotoEditForm, PhotoSearchForm, CollectionCreateForm, CollectionPhotoForm
+from .utils import find_similar_photos
 from logs.utils import (
     log_photo_upload_json,
     log_photo_delete_json,
@@ -202,6 +203,11 @@ def photo_upload(request):
                                         ),
                                     },
                                 )
+                                
+                                # Generate embedding
+                                from .tasks import generate_embedding
+                                generate_embedding.delay(photo.id)
+                                print(f"Embedding task queued for {photo_file.name}")
                                 print(f"Photo upload logged for {photo_file.name}")
                             except Exception as log_error:
                                 print(
@@ -457,9 +463,19 @@ def photo_detail(request, photo_id):
             unique_similar.append(p)
             seen_ids.add(p.id)
 
+    # Find AI-powered similar photos using embeddings
+    ai_similar_photos = []
+    if photo.embedding:
+        try:
+            ai_similar_results = find_similar_photos(photo, limit=6, threshold=0.6)
+            ai_similar_photos = [result['photo'] for result in ai_similar_results]
+        except Exception as e:
+            print(f"Error finding AI similar photos: {e}")
+
     context = {
         "photo": photo,
         "similar_photos": unique_similar,
+        "ai_similar_photos": ai_similar_photos,
         "user_is_private": user_is_private,
     }
     return render(request, "photos/detail.html", context)
@@ -1329,3 +1345,67 @@ def search_by_tags(request):
     
     # If no search or empty search, redirect to tag list
     return redirect('photos:tag_list')
+
+
+@login_required
+def test_embedding_system(request, photo_id=None):
+    """Test view to verify embedding system is working with navigation between photos"""
+    
+    # Get all photos with embeddings for navigation
+    photos_with_embeddings = Photo.objects.exclude(
+        embedding__isnull=True
+    ).exclude(
+        embedding__len=0
+    ).order_by('id')
+    
+    if not photos_with_embeddings.exists():
+        context = {
+            'error': 'No photos with embeddings found. Please generate embeddings first.',
+            'total_photos': Photo.objects.count(),
+            'photos_with_embeddings': 0,
+        }
+        return render(request, 'photos/test_embedding.html', context)
+    
+    # Get current photo
+    if photo_id:
+        try:
+            current_photo = photos_with_embeddings.get(id=photo_id)
+        except Photo.DoesNotExist:
+            current_photo = photos_with_embeddings.first()
+    else:
+        current_photo = photos_with_embeddings.first()
+    
+    # Get navigation info
+    photos_list = list(photos_with_embeddings)
+    current_index = photos_list.index(current_photo)
+    
+    # Navigation photos
+    prev_photo = photos_list[current_index - 1] if current_index > 0 else None
+    next_photo = photos_list[current_index + 1] if current_index < len(photos_list) - 1 else None
+    
+    # Test similarity search
+    similar_results = []
+    test_result = None
+    
+    try:
+        # Test with standard model (512 dimensions) - show more photos
+        similar_results = find_similar_photos(current_photo, limit=20, threshold=0.3)
+        test_result = f"Found {len(similar_results)} similar photos for '{current_photo.title}'"
+        
+    except Exception as e:
+        similar_results = [{"error": f"Error finding similar photos: {str(e)}"}]
+        test_result = f"Error testing similarity: {str(e)}"
+    
+    context = {
+        'current_photo': current_photo,
+        'prev_photo': prev_photo,
+        'next_photo': next_photo,
+        'current_index': current_index + 1,  # 1-based for display
+        'total_photos_with_embeddings': len(photos_list),
+        'test_result': test_result,
+        'similar_results': similar_results,
+        'total_photos': Photo.objects.count(),
+        'photos_with_embeddings': photos_with_embeddings.count(),
+    }
+    
+    return render(request, 'photos/test_embedding.html', context)

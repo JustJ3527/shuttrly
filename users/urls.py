@@ -130,4 +130,36 @@ urlpatterns = [
         public_user_profile_view,
         name="public_user_profile",
     ),
+    
+    # Social relationship URLs
+    path(
+        "ajax/toggle-follow/",
+        toggle_follow_view,
+        name="toggle_follow",
+    ),
+    path(
+        "ajax/send-follow-request/",
+        send_follow_request_view,
+        name="send_follow_request",
+    ),
+    path(
+        "ajax/handle-follow-request/",
+        handle_follow_request_response_view,
+        name="handle_follow_request",
+    ),
+    path(
+        "ajax/get-follow-requests/",
+        get_follow_requests_view,
+        name="get_follow_requests",
+    ),
+    path(
+        "ajax/toggle-close-friend/",
+        toggle_close_friend_view,
+        name="toggle_close_friend",
+    ),
+    path(
+        "ajax/get-relationship-status/",
+        get_relationship_status_view,
+        name="get_relationship_status",
+    ),
 ]

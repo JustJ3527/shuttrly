@@ -145,4 +145,80 @@ def get_collection_stats(collection):
         )[:10]) # Top 10 tags
 
     return stats
-                
+
+# ===============================
+# EMBEDDINGS
+# ===============================
+from transformers import CLIPProcessor, CLIPModel
+from PIL import Image
+import torch
+
+# Charge model once only (avoid reloading at each call)
+model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
+processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
+
+def get_image_embedding(image_path: str):
+    """Generate an embedding for a photo"""
+    try:
+        image = Image.open(image_path).convert("RGB")
+        inputs = processor(images=image, return_tensors="pt")
+        with torch.no_grad():
+            embeddings = model.get_image_features(**inputs)
+        # Normalize embeddings and convert to list
+        embeddings = embeddings / embeddings.norm(p=2)
+        return embeddings[0].tolist()
+    except Exception as e:
+        print(f"Error generating embedding for {image_path}: {e}")
+        return None
+
+def calculate_similarity(embedding1, embedding2):
+    """Calculate cosine similarity between two embeddings"""
+    if not embedding1 or not embedding2:
+        return 0.0
+    
+    import numpy as np
+    
+    # Convert to numpy arrays if they're lists
+    if isinstance(embedding1, list):
+        embedding1 = np.array(embedding1)
+    if isinstance(embedding2, list):
+        embedding2 = np.array(embedding2)
+    
+    # Calculate cosine similarity
+    dot_product = np.dot(embedding1, embedding2)
+    norm1 = np.linalg.norm(embedding1)
+    norm2 = np.linalg.norm(embedding2)
+    
+    if norm1 == 0 or norm2 == 0:
+        return 0.0
+    
+    return dot_product / (norm1 * norm2)
+
+def find_similar_photos(photo, limit=10, threshold=0.7):
+    """Find photos similar to the given photo based on embeddings"""
+    if not photo.embedding:
+        return []
+    
+    from .models import Photo
+    
+    # Get all photos with embeddings (excluding the current photo)
+    photos_with_embeddings = Photo.objects.exclude(
+        id=photo.id
+    ).exclude(
+        embedding__isnull=True
+    ).exclude(
+        embedding=[]
+    )
+    
+    similar_photos = []
+    for other_photo in photos_with_embeddings:
+        similarity = calculate_similarity(photo.embedding, other_photo.embedding)
+        if similarity >= threshold:
+            similar_photos.append({
+                'photo': other_photo,
+                'similarity': similarity
+            })
+    
+    # Sort by similarity (highest first) and return top results
+    similar_photos.sort(key=lambda x: x['similarity'], reverse=True)
+    return similar_photos[:limit]

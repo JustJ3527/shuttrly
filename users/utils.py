@@ -29,7 +29,6 @@ from user_agents import parse
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import authenticate, get_backends, get_user_model, login
-from django.core.files.storage import default_storage
 from django.core.mail import EmailMultiAlternatives, send_mail
 from django.db.models import Q
 from django.http import HttpResponseRedirect
@@ -41,7 +40,7 @@ from django.utils.http import http_date
 
 # === Local Imports ===
 from logs.utils import log_user_action_json
-from .models import CustomUser, PendingFileDeletion, TrustedDevice
+from .models import CustomUser, PendingFileDeletion, TrustedDevice, UserRelationship
 from .forms import LoginForm, Email2FAForm, TOTP2FAForm, Choose2FAMethodForm
 
 # === Constants ===
@@ -1570,4 +1569,358 @@ def get_2fa_settings_context(user, trusted_devices, step):
         "can_resend": resend_status["can_resend"],
         "email_code_resend_delay": EMAIL_CODE_RESEND_DELAY_SECONDS,
         "step": step,
+    }
+
+# =============================================================================
+# USER RELATIONSHIPS UTILITIES
+# =============================================================================
+
+def toggle_follow(request_user, target_user):
+    """
+    Toggle follow relationship between two users.
+    
+    Args:
+        request_user: User making the follow request
+        target_user: User to follow/unfollow
+        
+    Returns:
+        tuple: (success: bool, is_following: bool, message: str)
+    """
+    try:
+        if request_user == target_user:
+            return False, False, "You cannot follow yourself"
+        
+        # Check if already following
+        existing_follow = UserRelationship.objects.filter(
+            from_user=request_user,
+            to_user=target_user,
+            relationship_type="follow"
+        ).first()
+        
+        if existing_follow:
+            # Unfollow
+            existing_follow.delete()
+            
+            # Also remove from close friends if exists
+            close_friend_rel = UserRelationship.objects.filter(
+                from_user=request_user,
+                to_user=target_user,
+                relationship_type="close_friend"
+            ).first()
+            if close_friend_rel:
+                close_friend_rel.delete()
+            
+            # Clean up any existing follow requests (accepted or pending)
+            from .models import FollowRequest
+            FollowRequest.objects.filter(
+                from_user=request_user,
+                to_user=target_user
+            ).delete()
+            
+            return True, False, f"Unfollowed {target_user.username}"
+        else:
+            # Follow
+            UserRelationship.objects.create(
+                from_user=request_user,
+                to_user=target_user,
+                relationship_type="follow"
+            )
+            return True, True, f"Following {target_user.username}"
+            
+    except Exception as e:
+        logger.error(f"Error toggling follow: {str(e)}")
+        return False, False, "An error occurred"
+
+
+def send_follow_request(request_user, target_user, message=""):
+    """
+    Send a follow request to a private account.
+    
+    Args:
+        request_user: User sending the follow request
+        target_user: User receiving the follow request
+        message: Optional message with the request
+        
+    Returns:
+        tuple: (success: bool, message: str)
+    """
+    try:
+        if request_user == target_user:
+            return False, "You cannot send a follow request to yourself"
+        
+        # Check if target user is private
+        if not target_user.is_private:
+            return False, "This account is public, you can follow directly"
+        
+        # Check if already following
+        if request_user.is_following(target_user):
+            return False, "You are already following this user"
+        
+        # Check if there's already a pending request
+        from .models import FollowRequest
+        existing_request = FollowRequest.objects.filter(
+            from_user=request_user,
+            to_user=target_user,
+            status='pending'
+        ).first()
+        
+        if existing_request:
+            return False, "You already have a pending follow request"
+        
+        # Check if there's a rejected request (can try again)
+        rejected_request = FollowRequest.objects.filter(
+            from_user=request_user,
+            to_user=target_user,
+            status='rejected'
+        ).first()
+        
+        if rejected_request:
+            # Update the rejected request to pending
+            rejected_request.status = 'pending'
+            rejected_request.message = message
+            rejected_request.save()
+            return True, f"Follow request sent to {target_user.username}"
+        
+        # Check if there's an accepted request (from previous follow)
+        accepted_request = FollowRequest.objects.filter(
+            from_user=request_user,
+            to_user=target_user,
+            status='accepted'
+        ).first()
+        
+        if accepted_request:
+            # Update the accepted request to pending (user wants to follow again)
+            accepted_request.status = 'pending'
+            accepted_request.message = message
+            accepted_request.save()
+            return True, f"Follow request sent to {target_user.username}"
+        
+        # Create new follow request
+        FollowRequest.objects.create(
+            from_user=request_user,
+            to_user=target_user,
+            message=message
+        )
+        
+        return True, f"Follow request sent to {target_user.username}"
+        
+    except Exception as e:
+        logger.error(f"Error sending follow request: {str(e)}")
+        return False, "An error occurred"
+
+
+def handle_follow_request_response(request_user, target_user, action):
+    """
+    Handle follow request response (accept/reject).
+    
+    Args:
+        request_user: User responding to the request (owner of private account)
+        target_user: User whose request is being responded to
+        action: 'accept' or 'reject'
+        
+    Returns:
+        tuple: (success: bool, message: str)
+    """
+    try:
+        if request_user == target_user:
+            return False, "Invalid action"
+        
+        # Check if this is the owner of the private account
+        if not request_user.is_private:
+            return False, "This account is public"
+        
+        # Find the pending follow request
+        from .models import FollowRequest
+        follow_request = FollowRequest.objects.filter(
+            from_user=target_user,
+            to_user=request_user,
+            status='pending'
+        ).first()
+        
+        if not follow_request:
+            return False, "No pending follow request found"
+        
+        if action == 'accept':
+            # Accept the request
+            if follow_request.accept():
+                return True, f"Follow request from {target_user.username} accepted"
+            else:
+                return False, "Error accepting follow request"
+        
+        elif action == 'reject':
+            # Reject the request
+            if follow_request.reject():
+                return True, f"Follow request from {target_user.username} rejected"
+            else:
+                return False, "Error rejecting follow request"
+        
+        else:
+            return False, "Invalid action"
+            
+    except Exception as e:
+        logger.error(f"Error handling follow request response: {str(e)}")
+        return False, "An error occurred"
+
+
+def get_follow_request_status(request_user, target_user):
+    """
+    Get the status of a follow request between two users.
+    
+    Args:
+        request_user: User checking the status
+        target_user: Target user
+        
+    Returns:
+        str: 'none', 'pending', 'accepted', 'rejected', or 'following'
+    """
+    try:
+        if request_user == target_user:
+            return 'none'
+        
+        # Check if already following
+        if request_user.is_following(target_user):
+            return 'following'
+        
+        # Check follow request status
+        from .models import FollowRequest
+        follow_request = FollowRequest.objects.filter(
+            from_user=request_user,
+            to_user=target_user
+        ).first()
+        
+        if follow_request:
+            return follow_request.status
+        
+        return 'none'
+        
+    except Exception as e:
+        logger.error(f"Error getting follow request status: {str(e)}")
+        return 'none'
+    
+def toggle_close_friend(request_user, target_user):
+    """
+    Toggle close friend relationship.
+    
+    Args:
+        request_user: User making the close friend request
+        target_user: User to add/remove as close friend
+        
+    Returns:
+        tuple: (success: bool, is_close_friend: bool, message: str)
+    """
+    try:
+        if request_user == target_user:
+            return False, False, "You cannot add yourself as a close friend"
+        
+        # Check if already following (required for close friends)
+        if not request_user.is_following(target_user):
+            return False, False, "You must follow someone to add them as a close friend"
+        
+        # Check if already close friend
+        existing_close_friend = UserRelationship.objects.filter(
+            from_user=request_user,
+            to_user=target_user,
+            relationship_type="close_friend"
+        ).first()
+        
+        if existing_close_friend:
+            # Remove from close friends
+            existing_close_friend.delete()
+            return True, False, f"Removed {target_user.username} from close friends"
+        else:
+            # Add to close friends
+            UserRelationship.objects.create(
+                from_user=request_user,
+                to_user=target_user,
+                relationship_type="close_friend"
+            )
+            return True, True, f"Added {target_user.username} to close friends"
+            
+    except Exception as e:
+        logger.error(f"Error toggling close friend: {str(e)}")
+        return False, False, "An error occurred"
+    
+def get_user_relationship_data(request_user, target_user):
+    """
+    Get comprehensive relationship data between two users.
+    
+    Args:
+        request_user: User making the request
+        target_user: Target user
+        
+    Returns:
+        dict: Relationship data
+    """
+    if not request_user.is_authenticated or request_user == target_user:
+        return {
+            "can_follow": False,
+            "can_close_friend": False,
+            "is_following": False,
+            "is_followed_by": False,
+            "is_close_friend": False,
+            "relationship_status": "none",
+            "follow_request_status": "none",
+            "can_see_profile": False,
+            "followers_count": target_user.get_followers().count(),
+            "following_count": target_user.get_following().count(),
+            "friends_count": target_user.get_friends().count(),
+            "close_friends_count": target_user.get_close_friends().count(),
+        }
+    
+    is_following = request_user.is_following(target_user)
+    is_followed_by = request_user.is_followed_by(target_user)
+    is_close_friend = target_user.is_close_friend_of(request_user)
+    follow_request_status = get_follow_request_status(request_user, target_user)
+    can_see_profile = target_user.can_see_profile(request_user)
+    
+    # Determine relationship status
+    if is_following and is_followed_by:
+        relationship_status = "friends"
+    elif is_following:
+        relationship_status = "following"
+    elif is_followed_by:
+        relationship_status = "follower"
+    else:
+        relationship_status = "none"
+    
+    return {
+        "can_follow": True,
+        "can_close_friend": is_following,  # Can only add close friends if following
+        "is_following": is_following,
+        "is_followed_by": is_followed_by,
+        "is_close_friend": is_close_friend,
+        "relationship_status": relationship_status,
+        "follow_request_status": follow_request_status,
+        "can_see_profile": can_see_profile,
+        "followers_count": target_user.get_followers().count(),
+        "following_count": target_user.get_following().count(),
+        "friends_count": target_user.get_friends().count(),
+        "close_friends_count": target_user.get_close_friends().count(),
+        "follow_requests_count": target_user.get_pending_follow_requests().count() if target_user.is_private else 0,
+    }
+    
+def get_user_social_stats(user):
+    """
+    Get social statistics for a user.
+    
+    Args:
+        user: User to get stats for
+        
+    Returns:
+        dict: Social statistics
+    """
+    followers = user.get_followers()
+    following = user.get_following()
+    friends = user.get_friends()
+    close_friends = user.get_close_friends()
+    
+    return {
+        "followers_count": followers.count(),
+        "following_count": following.count(),
+        "friends_count": len(friends),
+        "close_friends_count": close_friends.count(),
+        "followers": followers,
+        "following": following,
+        "friends": list(friends),
+        "close_friends": close_friends,
     }

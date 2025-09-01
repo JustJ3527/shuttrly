@@ -1,4 +1,5 @@
 # users/models.py - Version corrigée
+from this import d
 from django.db import models
 from django.contrib.auth.models import (
     AbstractBaseUser,
@@ -147,6 +148,9 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     is_private = models.BooleanField(default=False)
     profile_picture = models.ImageField(
         upload_to=user_directory_path, default="profiles/default.jpg"
+    )
+    banner = models.ImageField(
+        upload_to="banners/", blank=True, null=True
     )
 
     # IP tracking
@@ -331,7 +335,186 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
             return True, "Code sent successfully!"
         except Exception as e:
             return False, f"Error : {str(e)}"
+        
+    def get_followers(self):
+        """Get users who follow this user"""
+        from .models import UserRelationship
+        return CustomUser.objects.filter(
+            relationships_from__to_user=self,
+            relationships_from__relationship_type="follow"
+        ).distinct()
+        
+    def get_following(self):
+        """Get users this user follows"""
+        from .models import UserRelationship
+        return CustomUser.objects.filter(
+            relationships_to__from_user=self,
+            relationships_to__relationship_type="follow"
+        ).distinct()
+        
+    def get_friends(self):
+        """Get mutual followers (friends)"""
+        followers = set(self.get_followers().values_list('id', flat=True))
+        following = set(self.get_following().values_list('id', flat=True))
+        friend_ids = followers.intersection(following)
+        return CustomUser.objects.filter(id__in=friend_ids)
+        
+    def get_close_friends(self):
+        """Get users marked as close friend by this user"""
+        from .models import UserRelationship
+        return CustomUser.objects.filter(
+            relationships_to__from_user=self,
+            relationships_to__relationship_type="close_friend"
+        ).distinct()
+        
+    def is_following(self, user):
+        """Check if this user is following another user"""
+        from .models import UserRelationship
+        return UserRelationship.objects.filter(
+            from_user=self,
+            to_user=user,
+            relationship_type="follow"
+        ).exists()
+    
+    def is_followed_by(self, user):
+        """Check if this user is followed by another user"""
+        from .models import UserRelationship
+        return UserRelationship.objects.filter(
+            from_user=user,
+            to_user=self,
+            relationship_type="follow"
+        ).exists()
+        
+    def is_close_friend_of(self, user):
+        """Check if this user is marked as close friend by another user"""
+        from .models import UserRelationship
+        return UserRelationship.objects.filter(
+            from_user=user,
+            to_user=self,
+            relationship_type="close_friend"
+        ).exists()
+        
+    def get_relationship_status_with(self, other_user):
+        """Get comprehensive relationship status with another user"""
+        if self == other_user:
+            return "self"
+        
+        is_following = self.is_following(other_user)
+        is_followed_by = self.is_followed_by(other_user)
+        
+        if is_following and is_followed_by:
+            return "friends"
+        elif is_following:
+            return "following"
+        elif is_followed_by:
+            return "follower"
+        else:
+            return "none"
+    
+    def has_pending_follow_request_to(self, user):
+        """Check if this user has a pending follow request to another user"""
+        from .models import FollowRequest
+        return FollowRequest.objects.filter(
+            from_user=self,
+            to_user=user,
+            status='pending'
+        ).exists()
+    
+    def has_pending_follow_request_from(self, user):
+        """Check if this user has a pending follow request from another user"""
+        from .models import FollowRequest
+        return FollowRequest.objects.filter(
+            from_user=user,
+            to_user=self,
+            status='pending'
+        ).exists()
+    
+    def get_pending_follow_requests(self):
+        """Get all pending follow requests received by this user"""
+        from .models import FollowRequest
+        return FollowRequest.objects.filter(
+            to_user=self,
+            status='pending'
+        ).select_related('from_user').order_by('-created_at')
+    
+    def can_see_profile(self, viewer):
+        """Check if a viewer can see this user's profile"""
+        if self == viewer:
+            return True
+        
+        if not self.is_private:
+            return True
+        
+        # For private profiles, check if viewer is following or has request accepted
+        if viewer.is_following(self):
+            return True
+        
+        # Check if there's an accepted follow request
+        from .models import FollowRequest
+        accepted_request = FollowRequest.objects.filter(
+            from_user=viewer,
+            to_user=self,
+            status='accepted'
+        ).exists()
+        
+        return accepted_request
 
+    def get_photos_count(self):
+        """Get the total number of photos uploaded by this user"""
+        try:
+            from photos.models import Photo
+            return Photo.objects.filter(user=self).count()
+        except ImportError:
+            return 0
+    
+    def get_posts_count(self):
+        """Get the total number of posts created by this user"""
+        try:
+            from posts.models import Post
+            return Post.objects.filter(author=self).count()
+        except ImportError:
+            return 0
+    
+    def get_likes_received_count(self):
+        """Get the total number of likes received on all posts"""
+        try:
+            from posts.models import Post
+            posts = Post.objects.filter(author=self)
+            total_likes = sum(post.likes_count for post in posts)
+            return total_likes
+        except ImportError:
+            return 0
+    
+    def get_cameras_used(self):
+        """Get unique cameras used by this user (avoiding duplicates)"""
+        try:
+            from django.db import connection
+            with connection.cursor() as cursor:
+                cursor.execute("""
+                    SELECT DISTINCT camera_make, camera_model 
+                    FROM photos_photo 
+                    WHERE user_id = %s 
+                    AND camera_make IS NOT NULL 
+                    AND camera_make != '' 
+                    AND camera_model IS NOT NULL 
+                    AND camera_model != ''
+                    ORDER BY camera_make, camera_model
+                """, [self.id])
+                
+                cameras = []
+                for make, model in cursor.fetchall():
+                    camera_string = f"{make} {model}".strip()
+                    if camera_string and len(camera_string) > 1:
+                        cameras.append(camera_string)
+                
+                return cameras
+        except Exception:
+            # Fallback to empty list if SQL fails
+            return []
+    
+    def get_cameras_count(self):
+        """Get the number of unique cameras used by this user"""
+        return len(self.get_cameras_used())
 
 class PendingFileDeletion(models.Model):
     file_path = models.CharField(max_length=500)
@@ -396,3 +579,91 @@ class TrustedDevice(models.Model):
 
     def __str__(self):
         return f"{self.user} - {self.device_token[:8]}..."
+    
+
+class UserRelationship(models.Model):
+    """Model for managing user relationships (followers, following, friends, closed friends)"""
+    
+    RELATIONSHIP_TYPES = [
+        ("follow", "Follow"),
+        ("close_friend", "Close Friend")
+    ]
+    
+    from_user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="relationships_from")
+    to_user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="relationships_to")
+    relationship_type = models.CharField(max_length=20, choices=RELATIONSHIP_TYPES, default="follow")
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        unique_together = ("from_user", "to_user", "relationship_type")
+        indexes = [
+            models.Index(fields=["from_user", "relationship_type"]),
+            models.Index(fields=["to_user", "relationship_type"]),
+            models.Index(fields=["created_at"]),
+        ]
+        
+    def __str__(self):
+        return f"{self.from_user.username} -> {self.to_user.username} ({self.relationship_type})"
+
+
+class FollowRequest(models.Model):
+    """Model for handling follow requests to private accounts"""
+    
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('accepted', 'Accepted'),
+        ('rejected', 'Rejected'),
+    ]
+    
+    from_user = models.ForeignKey(
+        CustomUser, 
+        on_delete=models.CASCADE, 
+        related_name='follow_requests_sent'
+    )
+    to_user = models.ForeignKey(
+        CustomUser, 
+        on_delete=models.CASCADE, 
+        related_name='follow_requests_received'
+    )
+    status = models.CharField(
+        max_length=20, 
+        choices=STATUS_CHOICES, 
+        default='pending'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    message = models.TextField(blank=True, null=True)  # Optional message with request
+    
+    class Meta:
+        unique_together = ('from_user', 'to_user')
+        indexes = [
+            models.Index(fields=['from_user', 'status']),
+            models.Index(fields=['to_user', 'status']),
+            models.Index(fields=['status', 'created_at']),
+        ]
+    
+    def __str__(self):
+        return f"{self.from_user.username} -> {self.to_user.username} ({self.status})"
+    
+    def accept(self):
+        """Accept the follow request and create the relationship"""
+        if self.status == 'pending':
+            self.status = 'accepted'
+            self.save()
+            
+            # Create the follow relationship
+            UserRelationship.objects.create(
+                from_user=self.from_user,
+                to_user=self.to_user,
+                relationship_type='follow'
+            )
+            return True
+        return False
+    
+    def reject(self):
+        """Reject the follow request"""
+        if self.status == 'pending':
+            self.status = 'rejected'
+            self.save()
+            return True
+        return False

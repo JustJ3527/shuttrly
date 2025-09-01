@@ -116,8 +116,15 @@ WSGI_APPLICATION = "shuttrly.wsgi.application"
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": env("DB_NAME", default="shuttrly_db"),
+        "USER": env("DB_USER", default="shuttrly_user"),
+        "PASSWORD": env("DB_PASSWORD", default="shuttrly_password"),
+        "HOST": env("DB_HOST", default="localhost"),
+        "PORT": env("DB_PORT", default="5432"),
+        "OPTIONS": {
+            "connect_timeout": 10,
+        },
     }
 }
 
@@ -176,12 +183,12 @@ MEDIA_URL = "/media/"
 EMAIL_BACKEND = env(
     "EMAIL_BACKEND", default="django.core.mail.backends.smtp.EmailBackend"
 )
-EMAIL_HOST = env("EMAIL_HOST")
+EMAIL_HOST = env("EMAIL_HOST", default="smtp.gmail.com")
 EMAIL_PORT = env.int("EMAIL_PORT", default=587)
-EMAIL_HOST_USER = env("EMAIL_HOST_USER")
-EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD")
+EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
 EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
-DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default=EMAIL_HOST_USER)
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="")
 
 # veriables
 # settings.py
@@ -237,6 +244,9 @@ REST_FRAMEWORK = {
     ],
 }
 
+# Configuration Celery
+CELERY_BROKER_URL = "redis://localhost:6379/0"
+
 # Conifiguration JWT
 from datetime import timedelta
 SIMPLE_JWT = {
@@ -276,11 +286,8 @@ if DEBUG:
     import django.core.checks
     django.core.checks.register = lambda *args, **kwargs: []
     
-    # Optimiser la base de données SQLite
-    DATABASES['default']['OPTIONS'] = {
-        'timeout': 20,
-        'check_same_thread': False,
-    }
+    # Optimisations PostgreSQL (déjà configurées dans DATABASES)
+    pass
     
     # Réduire la taille des sessions
     SESSION_ENGINE = 'django.contrib.sessions.backends.db'

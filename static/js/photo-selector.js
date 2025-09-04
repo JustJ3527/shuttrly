@@ -303,12 +303,30 @@ function initializePhotoSelectors() {
 }
 
 /**
- * Initialize when DOM is ready
+ * Initialize when DOM is ready (only if not already initialized)
  */
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializePhotoSelectors);
+    document.addEventListener('DOMContentLoaded', function() {
+        // Only initialize if no instances are already defined and we're not in advanced gallery
+        if (!window.photoSelectors || Object.keys(window.photoSelectors).length === 0) {
+            // Check if we're in advanced gallery context
+            const isAdvancedGallery = document.getElementById('photo-grid-container') && 
+                                    document.querySelector('.advanced-gallery-container');
+            if (!isAdvancedGallery) {
+                initializePhotoSelectors();
+            }
+        }
+    });
 } else {
-    initializePhotoSelectors();
+    // Only initialize if no instances are already defined and we're not in advanced gallery
+    if (!window.photoSelectors || Object.keys(window.photoSelectors).length === 0) {
+        // Check if we're in advanced gallery context
+        const isAdvancedGallery = document.getElementById('photo-grid-container') && 
+                                document.querySelector('.advanced-gallery-container');
+        if (!isAdvancedGallery) {
+            initializePhotoSelectors();
+        }
+    }
 }
 
 // Export for module systems

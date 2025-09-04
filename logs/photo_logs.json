@@ -21656,4 +21656,229 @@
     }
   }
 }
+,
+{
+  "log_id": "67c1745f-8151-4a11-96f1-90b3d99f4ccd",
+  "user": "admin",
+  "user_id": 1,
+  "action": "photo_upload",
+  "timestamp": "2025-09-03T07:02:11.237464+00:00",
+  "ip_address": "127.0.0.1",
+  "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+  "location": {
+    "city": null,
+    "region": null,
+    "country": null
+  },
+  "photo_info": {
+    "photo_id": 500,
+    "filename": "66775613-4b70-435b-a1c1-7b4d393a4e59.DNG",
+    "file_size_mb": 58.23,
+    "file_extension": "dng",
+    "is_raw": true,
+    "dimensions": "8064x6048",
+    "camera": "Apple iPhone 14 Pro"
+  },
+  "extra_info": {
+    "upload_method": "batch_upload",
+    "validation_errors": null,
+    "upload_details": {
+      "batch_number": 1,
+      "photo_number_in_batch": 1,
+      "total_photos": 1,
+      "file_original_name": "IMG_1915.DNG",
+      "processing_errors": null
+    },
+    "processing_status": {
+      "has_dimensions": true,
+      "has_thumbnail": true,
+      "has_camera_info": true,
+      "has_exposure_info": true,
+      "has_location": true,
+      "has_date": true
+    }
+  }
+}
+,
+{
+  "log_id": "40fab15d-5e21-4c25-b5f7-850486799ea6",
+  "user": "admin",
+  "user_id": 1,
+  "action": "photo_upload",
+  "timestamp": "2025-09-03T07:03:30.226279+00:00",
+  "ip_address": "127.0.0.1",
+  "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+  "location": {
+    "city": null,
+    "region": null,
+    "country": null
+  },
+  "photo_info": {
+    "photo_id": 501,
+    "filename": "97c98d6e-e937-495f-9eff-dda061a95af3.HEIC",
+    "file_size_mb": 1.67,
+    "file_extension": "heic",
+    "is_raw": false,
+    "dimensions": null,
+    "camera": null
+  },
+  "extra_info": {
+    "upload_method": "batch_upload",
+    "validation_errors": [
+      "Photo dimensions not extracted",
+      "Thumbnail not generated",
+      "No basic EXIF metadata extracted"
+    ],
+    "upload_details": {
+      "batch_number": 1,
+      "photo_number_in_batch": 1,
+      "total_photos": 1,
+      "file_original_name": "IMG_1914.HEIC",
+      "processing_errors": [
+        "Photo dimensions not extracted",
+        "Thumbnail not generated",
+        "No basic EXIF metadata extracted"
+      ]
+    },
+    "processing_status": {
+      "has_dimensions": false,
+      "has_thumbnail": false,
+      "has_camera_info": false,
+      "has_exposure_info": false,
+      "has_location": false,
+      "has_date": false
+    }
+  }
+}
+,
+{
+  "log_id": "cc5821ae-2392-4dcf-b494-db26f7411d14",
+  "user": "jul_atn_raw",
+  "user_id": 2,
+  "action": "bulk_delete",
+  "timestamp": "2025-09-03T17:04:57.719567+00:00",
+  "ip_address": "127.0.0.1",
+  "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+  "location": {
+    "city": null,
+    "region": null,
+    "country": null
+  },
+  "photo_info": null,
+  "extra_info": {
+    "bulk_action_type": "delete",
+    "photo_titles": [
+      "Test 6"
+    ],
+    "photo_ids": [
+      448
+    ],
+    "photo_count": 1,
+    "results": {
+      "deleted_count": 1
+    }
+  }
+}
+,
+{
+  "log_id": "a3ec4ef5-e53b-40d6-baf6-033cbcf3274e",
+  "user": "jul_atn",
+  "user_id": 3,
+  "action": "photo_upload",
+  "timestamp": "2025-09-03T21:10:11.869286+00:00",
+  "ip_address": "127.0.0.1",
+  "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+  "location": {
+    "city": null,
+    "region": null,
+    "country": null
+  },
+  "photo_info": {
+    "photo_id": 502,
+    "filename": "9343a9ed-0c28-44d0-a35a-1a44b2191571.HEIC",
+    "file_size_mb": 1.67,
+    "file_extension": "heic",
+    "is_raw": false,
+    "dimensions": null,
+    "camera": null
+  },
+  "extra_info": {
+    "upload_method": "batch_upload",
+    "validation_errors": [
+      "Photo dimensions not extracted",
+      "Thumbnail not generated",
+      "No basic EXIF metadata extracted"
+    ],
+    "upload_details": {
+      "batch_number": 1,
+      "photo_number_in_batch": 1,
+      "total_photos": 1,
+      "file_original_name": "IMG_1914.HEIC",
+      "processing_errors": [
+        "Photo dimensions not extracted",
+        "Thumbnail not generated",
+        "No basic EXIF metadata extracted"
+      ]
+    },
+    "processing_status": {
+      "has_dimensions": false,
+      "has_thumbnail": false,
+      "has_camera_info": false,
+      "has_exposure_info": false,
+      "has_location": false,
+      "has_date": false
+    }
+  }
+}
+,
+{
+  "log_id": "deaaffc1-2ae0-4dda-87bd-1be595bfd642",
+  "user": "jul_atn",
+  "user_id": 3,
+  "action": "photo_upload",
+  "timestamp": "2025-09-03T21:18:50.991337+00:00",
+  "ip_address": "127.0.0.1",
+  "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+  "location": {
+    "city": null,
+    "region": null,
+    "country": null
+  },
+  "photo_info": {
+    "photo_id": 503,
+    "filename": "e0459c67-9d0c-42f8-ad0d-47ce38d3153a.HEIC",
+    "file_size_mb": 1.67,
+    "file_extension": "heic",
+    "is_raw": false,
+    "dimensions": null,
+    "camera": null
+  },
+  "extra_info": {
+    "upload_method": "batch_upload",
+    "validation_errors": [
+      "Photo dimensions not extracted",
+      "Thumbnail not generated",
+      "No basic EXIF metadata extracted"
+    ],
+    "upload_details": {
+      "batch_number": 1,
+      "photo_number_in_batch": 1,
+      "total_photos": 1,
+      "file_original_name": "IMG_1914.HEIC",
+      "processing_errors": [
+        "Photo dimensions not extracted",
+        "Thumbnail not generated",
+        "No basic EXIF metadata extracted"
+      ]
+    },
+    "processing_status": {
+      "has_dimensions": false,
+      "has_thumbnail": false,
+      "has_camera_info": false,
+      "has_exposure_info": false,
+      "has_location": false,
+      "has_date": false
+    }
+  }
+}
 ]

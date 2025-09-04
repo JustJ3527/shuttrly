@@ -45,6 +45,7 @@ oauthlib==3.2.2
 packaging==25.0
 phonenumbers==9.0.10
 pillow==11.3.0
+pillow-heif==0.16.0
 platformdirs==3.0.0
 prompt_toolkit==3.0.52
 psycopg2-binary==2.9.10

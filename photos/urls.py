@@ -10,6 +10,7 @@ urlpatterns = [
     path("upload/", views.photo_upload, name="upload"),
     # Photo gallery and management
     path("gallery/", views.photo_gallery, name="gallery"),
+    path("gallery-advanced/", views.advanced_gallery, name="advanced_gallery"),
     path("gallery-test/", views.photo_gallery_test, name="gallery_test"),
     path("stats/", views.photo_stats, name="stats"),
     # Individual photo views
@@ -21,6 +22,8 @@ urlpatterns = [
     path("public/", views.public_gallery, name="public_gallery"),
     # Bulk actions
     path("bulk-actions/", views.bulk_actions, name="bulk_actions"),
+    path("add-to-collection/", views.add_to_collection, name="add_to_collection"),
+    path("advanced-bulk-actions/", views.advanced_bulk_actions, name="advanced_bulk_actions"),
     # AJAX endpoints
     path(
         "ajax/upload-progress/", views.ajax_upload_progress, name="ajax_upload_progress"
@@ -45,7 +48,11 @@ urlpatterns = [
     path("tags/", views.tag_list, name="tag_list"),
     path("tags/<str:tag_name>/", views.tag_detail, name="tag_detail"),
     path("tags/search/", views.search_by_tags, name="search_by_tags"),
-    # Embedding system test
-    path("test-embedding/", views.test_embedding_system, name="test_embedding"),
-    path("test-embedding/<int:photo_id>/", views.test_embedding_system, name="test_embedding_photo"),
+    # Legacy embedding system test (moved to test module)
+    # path("test-embedding/", views.test_embedding_system, name="test_embedding"),
+    # path("test-embedding/<int:photo_id>/", views.test_embedding_system, name="test_embedding_photo"),
+    # path("test-hybrid/", views.test_hybrid_system, name="test_hybrid"),
+    # path("test-hybrid/<int:photo_id>/", views.test_hybrid_system, name="test_hybrid_photo"),
+    # Test system (separate module)
+    path("test/", include("photos.test.urls")),
 ]

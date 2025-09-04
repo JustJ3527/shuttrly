@@ -26,7 +26,7 @@ from django.conf import settings
 
 from .models import Photo, Collection, CollectionPhoto
 from .forms import PhotoUploadForm, PhotoEditForm, PhotoSearchForm, CollectionCreateForm, CollectionPhotoForm
-from .utils import find_similar_photos
+from .test.test_utils import find_similar_photos_cached
 from logs.utils import (
     log_photo_upload_json,
     log_photo_delete_json,
@@ -427,55 +427,29 @@ def photo_detail(request, photo_id):
         messages.error(request, "You don't have permission to view this photo.")
         return redirect("photos:gallery")
 
-    # Get related photos based on privacy settings
-    if not request.user.is_authenticated:
-        # Anonymous users see only public photos
-        related_photos = Photo.objects.filter(is_private=False).exclude(id=photo.id)
-        user_is_private = False
-    else:
-        user_is_private = getattr(request.user, 'is_private', False)
-        
-        if user_is_private:
-            # If user is private, only show their own related photos
-            related_photos = Photo.objects.filter(user=request.user).exclude(id=photo.id)
-        else:
-            # If user is not private, show all non-private related photos
-            related_photos = Photo.objects.filter(is_private=False).exclude(id=photo.id)
+    # Check user privacy status
+    user_is_private = getattr(request.user, 'is_private', False) if request.user.is_authenticated else False
 
-    # Find photos with similar characteristics
+    # Find similar photos using cosine similarity + location with visibility filtering
+    # Exclude photos from the connected user to show only photos from other users
     similar_photos = []
-    if photo.camera_model:
-        similar_photos.extend(
-            related_photos.filter(camera_model=photo.camera_model)[:3]
-        )
-    if photo.lens_model:
-        similar_photos.extend(related_photos.filter(lens_model=photo.lens_model)[:3])
-    if photo.tags:
-        tag_list = photo.get_tags_list()
-        for tag in tag_list[:3]:
-            similar_photos.extend(related_photos.filter(tags__icontains=tag)[:2])
-
-    # Remove duplicates and limit to 6 photos
-    seen_ids = set()
-    unique_similar = []
-    for p in similar_photos:
-        if p.id not in seen_ids and len(unique_similar) < 6:
-            unique_similar.append(p)
-            seen_ids.add(p.id)
-
-    # Find AI-powered similar photos using embeddings
-    ai_similar_photos = []
     if photo.embedding:
         try:
-            ai_similar_results = find_similar_photos(photo, limit=6, threshold=0.6)
-            ai_similar_photos = [result['photo'] for result in ai_similar_results]
+            from .utils import find_similar_photos_with_visibility
+            similar_photos = find_similar_photos_with_visibility(
+                photo=photo,
+                user=request.user if request.user.is_authenticated else None,
+                limit=6,
+                threshold=0.6,
+                include_own_photos=False  # Exclude own photos for similar photos section
+            )
         except Exception as e:
-            print(f"Error finding AI similar photos: {e}")
+            print(f"Error finding similar photos: {e}")
+            similar_photos = []
 
     context = {
         "photo": photo,
-        "similar_photos": unique_similar,
-        "ai_similar_photos": ai_similar_photos,
+        "similar_photos": similar_photos,
         "user_is_private": user_is_private,
     }
     return render(request, "photos/detail.html", context)
@@ -1347,65 +1321,287 @@ def search_by_tags(request):
     return redirect('photos:tag_list')
 
 
+# Test views moved to photos.test.legacy_test_views module
+
+
 @login_required
-def test_embedding_system(request, photo_id=None):
-    """Test view to verify embedding system is working with navigation between photos"""
-    
-    # Get all photos with embeddings for navigation
-    photos_with_embeddings = Photo.objects.exclude(
-        embedding__isnull=True
-    ).exclude(
-        embedding__len=0
-    ).order_by('id')
-    
-    if not photos_with_embeddings.exists():
-        context = {
-            'error': 'No photos with embeddings found. Please generate embeddings first.',
-            'total_photos': Photo.objects.count(),
-            'photos_with_embeddings': 0,
-        }
-        return render(request, 'photos/test_embedding.html', context)
-    
-    # Get current photo
-    if photo_id:
-        try:
-            current_photo = photos_with_embeddings.get(id=photo_id)
-        except Photo.DoesNotExist:
-            current_photo = photos_with_embeddings.first()
+def advanced_gallery(request):
+    """Advanced gallery with search, selection, and layout options"""
+    # Get search form data
+    search_form = PhotoSearchForm(request.GET)
+
+    # Start with user's photos
+    photos = Photo.objects.filter(user=request.user)
+
+    # Apply search filters
+    if search_form.is_valid():
+        query = search_form.cleaned_data.get("query")
+        if query:
+            photos = photos.filter(
+                Q(title__icontains=query)
+                | Q(description__icontains=query)
+                | Q(tags__icontains=query)
+                | Q(camera_make__icontains=query)
+                | Q(camera_model__icontains=query)
+                | Q(lens_model__icontains=query)
+            )
+
+        # Filter by camera
+        camera_make = search_form.cleaned_data.get("camera_make")
+        if camera_make:
+            photos = photos.filter(camera_make__icontains=camera_make)
+
+        camera_model = search_form.cleaned_data.get("camera_model")
+        if camera_model:
+            photos = photos.filter(camera_model__icontains=camera_model)
+
+        lens_model = search_form.cleaned_data.get("lens_model")
+        if lens_model:
+            photos = photos.filter(lens_model__icontains=lens_model)
+
+        # Filter by date range
+        date_from = search_form.cleaned_data.get("date_from")
+        if date_from:
+            photos = photos.filter(date_taken__gte=date_from)
+
+        date_to = search_form.cleaned_data.get("date_to")
+        if date_to:
+            photos = photos.filter(date_taken__lte=date_to)
+
+        # Filter by tags
+        tags = search_form.cleaned_data.get("tags")
+        if tags:
+            tag_list = [tag.strip() for tag in tags.split(",") if tag.strip()]
+            for tag in tag_list:
+                photos = photos.filter(tags__icontains=tag)
+
+        # Filter by format
+        is_raw = search_form.cleaned_data.get("is_raw")
+        if is_raw == "true":
+            photos = photos.filter(is_raw=True)
+        elif is_raw == "false":
+            photos = photos.filter(is_raw=False)
+
+        # Sort photos
+        sort_by = search_form.cleaned_data.get("sort_by") or "-date_taken"
     else:
-        current_photo = photos_with_embeddings.first()
-    
-    # Get navigation info
-    photos_list = list(photos_with_embeddings)
-    current_index = photos_list.index(current_photo)
-    
-    # Navigation photos
-    prev_photo = photos_list[current_index - 1] if current_index > 0 else None
-    next_photo = photos_list[current_index + 1] if current_index < len(photos_list) - 1 else None
-    
-    # Test similarity search
-    similar_results = []
-    test_result = None
-    
-    try:
-        # Test with standard model (512 dimensions) - show more photos
-        similar_results = find_similar_photos(current_photo, limit=20, threshold=0.3)
-        test_result = f"Found {len(similar_results)} similar photos for '{current_photo.title}'"
-        
-    except Exception as e:
-        similar_results = [{"error": f"Error finding similar photos: {str(e)}"}]
-        test_result = f"Error testing similarity: {str(e)}"
-    
+        # Default sort when no search form is provided
+        sort_by = "-date_taken"
+
+    # Always apply sorting with fallback
+    if sort_by == "-date_taken":
+        photos = photos.order_by("-date_taken", "-created_at", "-id")
+    elif sort_by == "date_taken":
+        photos = photos.order_by("date_taken", "created_at", "id")
+    else:
+        photos = photos.order_by(sort_by, "-id")
+
+    # Calculate statistics
+    total_photos = photos.count()
+    raw_photos = photos.filter(is_raw=True).count()
+    public_photos = photos.filter(is_private=False).count()
+
+    # For lazy loading, get all photos without pagination
+    # But limit to a reasonable number to prevent memory issues
+    photos = photos[:1000]
+    photos_list = list(photos)  # Convert to list to avoid QuerySet issues
+
+    # Get unique cameras and lenses for filter suggestions
+    all_user_photos = Photo.objects.filter(user=request.user)
+    cameras = list(
+        all_user_photos.values_list("camera_make", flat=True)
+        .distinct()
+        .exclude(camera_make="")
+        .exclude(camera_make__isnull=True)
+    )
+    lenses = list(
+        all_user_photos.values_list("lens_model", flat=True)
+        .distinct()
+        .exclude(lens_model="")
+        .exclude(lens_model__isnull=True)
+    )
+
+    # Get user's collections for bulk actions
+    collections = Collection.objects.filter(owner=request.user).order_by('name')
+
     context = {
-        'current_photo': current_photo,
-        'prev_photo': prev_photo,
-        'next_photo': next_photo,
-        'current_index': current_index + 1,  # 1-based for display
-        'total_photos_with_embeddings': len(photos_list),
-        'test_result': test_result,
-        'similar_results': similar_results,
-        'total_photos': Photo.objects.count(),
-        'photos_with_embeddings': photos_with_embeddings.count(),
+        "photos": photos_list,
+        "search_form": search_form,
+        "total_photos": total_photos,
+        "raw_photos": raw_photos,
+        "public_photos": public_photos,
+        "cameras": cameras,
+        "lenses": lenses,
+        "collections": collections,
+        "debug": settings.DEBUG,
     }
-    
-    return render(request, 'photos/test_embedding.html', context)
+    return render(request, "photos/advanced_gallery.html", context)
+
+
+@login_required
+@require_http_methods(["POST"])
+@csrf_exempt
+def add_to_collection(request):
+    """Add selected photos to a collection via AJAX"""
+    try:
+        data = json.loads(request.body)
+        photo_ids_str = data.get('photo_ids', '')
+        collection_id = data.get('collection_id')
+        new_collection_name = data.get('new_collection_name', '').strip()
+        
+        if not photo_ids_str:
+            return JsonResponse({'success': False, 'message': 'No photos selected'})
+        
+        # Parse photo IDs
+        photo_ids = [int(pid.strip()) for pid in photo_ids_str.split(',') if pid.strip().isdigit()]
+        if not photo_ids:
+            return JsonResponse({'success': False, 'message': 'Invalid photo IDs'})
+        
+        # Get photos
+        photos = Photo.objects.filter(id__in=photo_ids, user=request.user)
+        if not photos.exists():
+            return JsonResponse({'success': False, 'message': 'No valid photos found'})
+        
+        # Handle collection
+        if collection_id:
+            # Add to existing collection
+            try:
+                collection = Collection.objects.get(id=collection_id, owner=request.user)
+            except Collection.DoesNotExist:
+                return JsonResponse({'success': False, 'message': 'Collection not found'})
+        elif new_collection_name:
+            # Create new collection
+            collection = Collection.objects.create(
+                name=new_collection_name,
+                owner=request.user,
+                description=f"Collection created from {len(photos)} photos"
+            )
+        else:
+            return JsonResponse({'success': False, 'message': 'Please select a collection or enter a new collection name'})
+        
+        # Add photos to collection
+        added_count = 0
+        for photo in photos:
+            if not collection.photos.filter(id=photo.id).exists():
+                collection.add_photo(photo)
+                added_count += 1
+        
+        return JsonResponse({
+            'success': True, 
+            'message': f'Successfully added {added_count} photos to collection "{collection.name}"'
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Invalid JSON data'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': f'Error: {str(e)}'})
+
+
+@login_required
+@require_http_methods(["POST"])
+@csrf_exempt
+def advanced_bulk_actions(request):
+    """Handle advanced bulk actions via AJAX"""
+    try:
+        data = json.loads(request.body)
+        photo_ids_str = data.get('photo_ids', '')
+        action = data.get('action')
+        
+        if not photo_ids_str or not action:
+            return JsonResponse({'success': False, 'message': 'Missing required data'})
+        
+        # Parse photo IDs
+        photo_ids = [int(pid.strip()) for pid in photo_ids_str.split(',') if pid.strip().isdigit()]
+        if not photo_ids:
+            return JsonResponse({'success': False, 'message': 'Invalid photo IDs'})
+        
+        # Get photos
+        photos = Photo.objects.filter(id__in=photo_ids, user=request.user)
+        if not photos.exists():
+            return JsonResponse({'success': False, 'message': 'No valid photos found'})
+        
+        if action == 'delete':
+            # Bulk delete
+            count = photos.count()
+            photo_list = list(photos)
+            
+            # Log bulk deletion
+            try:
+                log_photo_bulk_action_json(
+                    user=request.user,
+                    action="delete",
+                    photo_ids=[photo.id for photo in photo_list],
+                    request=request,
+                    results={"deleted_count": count},
+                    extra_info={
+                        "bulk_action_type": "delete",
+                        "photo_titles": [photo.title or "Untitled" for photo in photo_list],
+                    },
+                )
+            except Exception as log_error:
+                print(f"Warning: Failed to log bulk photo deletion: {log_error}")
+            
+            photos.delete()
+            return JsonResponse({
+                'success': True, 
+                'message': f'Successfully deleted {count} photos'
+            })
+        
+        elif action == 'bulk_edit':
+            # Bulk edit
+            is_private = data.get('is_private')
+            tags = data.get('tags', '').strip()
+            
+            updated_count = 0
+            photo_list = list(photos)
+            
+            for photo in photo_list:
+                updated = False
+                
+                # Update privacy
+                if is_private in ['true', 'false']:
+                    photo.is_private = (is_private == 'true')
+                    updated = True
+                
+                # Add tags
+                if tags:
+                    current_tags = photo.get_tags_list()
+                    new_tags = [tag.strip() for tag in tags.split(',') if tag.strip()]
+                    combined_tags = list(set(current_tags + new_tags))
+                    photo.tags = ", ".join(combined_tags)
+                    updated = True
+                
+                if updated:
+                    photo.save()
+                    updated_count += 1
+            
+            # Log bulk edit
+            try:
+                log_photo_bulk_action_json(
+                    user=request.user,
+                    action="bulk_edit",
+                    photo_ids=[photo.id for photo in photo_list],
+                    request=request,
+                    results={"updated_count": updated_count},
+                    extra_info={
+                        "bulk_action_type": "bulk_edit",
+                        "photo_titles": [photo.title or "Untitled" for photo in photo_list],
+                        "is_private": is_private,
+                        "tags_added": tags,
+                    },
+                )
+            except Exception as log_error:
+                print(f"Warning: Failed to log bulk photo edit: {log_error}")
+            
+            return JsonResponse({
+                'success': True, 
+                'message': f'Successfully updated {updated_count} photos'
+            })
+        
+        else:
+            return JsonResponse({'success': False, 'message': 'Invalid action'})
+        
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Invalid JSON data'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': f'Error: {str(e)}'})

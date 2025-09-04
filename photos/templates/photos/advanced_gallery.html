@@ -1,0 +1,302 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Advanced Gallery - Shuttrly{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/photo-search.css' %}">
+<link rel="stylesheet" href="{% static 'css/advanced-gallery.css' %}">
+{% endblock %}
+
+{% block content %}
+<!-- Loading bar -->
+<div id="gallery-loading-bar" class="gallery-loading-bar">
+    <div class="loading-progress">
+        <div class="loading-fill"></div>
+    </div>
+    <div class="loading-text">Loading Advanced Gallery...</div>
+</div>
+
+<div class="advanced-gallery-container" style="opacity: 0; visibility: hidden;">
+    <!-- Header with title and stats -->
+    <div class="gallery-header">
+        <div class="gallery-title-section">
+            <h1 class="gallery-title">
+                <i class="fas fa-images"></i>
+                Advanced Gallery
+            </h1>
+            <div class="gallery-stats">
+                <span class="stat-item">
+                    <i class="fas fa-camera"></i>
+                    {{ total_photos }} photos
+                </span>
+                <span class="stat-item">
+                    <i class="fas fa-file-code"></i>
+                    {{ raw_photos }} RAW
+                </span>
+                <span class="stat-item">
+                    <i class="fas fa-globe"></i>
+                    {{ public_photos }} public
+                </span>
+                <span class="stat-item">
+                    <i class="fas fa-download"></i>
+                    <span id="loaded-photos-count">0</span> loaded
+                </span>
+            </div>
+        </div>
+        
+        <!-- Layout toggle buttons -->
+        <div class="layout-controls">
+            <button type="button" class="layout-btn active" data-layout="grid" title="Grid Layout">
+                <i class="fas fa-th"></i>
+            </button>
+            <button type="button" class="layout-btn" data-layout="masonry" title="Masonry Layout">
+                <i class="fas fa-th-large"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Search and filter section -->
+    <div class="gallery-controls">
+        <div class="search-section">
+            <div class="photo-search-container">
+                <input type="text" 
+                       class="photo-search-input" 
+                       placeholder="Search photos by title, description, tags, camera, or date taken..."
+                       autocomplete="off">
+                <div class="photo-search-results"></div>
+            </div>
+        </div>
+        
+        <!-- Selection mode toggle -->
+        <div class="selection-controls">
+            <button type="button" class="btn btn-outline-primary" id="toggle-selection-mode">
+                <i class="fas fa-check-square"></i>
+                <span class="btn-text">Select Photos</span>
+            </button>
+            
+            <!-- Bulk actions (hidden by default) -->
+            <div class="bulk-actions" id="bulk-actions" style="display: none;">
+                <span class="selection-count">
+                    <span id="selected-count">0</span> selected
+                </span>
+                
+                <div class="action-buttons">
+                    <button type="button" class="btn btn-primary" id="add-to-collection-btn">
+                        <i class="fas fa-folder-plus"></i>
+                        Add to Collection
+                    </button>
+                    <button type="button" class="btn btn-success" id="create-post-btn">
+                        <i class="fas fa-plus"></i>
+                        Create Post
+                    </button>
+                    <button type="button" class="btn btn-warning" id="bulk-edit-btn">
+                        <i class="fas fa-edit"></i>
+                        Bulk Edit
+                    </button>
+                    <button type="button" class="btn btn-danger" id="bulk-delete-btn">
+                        <i class="fas fa-trash"></i>
+                        Delete
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Photo grid container -->
+    <div class="photo-grid-container" id="photo-grid-container">
+        <div class="photo-grid" id="photo-grid">
+            {% for photo in photos %}
+            <div class="photo-item" 
+                 data-photo-id="{{ photo.id }}"
+                 data-description="{{ photo.description|default:'' }}"
+                 data-tags="{{ photo.tags|default:'' }}"
+                 data-date-taken="{{ photo.date_taken|date:'M d, Y'|default:photo.created_at|date:'M d, Y' }}"
+                 data-camera="{{ photo.camera_model|default:photo.camera_make|default:'' }}"
+                 data-raw="{{ photo.is_raw|yesno:'true,false' }}"
+                 data-title="{{ photo.title|default:'Untitled' }}">
+                
+                <!-- Selection checkbox (hidden by default) -->
+                <input type="checkbox" 
+                       name="selected_photos" 
+                       value="{{ photo.id }}" 
+                       class="photo-checkbox"
+                       style="display: none;">
+                
+                                 <!-- Photo image with lazy loading -->
+                 <div class="photo-image-container">
+                     {% if photo.thumbnail %}
+                         <img src="{{ photo.thumbnail.url }}" 
+                              alt="{{ photo.title|default:'Photo' }}"
+                              class="photo-thumbnail lazy-load"
+                              data-src="{{ photo.thumbnail.url }}"
+                              data-width="{{ photo.thumbnail.width|default:photo.original_file.width }}"
+                              data-height="{{ photo.thumbnail.height|default:photo.original_file.height }}"
+                              loading="lazy">
+                     {% else %}
+                         <img src="{{ photo.original_file.url }}" 
+                              alt="{{ photo.title|default:'Photo' }}"
+                              class="photo-thumbnail lazy-load"
+                              data-src="{{ photo.original_file.url }}"
+                              data-width="{{ photo.original_file.width }}"
+                              data-height="{{ photo.original_file.height }}"
+                              loading="lazy">
+                     {% endif %}
+                    
+                    <!-- Hidden link to photo details -->
+                    <a href="{% url 'photos:detail' photo.id %}" style="display: none;" class="photo-detail-link"></a>
+                    
+                    <!-- Overlay with photo info -->
+                    <div class="photo-overlay">
+                        <div class="photo-info">
+                            <h4 class="photo-title">{{ photo.title|default:"Untitled" }}</h4>
+                            {% if photo.description %}
+                                <p class="photo-description">{{ photo.description|truncatechars:100 }}</p>
+                            {% endif %}
+                            <div class="photo-meta">
+                                {% if photo.date_taken %}
+                                    <span class="meta-item">
+                                        <i class="fas fa-calendar"></i>
+                                        {{ photo.date_taken|date:"M d, Y" }}
+                                    </span>
+                                {% endif %}
+                                {% if photo.camera_model %}
+                                    <span class="meta-item">
+                                        <i class="fas fa-camera"></i>
+                                        {{ photo.camera_model }}
+                                    </span>
+                                {% endif %}
+                                {% if photo.is_raw %}
+                                    <span class="meta-item raw-indicator">
+                                        <i class="fas fa-file-code"></i>
+                                        RAW
+                                    </span>
+                                {% endif %}
+                            </div>
+                            {% if photo.tags %}
+                                <div class="photo-tags">
+                                    {% for tag in photo.get_tags_list %}
+                                        <span class="tag">#{{ tag }}</span>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Action buttons -->
+                        <div class="photo-actions">
+                            <a href="{% url 'photos:detail' photo.id %}" 
+                               class="action-btn view-btn" 
+                               title="View Details">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            <a href="{% url 'photos:edit' photo.id %}" 
+                               class="action-btn edit-btn" 
+                               title="Edit Photo">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <a href="{% url 'photos:download' photo.id %}" 
+                               class="action-btn download-btn" 
+                               title="Download">
+                                <i class="fas fa-download"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="no-photos">
+                <div class="no-photos-content">
+                    <i class="fas fa-images"></i>
+                    <h3>No photos found</h3>
+                    <p>Upload some photos to get started!</p>
+                    <a href="{% url 'photos:upload' %}" class="btn btn-primary">
+                        <i class="fas fa-upload"></i>
+                        Upload Photos
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Collection Selection Modal -->
+<div class="modal fade" id="collectionModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add Photos to Collection</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="collection-select">Select Collection:</label>
+                    <select class="form-control" id="collection-select">
+                        <option value="">Choose a collection...</option>
+                        {% for collection in collections %}
+                            <option value="{{ collection.id }}">{{ collection.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="new-collection-name">Or create new collection:</label>
+                    <input type="text" class="form-control" id="new-collection-name" placeholder="Collection name">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="confirm-add-to-collection">Add Photos</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bulk Edit Modal -->
+<div class="modal fade" id="bulkEditModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Bulk Edit Photos</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="bulk-edit-form">
+                    <div class="form-group">
+                        <label for="bulk-privacy">Privacy:</label>
+                        <select class="form-control" id="bulk-privacy" name="is_private">
+                            <option value="">No change</option>
+                            <option value="false">Make Public</option>
+                            <option value="true">Make Private</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="bulk-tags">Add Tags:</label>
+                        <input type="text" class="form-control" id="bulk-tags" name="tags" placeholder="Enter tags separated by commas">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="confirm-bulk-edit">Apply Changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/photo-search.js' %}"></script>
+<script src="{% static 'js/photo-selector.js' %}"></script>
+<script>
+// Prevent automatic initialization of PhotoSelector default instances
+window.photoSelectors = window.photoSelectors || {};
+</script>
+<script src="{% static 'js/advanced-gallery.js' %}"></script>
+{% if debug %}
+<script src="{% static 'js/debug-advanced-gallery.js' %}"></script>
+{% endif %}
+{% endblock %}

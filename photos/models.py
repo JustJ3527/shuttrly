@@ -9,6 +9,8 @@ import rawpy
 from io import BytesIO
 import numpy as np
 from django.contrib.postgres.fields import ArrayField
+from pillow_heif import register_heif_opener
+
 
 COLLECTION_TYPES = [
     ("personal", "Personal"),
@@ -898,7 +900,8 @@ class Photo(models.Model):
                         self.width = raw.sizes.width
                         self.height = raw.sizes.height
             else:
-                # For regular images, open directly with PIL
+                # For regular images (including HEIC), open directly with PIL
+                # pillow-heif registration allows PIL to handle HEIC files
                 img = Image.open(self.original_file.path)
 
                 # Store dimensions if not already set (should be set in extract_jpeg_exif)
@@ -946,6 +949,21 @@ class Photo(models.Model):
                             self.height = img.height
                 except Exception as dim_error:
                     print(f"Could not extract dimensions: {dim_error}")
+
+    def get_thumbnail_url(self):
+        """Get thumbnail URL safely, fallback to original file if thumbnail doesn't exist"""
+        try:
+            if self.thumbnail and self.thumbnail.url:
+                return self.thumbnail.url
+        except ValueError:
+            # Thumbnail field exists but has no file associated
+            pass
+        except Exception:
+            # Any other error accessing thumbnail
+            pass
+        
+        # Fallback to original file
+        return self.original_file.url if self.original_file else None
 
     def validate_photo_processing(self):
         """Validate that the photo was processed correctly"""
@@ -1425,3 +1443,41 @@ class CollectionPhoto(models.Model):
     
     def __str__(self):
         return f"{self.photo.title} in {self.collection.name}"
+
+
+# ===============================
+# SIMILARITY CACHE
+# ===============================
+
+class PhotoSimilarity(models.Model):
+    """Cache for calculated photo similarities to avoid recalculation"""
+    
+    photo1 = models.ForeignKey(Photo, on_delete=models.CASCADE, related_name='similarities_as_photo1')
+    photo2 = models.ForeignKey(Photo, on_delete=models.CASCADE, related_name='similarities_as_photo2')
+    
+    # Similarity scores
+    visual_similarity = models.FloatField(help_text="Visual similarity (embeddings)")
+    exif_similarity = models.FloatField(help_text="EXIF similarity")
+    final_similarity = models.FloatField(help_text="Final hybrid similarity")
+    
+    # Method used for calculation
+    method = models.CharField(max_length=20, default="cosine", choices=[
+        ("cosine", "Cosine Similarity"),
+        ("pearson", "Pearson Correlation"),
+    ])
+    
+    # Timestamps
+    calculated_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        unique_together = ['photo1', 'photo2', 'method']
+        ordering = ['-final_similarity']
+        indexes = [
+            models.Index(fields=['photo1', 'method']),
+            models.Index(fields=['photo2', 'method']),
+            models.Index(fields=['final_similarity']),
+        ]
+    
+    def __str__(self):
+        return f"Similarity: {self.photo1.id} ↔ {self.photo2.id} ({self.method}: {self.final_similarity:.3f})"

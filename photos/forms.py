@@ -114,6 +114,8 @@ class PhotoUploadForm(forms.Form):
             "png",
             "tiff",
             "tif",
+            "heic",
+            "heif",
             "raw",
             "cr2",
             "cr3",

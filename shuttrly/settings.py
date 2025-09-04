@@ -63,6 +63,7 @@ INSTALLED_APPS = [
     "logs",
     "posts",
     "photos.apps.PhotosConfig",
+    "photos.test.apps.PhotosTestConfig",  # Test module
     # API
     "rest_framework", # REST framework for building APIs
     "rest_framework_simplejwt", # JSON Web Token Authentication

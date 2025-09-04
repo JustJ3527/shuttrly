@@ -7,6 +7,7 @@
 {{ block.super }}
 <link rel="stylesheet" href="{% static 'css/photo_detail.css' %}">
 <link href="https://api.mapbox.com/mapbox-gl-js/v3.14.0/mapbox-gl.css" rel="stylesheet">
+<link rel="stylesheet" href="{% static 'css/advanced-gallery.css' %}">
 <style>
     /* Dynamic background gradient based on photo's dominant colors */
     .photo-detail-page {
@@ -377,52 +378,114 @@
                 </div>
             </div>
 
-            <!-- Similar Photos -->
+            <!-- Similar Photos (using cosine similarity + location with visibility filtering) -->
             {% if similar_photos %}
                 <div class="row mt-5">
                     <div class="col-12">
-                        <h3>Similar Photos</h3>
-                        <div class="similar-photos">
-                            <div class="row">
-                                {% for similar_photo in similar_photos %}
-                                    <div class="col-lg-2 col-md-3 col-sm-4 col-6 mb-3">
-                                        <div class="similar-photo-card">
-                                            <a href="{% url 'photos:detail' similar_photo.id %}">
-                                                {% if similar_photo.thumbnail %}
-                                                    <img src="{{ similar_photo.thumbnail.url }}" 
-                                                         alt="{{ similar_photo.title|default:'Untitled' }}" 
-                                                         class="img-fluid">
-                                                {% elif similar_photo.original_file %}
-                                                    <img src="{{ similar_photo.original_file.url }}" 
-                                                         alt="{{ similar_photo.title|default:'Untitled' }}" 
-                                                         class="img-fluid">
-                                                {% endif %}
-                                            </a>
+                        <h3 class="similar-photos-title">
+                            <i class="fas fa-images"></i>
+                            Similar Photos
+                        </h3>
+                        <p class="text-muted mb-4">
+                            <i class="fas fa-info-circle"></i> 
+                            Photos similar to this one based on visual content and location, 
+                            showing only photos you can see based on privacy settings.
+                        </p>
+                        
+                        <!-- Similar photos grid with advanced gallery styling -->
+                        <div class="similar-photos-grid">
+                            {% for similar_photo in similar_photos %}
+                                <div class="similar-photo-item" 
+                                     data-photo-id="{{ similar_photo.id }}"
+                                     data-description="{{ similar_photo.description|default:'' }}"
+                                     data-tags="{{ similar_photo.tags|default:'' }}"
+                                     data-date-taken="{{ similar_photo.date_taken|date:'M d, Y'|default:similar_photo.created_at|date:'M d, Y' }}"
+                                     data-camera="{{ similar_photo.camera_model|default:similar_photo.camera_make|default:'' }}"
+                                     data-raw="{{ similar_photo.is_raw|yesno:'true,false' }}"
+                                     data-title="{{ similar_photo.title|default:'Untitled' }}">
+                                    
+                                    <!-- Photo image container -->
+                                    <div class="similar-photo-image-container">
+                                        <a href="{% url 'photos:detail' similar_photo.id %}">
+                                            {% if similar_photo.thumbnail %}
+                                                <img src="{{ similar_photo.thumbnail.url }}" 
+                                                     alt="{{ similar_photo.title|default:'Photo' }}"
+                                                     class="similar-photo-thumbnail"
+                                                     loading="lazy">
+                                            {% else %}
+                                                <img src="{{ similar_photo.original_file.url }}" 
+                                                     alt="{{ similar_photo.title|default:'Photo' }}"
+                                                     class="similar-photo-thumbnail"
+                                                     loading="lazy">
+                                            {% endif %}
+                                        </a>
+                                        
+                                        <!-- Overlay with photo info -->
+                                        <div class="similar-photo-overlay">
                                             <div class="similar-photo-info">
-                                                <div class="similar-photo-title">
-                                                    {{ similar_photo.title|default:"Untitled"|truncatechars:20 }}
-                                                </div>
-                                                <div class="similar-photo-date">
+                                                <h4 class="similar-photo-title">{{ similar_photo.title|default:"Untitled" }}</h4>
+                                                {% if similar_photo.description %}
+                                                    <p class="similar-photo-description">{{ similar_photo.description|truncatechars:60 }}</p>
+                                                {% endif %}
+                                                
+                                                <!-- User info -->
+                                                {% if similar_photo.user != request.user %}
+                                                    <div class="similar-photo-user">
+                                                        <span class="similar-user-item">
+                                                            <i class="fas fa-user"></i>
+                                                            {{ similar_photo.user.username }}
+                                                        </span>
+                                                    </div>
+                                                {% endif %}
+                                                
+                                                <div class="similar-photo-meta">
                                                     {% if similar_photo.date_taken %}
-                                                        {{ similar_photo.date_taken|date:"M d, Y" }}
-                                                    {% else %}
-                                                        {{ similar_photo.created_at|date:"M d, Y" }}
+                                                        <span class="similar-meta-item">
+                                                            <i class="fas fa-calendar"></i>
+                                                            {{ similar_photo.date_taken|date:"M d, Y" }}
+                                                        </span>
+                                                    {% endif %}
+                                                    {% if similar_photo.camera_model %}
+                                                        <span class="similar-meta-item">
+                                                            <i class="fas fa-camera"></i>
+                                                            {{ similar_photo.camera_model }}
+                                                        </span>
+                                                    {% endif %}
+                                                    {% if similar_photo.is_raw %}
+                                                        <span class="similar-meta-item similar-raw-indicator">
+                                                            <i class="fas fa-file-code"></i>
+                                                            RAW
+                                                        </span>
                                                     {% endif %}
                                                 </div>
-                                                {% if similar_photo.user != request.user %}
-                                                    <div class="similar-photo-owner">
-                                                        <small class="text-muted">
-                                                            <a href="{% url 'public_user_profile' similar_photo.user.username %}" class="text-decoration-none">
-                                                                <i class="fas fa-user"></i> {{ similar_photo.user.username }}
-                                                            </a>
-                                                        </small>
+                                                {% if similar_photo.tags %}
+                                                    <div class="similar-photo-tags">
+                                                        {% for tag in similar_photo.get_tags_list %}
+                                                            <span class="similar-tag">#{{ tag }}</span>
+                                                        {% endfor %}
                                                     </div>
+                                                {% endif %}
+                                            </div>
+                                            
+                                            <!-- Action buttons -->
+                                            <div class="similar-photo-actions">
+                                                <a href="{% url 'photos:detail' similar_photo.id %}" 
+                                                   class="similar-action-btn similar-view-btn" 
+                                                   title="View Details">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                                {% if similar_photo.user != request.user %}
+                                                    <a href="{% url 'public_user_profile' similar_photo.user.username %}" 
+                                                       class="similar-action-btn similar-user-btn" 
+                                                       title="View Profile">
+                                                        <i class="fas fa-user"></i>
+                                                    </a>
                                                 {% endif %}
                                             </div>
                                         </div>
                                     </div>
-                                {% endfor %}
-                            </div>
+                                </div>
+                            {% endfor %}
                         </div>
                     </div>
                 </div>

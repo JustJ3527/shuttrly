@@ -1,5 +1,6 @@
 from django.db.models import Q
 from .models import Collection, Photo
+import math
 
 def create_collection_from_photos(name, owner, photos, description="", tags="", is_private=False):
     """Create a new collection from a list of photos"""
@@ -147,13 +148,13 @@ def get_collection_stats(collection):
     return stats
 
 # ===============================
-# EMBEDDINGS
+# EMBEDDINGS & SIMILARITY (PRODUCTION)
 # ===============================
 from transformers import CLIPProcessor, CLIPModel
 from PIL import Image
 import torch
 
-# Charge model once only (avoid reloading at each call)
+# Load model once only (avoid reloading at each call)
 model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
 processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
 
@@ -171,38 +172,199 @@ def get_image_embedding(image_path: str):
         print(f"Error generating embedding for {image_path}: {e}")
         return None
 
-def calculate_similarity(embedding1, embedding2):
+# ===============================
+# PHOTO VISIBILITY UTILITIES
+# ===============================
+
+def get_visible_photos_queryset(user, include_own_photos=True):
+    """
+    Get a queryset of photos that the user can see based on privacy settings.
+    
+    Args:
+        user: The user requesting photos (can be None for anonymous users)
+        include_own_photos: Whether to include the user's own photos (default: True)
+    
+    Returns:
+        QuerySet of photos visible to the user
+    """
+    if not user or not user.is_authenticated:
+        # Anonymous users can only see public photos from public accounts
+        return Photo.objects.filter(
+            is_private=False,
+            user__is_private=False
+        )
+    
+    # Build query for authenticated users
+    query = Q()
+    
+    # Always include public photos from public accounts (excluding own photos if requested)
+    if include_own_photos:
+        query |= Q(is_private=False, user__is_private=False)
+    else:
+        # Exclude user's own photos from public photos
+        query |= Q(is_private=False, user__is_private=False) & ~Q(user=user)
+    
+    if include_own_photos:
+        # Include user's own photos (both private and public)
+        query |= Q(user=user)
+    
+    # Include public photos from private accounts (if user can see the profile)
+    # This requires checking follow relationships
+    from users.models import FollowRequest
+    following_users = FollowRequest.objects.filter(
+        from_user=user,
+        status='accepted'
+    ).values_list('to_user', flat=True)
+    
+    if following_users:
+        if include_own_photos:
+            query |= Q(
+                is_private=False,
+                user__in=following_users
+            )
+        else:
+            # Exclude user's own photos from followed users' photos
+            query |= Q(
+                is_private=False,
+                user__in=following_users
+            ) & ~Q(user=user)
+    
+    return Photo.objects.filter(query).distinct()
+
+def can_user_see_photo(user, photo):
+    """
+    Check if a user can see a specific photo.
+    
+    Args:
+        user: The user requesting to see the photo (can be None for anonymous users)
+        photo: The photo to check visibility for
+    
+    Returns:
+        bool: True if user can see the photo, False otherwise
+    """
+    if not photo:
+        return False
+    
+    # Photo owner can always see their own photos
+    if user and user.is_authenticated and photo.user == user:
+        return True
+    
+    # Public photos from public accounts are visible to everyone
+    if not photo.is_private and not photo.user.is_private:
+        return True
+    
+    # Private photos are only visible to the owner
+    if photo.is_private:
+        return False
+    
+    # For public photos from private accounts, check if user can see the profile
+    if user and user.is_authenticated:
+        return photo.user.can_see_profile(user)
+    
+    return False
+
+# ===============================
+# SIMILARITY CALCULATION UTILITIES
+# ===============================
+
+def haversine_distance(lat1, lon1, lat2, lon2):
+    """Calculate the great circle distance between two points on Earth in kilometers"""
+    # Convert decimal degrees to radians
+    lat1, lon1, lat2, lon2 = map(math.radians, [lat1, lon1, lat2, lon2])
+    
+    # Haversine formula
+    dlat = lat2 - lat1
+    dlon = lon2 - lon1
+    a = math.sin(dlat/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon/2)**2
+    c = 2 * math.asin(math.sqrt(a))
+    r = 6371  # Radius of earth in kilometers
+    return c * r
+
+def calculate_cosine_similarity(embedding1, embedding2):
     """Calculate cosine similarity between two embeddings"""
     if not embedding1 or not embedding2:
         return 0.0
     
-    import numpy as np
-    
-    # Convert to numpy arrays if they're lists
-    if isinstance(embedding1, list):
-        embedding1 = np.array(embedding1)
-    if isinstance(embedding2, list):
-        embedding2 = np.array(embedding2)
-    
-    # Calculate cosine similarity
-    dot_product = np.dot(embedding1, embedding2)
-    norm1 = np.linalg.norm(embedding1)
-    norm2 = np.linalg.norm(embedding2)
-    
-    if norm1 == 0 or norm2 == 0:
+    try:
+        # Convert to numpy arrays if they're lists
+        import numpy as np
+        if isinstance(embedding1, list):
+            embedding1 = np.array(embedding1)
+        if isinstance(embedding2, list):
+            embedding2 = np.array(embedding2)
+        
+        # Calculate cosine similarity
+        dot_product = np.dot(embedding1, embedding2)
+        norm1 = np.linalg.norm(embedding1)
+        norm2 = np.linalg.norm(embedding2)
+        
+        if norm1 == 0 or norm2 == 0:
+            return 0.0
+        
+        return dot_product / (norm1 * norm2)
+    except Exception as e:
+        print(f"Error calculating cosine similarity: {e}")
         return 0.0
-    
-    return dot_product / (norm1 * norm2)
 
-def find_similar_photos(photo, limit=10, threshold=0.7):
-    """Find photos similar to the given photo based on embeddings"""
+def calculate_visual_location_similarity(photo1, photo2, alpha=0.8, beta=0.2):
+    """
+    Calculate similarity between two photos using embeddings and location data.
+    
+    Args:
+        photo1: First photo object
+        photo2: Second photo object
+        alpha: Weight for visual similarity (default: 0.8)
+        beta: Weight for location similarity (default: 0.2)
+    
+    Returns:
+        float: Combined similarity score between 0 and 1
+    """
+    # Calculate visual similarity (embeddings)
+    visual_sim = 0.0
+    if photo1.embedding and photo2.embedding:
+        visual_sim = calculate_cosine_similarity(photo1.embedding, photo2.embedding)
+    
+    # Calculate location similarity
+    location_sim = 0.0
+    if (photo1.latitude and photo1.longitude and 
+        photo2.latitude and photo2.longitude):
+        distance = haversine_distance(
+            photo1.latitude, photo1.longitude, 
+            photo2.latitude, photo2.longitude
+        )
+        location_sim = math.exp(-distance / 10.0)  # d0 = 10km
+    
+    # Adaptive weighting: if location similarity is very low, rely more on visual
+    if location_sim < 0.1:
+        alpha = 0.95
+        beta = 0.05
+    
+    return alpha * visual_sim + beta * location_sim
+
+def find_similar_photos_with_visibility(photo, user, limit=10, threshold=0.7, include_own_photos=True):
+    """
+    Find photos similar to the given photo using cosine similarity + location,
+    respecting privacy settings and user visibility.
+    
+    Args:
+        photo: The photo to find similar photos for
+        user: The user requesting similar photos (can be None for anonymous users)
+        limit: Maximum number of similar photos to return (default: 10)
+        threshold: Minimum similarity score to include (default: 0.7)
+        include_own_photos: Whether to include the user's own photos (default: True)
+    
+    Returns:
+        list: List of similar photo objects
+    """
     if not photo.embedding:
+        print(f"DEBUG: Photo {photo.id} has no embedding")
         return []
     
-    from .models import Photo
+    # Get visible photos for the user
+    visible_photos = get_visible_photos_queryset(user, include_own_photos)
     
-    # Get all photos with embeddings (excluding the current photo)
-    photos_with_embeddings = Photo.objects.exclude(
+    # Filter to photos with embeddings (excluding the current photo)
+    photos_with_embeddings = visible_photos.exclude(
         id=photo.id
     ).exclude(
         embedding__isnull=True
@@ -210,15 +372,24 @@ def find_similar_photos(photo, limit=10, threshold=0.7):
         embedding=[]
     )
     
+    print(f"DEBUG: Found {photos_with_embeddings.count()} visible photos with embeddings to compare")
+    
     similar_photos = []
+    
     for other_photo in photos_with_embeddings:
-        similarity = calculate_similarity(photo.embedding, other_photo.embedding)
-        if similarity >= threshold:
-            similar_photos.append({
-                'photo': other_photo,
-                'similarity': similarity
-            })
+        try:
+            # Calculate visual + location similarity
+            similarity = calculate_visual_location_similarity(photo, other_photo)
+            
+            if similarity >= threshold:
+                similar_photos.append({
+                    'photo': other_photo,
+                    'similarity': similarity
+                })
+        except Exception as e:
+            print(f"DEBUG: Error calculating similarity for photo {other_photo.id}: {e}")
+            continue
     
     # Sort by similarity (highest first) and return top results
     similar_photos.sort(key=lambda x: x['similarity'], reverse=True)
-    return similar_photos[:limit]
+    return [item['photo'] for item in similar_photos[:limit]]

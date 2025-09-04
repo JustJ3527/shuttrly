@@ -358,8 +358,17 @@ class GalleryAPIView(generics.ListAPIView):
                 pass
         
         # Sorting
-        sort_by = self.request.query_params.get('sort_by', 'date_desc')
-        if sort_by == 'date_desc':
+        sort_by = self.request.query_params.get('sort_by', 'date_taken_desc')
+        if sort_by == 'date_taken_desc':
+            # Sort by date_taken if available, otherwise by created_at
+            queryset = queryset.extra(
+                select={'sort_date': 'COALESCE(date_taken, created_at)'}
+            ).order_by('-sort_date')
+        elif sort_by == 'date_taken_asc':
+            queryset = queryset.extra(
+                select={'sort_date': 'COALESCE(date_taken, created_at)'}
+            ).order_by('sort_date')
+        elif sort_by == 'date_desc':
             queryset = queryset.order_by('-created_at')
         elif sort_by == 'date_asc':
             queryset = queryset.order_by('created_at')

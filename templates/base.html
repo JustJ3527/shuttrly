@@ -96,6 +96,7 @@
             <li><a href="{% url "posts:user_feed" %}" hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true"><span>Discover</span></a></li>
             <li><a href="#"><span>Search</span></a></li>
             <li><a href="{% url "photos:gallery" %}" hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true"><span>Gallery</span></a></li>
+            <li><a href="{% url "photos:advanced_gallery" %}" hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true"><span>Advanced Gallery</span></a></li>
             <li><a href="{% url "photos:collection_list" %}" hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true"><span>Collections</span></a></li>
           </ul>
         </div>
@@ -119,6 +120,7 @@
               <li><a href="#"><i class="fas fa-compass"></i> <span>Discover</span></a></li>
               <li><a href="#"><i class="fas fa-search"></i> <span>Search</span></a></li>
               <li><a href="{% url "photos:gallery" %}" hx-target="#main-content" hx-swap="innerHTML"><i class="fas fa-images"></i> <span>Gallery</span></a></li>
+              <li><a href="{% url "photos:advanced_gallery" %}" hx-target="#main-content" hx-swap="innerHTML"><i class="fas fa-th-large"></i> <span>Advanced Gallery</span></a></li>
               <li><a href="{% url "photos:collection_list" %}" hx-target="#main-content" hx-swap="innerHTML"><i class="fas fa-cloud-upload-alt"></i> <span>Collections</span></a></li>
             </ul>
           </div>

@@ -1,11 +1,60 @@
 {% extends 'base.html' %}
 
+{% block main_page %}home{% endblock %}
+
 {% block content %}
-<h1 style="margin-bottom: 3rem; line-height: normal; color: var(--text-default);">Welcome on home page <span class="gradient-text">{{user.username}}</span>.</h1>
+<div class="page-content">
+    <h1>Welcome on home page <span class="gradient-text">{{user.username}}</span>.</h1>
+    
+    <div class="content-section">
+        <h2>Welcome to Shuttrly</h2>
+        <p>Discover and share amazing photos with the Shuttrly community. Explore galleries, create collections, and connect with fellow photographers.</p>
+    </div>
+    
+    <div class="content-section">
+        <h2>Recent Activity</h2>
+        <p>Your recent photos and activities will appear here. Start by uploading your first photo or exploring the gallery.</p>
+    </div>
+    
+    <div class="content-section">
+        <h2>Quick Actions</h2>
+        <p>Use the navigation menu to access different features like Gallery, Collections, and Advanced Gallery tools.</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block sidebar_content %}
+<div class="sidebar-section">
+    <h3><i class="fas fa-folder"></i> Collections</h3>
+    <ul>
+        <li><a href="#"><div class="icon-container"><i class="fas fa-city"></i></div> <span>Urban</span></a></li>
+        <li><a href="#"><div class="icon-container"><i class="fas fa-portrait"></i></div> <span>Portraits</span></a></li>
+        <li><a href="#"><div class="icon-container"><i class="fas fa-plus"></i></div> <span>New Collection</span></a></li>
+    </ul>
+</div>
+
+<div class="sidebar-section">
+    <h3><i class="fas fa-tools"></i> Gallery Tools</h3>
+    <ul>
+        <li><a href="#"><div class="icon-container"><i class="fas fa-sort"></i></div> <span>Sort Photos</span></a></li>
+        <li><a href="#"><div class="icon-container"><i class="fas fa-filter"></i></div> <span>Filter</span></a></li>
+        <li><a href="#"><div class="icon-container"><i class="fas fa-tags"></i></div> <span>Tags</span></a></li>
+        <li><a href="#"><div class="icon-container"><i class="fas fa-share"></i></div> <span>Share</span></a></li>
+    </ul>
+</div>
+
+<div class="sidebar-section">
+    <h3><i class="fas fa-clock"></i> Recent</h3>
+    <ul>
+        <li><a href="#"><div class="icon-container"><i class="fas fa-calendar"></i></div> <span>This Week</span></a></li>
+        <li><a href="#"><div class="icon-container"><i class="fas fa-calendar-alt"></i></div> <span>This Month</span></a></li>
+        <li><a href="#"><div class="icon-container"><i class="fas fa-star"></i></div> <span>Favorites</span></a></li>
+    </ul>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-    document.getElementById('main-content').dataset.page = "{{ home }}";
+    document.getElementById('main-content').dataset.page = "home";
 </script>
 {% endblock %}

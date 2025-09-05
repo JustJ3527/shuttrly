@@ -17,42 +17,8 @@
 
 {% block content %}
     <div class="container-bc">
-        <div class="container-fluid" style="height: 100%;position: absolute;">
+        <div class="container-fluid">
             <div class="registration-container">
-                <!-- Progress Indicator -->
-                {% comment %} <div class="progress-indicator">
-                    <div class="progress-line">
-                        <div class="progress-fill" style="width: {{ progress|default:33 }}%;"></div>
-                    </div>
-                    
-                    <div class="progress-step {% if step == 'login' %}active{% else %}completed{% endif %}">
-                        {% if step != 'login' %}
-                            <i class="fas fa-check"></i>
-                        {% else %}
-                            1
-                        {% endif %}
-                        <span>Login</span>
-                    </div>
-                    
-                    {% if user.email_2fa_enabled or user.totp_enabled %}
-                    <div class="progress-step {% if step == 'choose_2fa' %}active{% elif step == 'email_2fa' or step == 'totp_2fa' %}completed{% endif %}">
-                        {% if step == 'email_2fa' or step == 'totp_2fa' %}
-                            <i class="fas fa-check"></i>
-                        {% elif step == 'choose_2fa' %}
-                            2
-                        {% else %}
-                            2
-                        {% endif %}
-                        <span>2FA Method</span>
-                    </div>
-                    
-                    <div class="progress-step {% if step == 'email_2fa' or step == 'totp_2fa' %}active{% endif %}">
-                        3
-                        <span>Verification</span>
-                    </div>
-                    {% endif %}
-                </div> {% endcomment %}
-
             <div class="step-content fade-in">
                 <!-- Enhanced error display for login step -->
                 {% if step == "login" and form.email.errors %}

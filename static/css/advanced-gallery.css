@@ -29,8 +29,8 @@
     --spacing-xl: 2rem;
     
     /* Border radius */
-    --radius-sm: 0.25rem;
-    --radius-md: 0.5rem;
+    --radius-sm: 0.75rem;
+    --radius-md: 1rem;
     --radius-lg: 0.75rem;
     
     /* Shadows */
@@ -123,13 +123,13 @@
 }
 
 .gallery-title {
-    font-size: 2rem;
+    font-size: 3rem;
     font-weight: 700;
-    color: var(--text-default);
+    color: var(--accent-default);
     margin: 0 0 var(--spacing-sm) 0;
-    display: flex;
     align-items: center;
-    gap: var(--spacing-sm);
+    font-family: "Tan-Nimbus";
+    letter-spacing: .2rem;
 }
 
 .gallery-title i {
@@ -158,10 +158,10 @@
 /* Layout controls */
 .layout-controls {
     display: flex;
-    gap: var(--spacing-xs);
-    background: var(--background-hover);
-    padding: var(--spacing-xs);
+    gap: .25rem;
+    padding: .25rem;
     border-radius: var(--radius-md);
+    border: 1px solid var(--primary-default);
 }
 
 .layout-btn {
@@ -358,7 +358,7 @@
 .photo-item {
     position: relative;
     background: var(--background-default);
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-md);
     overflow: hidden;
     box-shadow: var(--shadow-sm);
     transition: all var(--transition-normal);
@@ -383,7 +383,6 @@
 /* Smooth transitions for all hover effects */
 .photo-item:hover .photo-thumbnail {
     transform: scale(1.05);
-    filter: blur(1px);
     transition: all var(--transition-normal);
 }
 

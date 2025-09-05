@@ -131,7 +131,6 @@
     align-items: flex-start;
     gap: var(--spacing-md);
     padding: var(--spacing-md);
-    background: var(--background-hover);
     border-radius: var(--radius-md);
     border: 1px solid var(--text-200);
     transition: all var(--transition-fast);
@@ -235,7 +234,6 @@
     justify-content: space-between;
     align-items: center;
     padding: var(--spacing-md);
-    background: var(--background-hover);
     border-radius: var(--radius-md);
     border: 1px solid var(--text-200);
     transition: all var(--transition-fast);
@@ -683,11 +681,6 @@
 }
 
 /* Dark mode support for similar photos */
-@media (prefers-color-scheme: dark) {
-    .similar-photo-item {
-        background: var(--background-hover);
-    }
-}
 
 /* Accessibility improvements */
 @media (prefers-reduced-motion: reduce) {

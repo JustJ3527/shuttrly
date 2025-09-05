@@ -3,44 +3,47 @@
 /* =   CSS GLOBAL   =  */
 /* ======================= */
 /* ===== Fonts ===== */
-@import url("https://fonts.googleapis.com/css?family=Inter:700|Inter:400");
+@import url('https://fonts.googleapis.com/css?family=Inter:700|Inter:400');
 @font-face {
-  font-family: "Tan_Nimbus";
-  src: url("../fonts/tan-nimbus/TAN-NIMBUS.ttf") format("truetype");
-  src: url("../fonts/tan-nimbus/TAN-NIMBUS.woff") format("woff");
-  src: url("../fonts/tan-nimbus/TAN-NIMBUS.woff2") format("woff2");
+  font-family: 'Tan_Nimbus';
+  src: url('../fonts/tan-nimbus/TAN-NIMBUS.ttf') format('truetype');
+  src: url('../fonts/tan-nimbus/TAN-NIMBUS.woff') format('woff');
+  src: url('../fonts/tan-nimbus/TAN-NIMBUS.woff2') format('woff2');
 }
+
 @font-face {
   font-family: "Garet";
   font-weight: normal;
-  src: url("../fonts/garet/Garet-Book.otf") format("opentype");
-  src: url("../fonts/garet/Garet-Book.ttf") format("truetype");
-  src: url("../fonts/garet/Garet-Book.woff") format("woff");
-  src: url("../fonts/garet/Garet-Book.woff2") format("woff2");
+  src: url('../fonts/garet/Garet-Book.otf') format('opentype');
+  src: url('../fonts/garet/Garet-Book.ttf') format('truetype');
+  src: url('../fonts/garet/Garet-Book.woff') format('woff');
+  src: url('../fonts/garet/Garet-Book.woff2') format('woff2');
 }
 @font-face {
   font-family: "Garet";
   font-weight: bold;
-  src: url("../fonts/garet/Garet-Heavy.otf") format("opentype");
-  src: url("../fonts/garet/Garet-Heavy.ttf") format("truetype");
-  src: url("../fonts/garet/Garet-Heavy.woff") format("woff");
-  src: url("../fonts/garet/Garet-Heavy.woff2") format("woff2");
+  src: url('../fonts/garet/Garet-Heavy.otf') format('opentype');
+  src: url('../fonts/garet/Garet-Heavy.ttf') format('truetype');
+  src: url('../fonts/garet/Garet-Heavy.woff') format('woff');
+  src: url('../fonts/garet/Garet-Heavy.woff2') format('woff2');
 }
+
 @font-face {
   font-family: "The_Seasons";
   font-weight: normal;
-  src: url("../fonts/the-seasons/TheSeasons-Regular.otf") format("opentype");
+  src: url('../fonts/the-seasons/TheSeasons-Regular.otf') format('opentype');
 }
 @font-face {
   font-family: "The_Seasons";
   font-weight: bold;
-  src: url("../fonts/the-seasons/TheSeasons-Bold.otf") format("opentype");
+  src: url('../fonts/the-seasons/TheSeasons-Bold.otf') format('opentype');
 }
 @font-face {
   font-family: "The_Seasons";
   font-weight: lighter;
-  src: url("../fonts/the-seasons/TheSeasons-Lighter.otf") format("opentype");
+  src: url('../fonts/the-seasons/TheSeasons-Lighter.otf') format('opentype');
 }
+
 /* Variables par défaut (fallback) */
 :root {
   --text-default: hsl(86, 17%, 8%);
@@ -210,7 +213,7 @@ body {
   font-weight: 400;
   transition: all 0.3s ease;
   width: 100%;
-  min-height: 95vh;
+  min-height: 100vh;
   overflow-y: auto; /* Move scroll to body level */
   overflow-x: hidden;
 }
@@ -222,7 +225,7 @@ body {
   display: flex;
   flex-direction: row;
   justify-content: center;
-  min-height: 95vh;
+  min-height: 100vh;
   width: 100%;
   color: var(--text-default);
   transition: all 0.3s ease;
@@ -244,7 +247,7 @@ body {
 /* Left column - Navbar */
 .navbar {
   width: 20rem;
-  height: 100vh;
+  height: 98vh;
   position: fixed;
   left: 0;
   top: 0;
@@ -265,7 +268,6 @@ body {
   padding: 0 2rem 1rem 2rem;
   -webkit-user-select: none;
   -moz-user-select: none;
-  -ms-user-select: none;
   user-select: none;
 }
 
@@ -282,7 +284,6 @@ body {
   align-items: center;
   -webkit-user-select: none;
   -moz-user-select: none;
-  -ms-user-select: none;
   user-select: none;
 }
 .navbar-profile-picture a {
@@ -296,8 +297,8 @@ body {
 }
 .navbar-profile-picture a img {
   width: 70%;
-  object-fit: cover;
-  aspect-ratio: 1/1;
+  -o-object-fit: cover;
+     object-fit: cover;
   border-radius: 50%;
   transition: transform 0.2s ease;
 }
@@ -407,12 +408,12 @@ body {
 /* Center column - Main content */
 .main-content {
   flex: 1;
-  margin-left: 20rem;
-  margin-right: 20rem;
-  padding: 3rem 4rem;
-  min-height: 100vh;
+  margin-left: 20rem; /* Account for fixed navbar */
+  margin-right: 20rem; /* Account for fixed sidebar */
+  padding: 3rem 4rem; /* More generous padding for better spacing */
+  min-height: 100vh; /* Minimum height to fill viewport */
   box-sizing: border-box;
-  max-width: 1140rem;
+  max-width: 1200px; /* Prevent content from being too stretched on wide screens */
 }
 
 .theme-selector {
@@ -551,20 +552,6 @@ body.navbar-open .mobile-menu-toggle .hamburger-line:nth-child(3) {
   transform: translateY(-6px) rotate(-45deg);
 }
 
-footer {
-  margin-left: 20rem;
-  margin-right: 20rem;
-  padding: 2.5rem 3rem;
-  background: var(--primary-default);
-  border-top: 1px solid var(--background-200);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 15rem;
-  color: white;
-  font-size: 1.5rem;
-}
-
 /* Responsive design */
 /* Ultra-wide screens (21:9 and wider) */
 @media (min-width: 2560px) {
@@ -575,7 +562,7 @@ footer {
 /* Large screens (21:9) */
 @media (min-width: 1920px) and (max-width: 2559px) {
   .main-content {
-    max-width: 140rem;
+    max-width: 1200px; /* Current max-width is good for 21:9 */
   }
 }
 /* Standard desktop screens */
@@ -591,11 +578,6 @@ footer {
     margin-right: 15rem;
     padding: 2.5rem 3rem; /* Adjusted padding for smaller screens */
     max-width: none; /* Remove max-width constraint on smaller screens */
-  }
-  footer {
-    margin-left: 15rem;
-    margin-right: 15rem;
-    padding: 2.5rem 3rem; /* Adjusted padding for smaller screens */
   }
 }
 /* Tablet and Mobile screens */
@@ -678,7 +660,7 @@ footer {
     background: var(--background-default);
     border-right: none;
     width: 300px; /* Width of the slide-out menu */
-    height: 100vh;
+    height: 97vh;
   }
   /* Adjust main content for mobile view */
   .main-content {
@@ -687,10 +669,4 @@ footer {
     padding: calc(var(--mobile-navbar-height, 5rem) + 2rem) 1.5rem 2rem 1.5rem;
     max-width: none;
   }
-  footer {
-    margin-left: 0;
-    margin-right: 0;
-  }
-}
-
-/*# sourceMappingURL=base.css.map */
+}/*# sourceMappingURL=style-navbar_2.css.map */

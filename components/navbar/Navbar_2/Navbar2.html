@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Local CSS files -->
+    <link rel="stylesheet" href="./style-navbar_2.css">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" 
+    integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" 
+    crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <script>
+        // This inline script runs before the page is rendered to prevent theme flickering.
+        (function() {
+            function applyTheme(theme) {
+                if (theme === 'device') {
+                    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                    document.documentElement.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
+                } else {
+                    document.documentElement.setAttribute('data-theme', theme || 'light');
+                }
+            }
+
+            // Get the theme from localStorage, default to 'light' if not found.
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            applyTheme(savedTheme);
+        })();
+    </script>
+    <title>Shuttrly</title>
+</head>
+<body>
+    <!-- Mobile Top Navbar -->
+    <header class="mobile-top-navbar">
+        <div class="mobile-logo">
+            <a href="#">
+                <img src="../../../assets/logoShuttrly.png" alt="Shuttrly Logo">
+            </a>
+        </div>
+        <button class="mobile-menu-toggle" aria-label="Toggle Menu">
+            <span class="hamburger-line"></span>
+            <span class="hamburger-line"></span>
+            <span class="hamburger-line"></span>
+        </button>
+    </header>
+
+    <!-- Overlay for mobile menu -->
+    <div class="navbar-overlay"></div>
+
+    <div class="body-container">
+        <!-- Left column - Navbar -->
+        <div class="navbar">
+            <div class="navbar-separator">
+                <div class="navbar-fixed-top">
+                    <div class="navbar-header">
+                        <div class="navbar-logo">
+                            <img src="../../../assets/logoShuttrly.png" alt="Logo">
+                        </div>
+                        <div class="navbar-profile">
+                            <div class="navbar-profile-picture">
+                                <a href="#">
+                                    <img src="../../../media/profiles/default.jpg" alt="Profile Picture">
+                                </a>
+                            </div>
+                            <div class="navbar-profile-infos">
+                                <a href="#">
+                                    <h2 class="navbar-profile-name">Jules Antoine</h2>
+                                    <p class="navbar-profile-username">@jul_atn</p>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="navbar-menu">
+                        <ul class="navbar-menu-list">
+                            <li class="navbar-menu-item active">
+                                <a href="#">
+                                    <i class="menu-icon fas fa-home"></i>
+                                    <span>Home</span>
+                                </a>
+                            </li>
+                            <li class="navbar-menu-item">
+                                <a href="#">
+                                    <i class="menu-icon fas fa-plus"></i>
+                                    <span>Create</span>
+                                </a>
+                            </li>
+                            <li class="navbar-menu-item">
+                                <a href="#">
+                                    <i class="menu-icon fas fa-search"></i>
+                                    <span>Search</span>
+                                </a>
+                            </li>
+                            <li class="navbar-menu-item">
+                                <a href="#">
+                                    <i class="menu-icon fas fa-images"></i>
+                                    <span>Gallery</span>
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="navbar-fixed-bottom">
+                    <div class="navbar-actions">
+                        <ul class="navbar-actions-list">
+                            <li class="navbar-action-item">
+                                <a href="#" title="Settings">
+                                    <i class="fas fa-cog"></i>
+                                </a>
+                            </li>
+                            <li class="navbar-action-item">
+                                <a class="danger" href="#" title="Logout">
+                                    <i class="fas fa-sign-out-alt"></i>
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Center column - Main content -->
+        <div class="main-content" id="main-content">
+            
+            <!-- Demo content to show how pages will be displayed -->
+            <div class="page-content">
+                <h1>Main Content Area</h1>
+                <p>This area will contain the main content of your pages. The navbar and sidebar remain fixed while this content scrolls.</p>
+                
+                <div class="content-section">
+                    <h2>Section 1</h2>
+                    <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</p>
+                </div>
+                
+                <div class="content-section">
+                    <h2>Section 2</h2>
+                    <p>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
+                </div>
+                
+                <div class="content-section">
+                    <h2>Section 3</h2>
+                    <p>Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.</p>
+                </div>
+                
+                <div class="content-section">
+                    <h2>Section 4</h2>
+                    <p>Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet.</p>
+                </div>
+            </div>
+            <div class="theme-selector">
+                <label for="theme-select">Choisir le thème:</label>
+                <select id="theme-select">
+                    <option value="device">Device theme</option>
+                    <option value="light">Light</option>
+                    <option value="dark">Dark</option>
+                </select>
+            </div>
+        </div>
+        
+        <!-- Right column - Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-content" id="sidebar-content">
+                <p>Sidebar content</p>
+            </div>
+        </div>
+    </div>
+</body>
+<script src="script-navbar_2.js"></script>
+</html>

@@ -240,7 +240,27 @@
         <div class="sidebar">
             <div class="sidebar-content" id="sidebar-content">
                 {% block sidebar_content %}
-                <p>Sidebar content</p>
+                <!-- User Recommendations Section -->
+                {% if user.is_authenticated %}
+                <div class="recommendations-section">
+                    <div class="recommendations-header">
+                        <h5 class="recommendations-title">Suggested Users</h5>
+                        <button class="refresh-btn" onclick="refreshRecommendations()" title="Refresh recommendations">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
+                    </div>
+                    
+                    {% include 'partials/recommendations_list.html' %}
+                </div>
+
+                <!-- Loading state (hidden by default) -->
+                <div class="recommendations-loading" id="recommendations-loading" style="display: none;">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>Calculating recommendations...</p>
+                </div>
+                {% else %}
+                <p>Please log in to see recommendations</p>
+                {% endif %}
                 {% endblock %}
             </div>
         </div>
@@ -257,7 +277,7 @@
     <script src="{% static 'js/navbar.js' %}"></script>
     <script src="{% static 'js/step_validation.js' %}"></script>
     <script src="{% static 'js/script-navbar.js' %}"></script>
-    <script src="{% static 'js/script-navbar_2.js' %}"></script>
+    <script src="{% static 'js/recommendations.js' %}"></script>
     
     <!-- HTMX -->
     <script src="https://unpkg.com/htmx.org@1.9.12"></script>
@@ -377,6 +397,7 @@
                 updateNavbarActive();
             }
         });
+
     </script>
     {% endblock %}
 </body>

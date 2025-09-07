@@ -1,6 +1,7 @@
 from django.urls import path
 from rest_framework_simplejwt.views import TokenRefreshView
 from . import views
+from . import recommendations
 
 urlpatterns = [
     # Authentication
@@ -24,4 +25,10 @@ urlpatterns = [
     
     # Utilities
     path('auth/check-username/', views.check_username_availability, name='api_check_username'),
+    
+    # User recommendations
+    path('recommendations/', recommendations.get_user_recommendations, name='api_user_recommendations'),
+    path('recommendations/trigger/', recommendations.trigger_recommendation_calculation, name='api_trigger_recommendations'),
+    path('recommendations/stats/', recommendations.get_recommendation_stats, name='api_recommendation_stats'),
+    path('recommendations/refresh-all/', recommendations.refresh_all_recommendations, name='api_refresh_all_recommendations'),
 ]

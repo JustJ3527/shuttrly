@@ -162,4 +162,14 @@ urlpatterns = [
         get_relationship_status_view,
         name="get_relationship_status",
     ),
+    path(
+        "ajax/refresh-recommendations/",
+        refresh_user_recommendations_view,
+        name="refresh_user_recommendations",
+    ),
+    path(
+        "ajax/get-recommendations/",
+        get_user_recommendations_ajax,
+        name="get_user_recommendations_ajax",
+    ),
 ]

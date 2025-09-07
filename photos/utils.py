@@ -153,14 +153,46 @@ def get_collection_stats(collection):
 from transformers import CLIPProcessor, CLIPModel
 from PIL import Image
 import torch
+import os
 
-# Load model once only (avoid reloading at each call)
-model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
-processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
+# Singleton pattern for model loading to prevent reloading
+class CLIPModelSingleton:
+    _instance = None
+    _model = None
+    _processor = None
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super(CLIPModelSingleton, cls).__new__(cls)
+        return cls._instance
+
+    def get_model(self):
+        if self._model is None:
+            print("🔄 Loading CLIP model (first time only)...")
+            # Set cache directory to avoid repeated downloads
+            cache_dir = os.path.join(os.getcwd(), "models_cache")
+            os.makedirs(cache_dir, exist_ok=True)
+            
+            self._model = CLIPModel.from_pretrained(
+                "openai/clip-vit-base-patch32",
+                cache_dir=cache_dir
+            )
+            self._processor = CLIPProcessor.from_pretrained(
+                "openai/clip-vit-base-patch32",
+                cache_dir=cache_dir
+            )
+            print("✅ CLIP model loaded successfully")
+        return self._model, self._processor
+
+# Global instance
+_clip_singleton = CLIPModelSingleton()
 
 def get_image_embedding(image_path: str):
     """Generate an embedding for a photo"""
     try:
+        # Get model and processor from singleton
+        model, processor = _clip_singleton.get_model()
+        
         image = Image.open(image_path).convert("RGB")
         inputs = processor(images=image, return_tensors="pt")
         with torch.no_grad():

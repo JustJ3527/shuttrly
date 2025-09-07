@@ -1,0 +1,44 @@
+{% load static %}
+
+{% if recommendations %}
+<div class="recommendations-list" id="recommendations-list">
+    {% for rec in recommendations %}
+    <a href="{% url 'public_user_profile' username=rec.username %}" class="recommendation-item" data-user-id="{{ rec.id }}">
+        <div class="recommendation-content">
+            <div class="recommendation-avatar">
+                {% if rec.profile_picture_url %}
+                    <img src="{{ rec.profile_picture_url }}" alt="{{ rec.display_name }}" class="avatar-img">
+                {% else %}
+                    <div class="default-avatar">
+                        <i class="fas fa-user"></i>
+                    </div>
+                {% endif %}
+            </div>
+            
+            <div class="recommendation-info">
+                <div class="recommendation-name">{{ rec.display_name }}</div>
+                <div class="recommendation-username">@{{ rec.username }}</div>
+            </div>
+        </div>
+        
+        <div class="recommendation-actions">
+            <button class="follow-btn" 
+                    data-user-id="{{ rec.id }}" 
+                    data-username="{{ rec.username }}"
+                    onclick="event.preventDefault(); window.recommendationsManager.followUser({{ rec.id }}, '{{ rec.username }}')">
+                <i class="fas fa-user-plus"></i> Follow
+            </button>
+        </div>
+    </a>
+    {% endfor %}
+</div>
+{% else %}
+<!-- No recommendations available -->
+<div class="recommendations-empty" id="recommendations-empty">
+    <i class="fas fa-users"></i>
+    <p>No recommendations available yet</p>
+    <button class="refresh-btn" onclick="refreshRecommendations()">
+        <i class="fas fa-sync-alt"></i> Refresh
+    </button>
+</div>
+{% endif %}

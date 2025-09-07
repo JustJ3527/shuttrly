@@ -3264,6 +3264,54 @@ def handle_advanced_security_save(request, user):
 # USER RELATIONSHIPS VIEWS
 # =============================================================================
 
+def update_recommendations_after_relationship_change(user_id, action_description):
+    """
+    Helper function to update recommendations after relationship changes.
+    
+    Args:
+        user_id: ID of the user to update recommendations for
+        action_description: Description of the action that triggered the update
+    """
+    try:
+        from django.core.cache import cache
+        from users.utilsFolder.recommendations import build_user_recommendations_for_user
+        
+        # Clear cache to force fresh recommendations
+        cache_key = f"user_recommendations_{user_id}"
+        cache.delete(cache_key)
+        print(f"🗑️ Cleared cache for user {user_id}")
+        
+        # Rebuild recommendations
+        build_user_recommendations_for_user(user_id)
+        print(f"🔄 Updated recommendations for user {user_id} after {action_description}")
+    except Exception as e:
+        print(f"⚠️ Failed to update recommendations for user {user_id} after {action_description}: {e}")
+
+def update_recommendations_for_multiple_users(user_ids, action_description):
+    """
+    Helper function to update recommendations for multiple users.
+    
+    Args:
+        user_ids: List of user IDs to update recommendations for
+        action_description: Description of the action that triggered the update
+    """
+    try:
+        from django.core.cache import cache
+        from users.utilsFolder.recommendations import build_user_recommendations_for_user
+        
+        # Clear cache for all users
+        for user_id in user_ids:
+            cache_key = f"user_recommendations_{user_id}"
+            cache.delete(cache_key)
+            print(f"🗑️ Cleared cache for user {user_id}")
+        
+        # Rebuild recommendations for all users
+        for user_id in user_ids:
+            build_user_recommendations_for_user(user_id)
+            print(f"🔄 Updated recommendations for user {user_id} after {action_description}")
+    except Exception as e:
+        print(f"⚠️ Failed to update recommendations for multiple users after {action_description}: {e}")
+
 @require_POST
 def toggle_follow_view(request):
     """AJAX view to toggle follow relationship"""
@@ -3308,6 +3356,12 @@ def toggle_follow_view(request):
         if success:
             # Get updated relationship data
             relationship_data = get_user_relationship_data(request.user, target_user)
+            
+            # Update recommendations for the current user
+            update_recommendations_after_relationship_change(
+                request.user.id, 
+                f"follow action with {target_user.username}"
+            )
             
             return JsonResponse({
                 'success': True,
@@ -3357,6 +3411,12 @@ def send_follow_request_view(request):
         success, message = send_follow_request(request.user, target_user, message)
         
         if success:
+            # Update recommendations for the current user
+            update_recommendations_after_relationship_change(
+                request.user.id, 
+                f"follow request sent to {target_user.username}"
+            )
+            
             return JsonResponse({
                 'success': True,
                 'message': message,
@@ -3403,6 +3463,13 @@ def handle_follow_request_response_view(request):
         success, message = handle_follow_request_response(request.user, target_user, action)
         
         if success:
+            # Update recommendations for both users when follow request is accepted
+            if action == 'accept':
+                update_recommendations_for_multiple_users(
+                    [request.user.id, target_user.id], 
+                    f"follow request acceptance between {request.user.username} and {target_user.username}"
+                )
+            
             return JsonResponse({
                 'success': True,
                 'message': message,
@@ -3449,6 +3516,12 @@ def toggle_close_friend_view(request):
         if success:
             # Get updated relationship data
             relationship_data = get_user_relationship_data(request.user, target_user)
+            
+            # Update recommendations for the current user
+            update_recommendations_after_relationship_change(
+                request.user.id, 
+                f"close friend action with {target_user.username}"
+            )
             
             return JsonResponse({
                 'success': True,
@@ -3510,52 +3583,6 @@ def get_relationship_status_view(request):
         }, status=500)
 
 
-@require_POST
-def handle_follow_request_response_view(request):
-    """AJAX view to accept/reject follow requests"""
-    if not request.user.is_authenticated:
-        return JsonResponse({
-            'success': False,
-            'message': 'You must be logged in to perform this action'
-        }, status=401)
-    
-    try:
-        target_username = request.POST.get('username')
-        action = request.POST.get('action')  # 'accept' or 'reject'
-        
-        if not target_username or action not in ['accept', 'reject']:
-            return JsonResponse({
-                'success': False,
-                'message': 'Invalid parameters'
-            }, status=400)
-        
-        target_user = CustomUser.objects.get(username=target_username)
-        success, message = handle_follow_request_response(request.user, target_user, action)
-        
-        if success:
-            return JsonResponse({
-                'success': True,
-                'message': message,
-                'action': action
-            })
-        else:
-            return JsonResponse({
-                'success': False,
-                'message': message
-            }, status=400)
-            
-    except CustomUser.DoesNotExist:
-        return JsonResponse({
-            'success': False,
-            'message': 'User not found'
-        }, status=404)
-    except Exception as e:
-        return JsonResponse({
-            'success': False,
-            'message': 'An error occurred'
-        }, status=500)
-
-
 def get_follow_requests_view(request):
     """AJAX view to get pending follow requests for the current user"""
     if not request.user.is_authenticated:
@@ -3596,5 +3623,84 @@ def get_follow_requests_view(request):
         return JsonResponse({
             'success': False,
             'message': 'An error occurred'
+        }, status=500)
+
+
+@require_POST
+def refresh_user_recommendations_view(request):
+    """AJAX view to refresh recommendations for the current user"""
+    if not request.user.is_authenticated:
+        return JsonResponse({
+            'success': False,
+            'message': 'You must be logged in to perform this action'
+        }, status=401)
+    
+    try:
+        from users.utilsFolder.recommendations import build_user_recommendations_for_user, get_recommendations_for_display
+        
+        # Calculate and save recommendations for this specific user
+        print(f"🔄 Starting recommendation refresh for user {request.user.username} (ID: {request.user.id})")
+        result = build_user_recommendations_for_user(request.user.id)
+        
+        if result.get('success'):
+            # Get the updated recommendations for display
+            recommendations = get_recommendations_for_display(request.user.id, limit=5)
+            
+            # Render the recommendations HTML using the template
+            from django.template.loader import render_to_string
+            recommendations_html = render_to_string('partials/recommendations_list.html', {
+                'recommendations': recommendations
+            })
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'Recommendations updated successfully for {result.get("username", request.user.username)}',
+                'recommendations_count': result.get('recommendations_count', 0),
+                'recommendations_html': recommendations_html
+            })
+        else:
+            return JsonResponse({
+                'success': False,
+                'message': f'Failed to update recommendations: {result.get("error", "Unknown error")}'
+            }, status=500)
+            
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Failed to update recommendations: {str(e)}'
+        }, status=500)
+
+
+@require_http_methods(["GET"])
+def get_user_recommendations_ajax(request):
+    """AJAX view to get current recommendations for the user"""
+    if not request.user.is_authenticated:
+        return JsonResponse({
+            'success': False,
+            'message': 'You must be logged in to perform this action'
+        }, status=401)
+    
+    try:
+        from users.utilsFolder.recommendations import get_recommendations_for_display
+        
+        # Get current recommendations
+        recommendations = get_recommendations_for_display(request.user.id, limit=5)
+        
+        # Render the recommendations HTML using the template
+        from django.template.loader import render_to_string
+        recommendations_html = render_to_string('partials/recommendations_list.html', {
+            'recommendations': recommendations
+        })
+        
+        return JsonResponse({
+            'success': True,
+            'recommendations_html': recommendations_html,
+            'count': len(recommendations)
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Failed to get recommendations: {str(e)}'
         }, status=500)
 

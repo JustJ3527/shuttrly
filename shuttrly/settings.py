@@ -37,6 +37,7 @@ ALLOWED_HOSTS = [
     "127.0.0.1",
     "21632b3c9aba.ngrok-free.app",
     "10.101.4.216",
+    "testserver",
     "192.168.1.65",
     "192.168.1.73"
 ]
@@ -68,6 +69,8 @@ INSTALLED_APPS = [
     "rest_framework", # REST framework for building APIs
     "rest_framework_simplejwt", # JSON Web Token Authentication
     "corsheaders", # Cross-Origin Resource Sharing
+    # Celery
+    "django_celery_beat", # Celery Beat for periodic tasks
     ]
 
 MIDDLEWARE = [
@@ -104,6 +107,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "users.context_processors.recommendations_context",
             ],
         },
     },
@@ -247,6 +251,32 @@ REST_FRAMEWORK = {
 
 # Configuration Celery
 CELERY_BROKER_URL = "redis://localhost:6379/0"
+CELERY_RESULT_BACKEND = "redis://localhost:6379/0"
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = 'UTC'
+CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
+
+# Celery task settings
+CELERY_TASK_ALWAYS_EAGER = False  # Set to True for testing
+CELERY_TASK_EAGER_PROPAGATES = True
+CELERY_TASK_SOFT_TIME_LIMIT = 300  # 5 minutes
+CELERY_TASK_TIME_LIMIT = 600  # 10 minutes
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1
+CELERY_WORKER_MAX_TASKS_PER_CHILD = 50
+
+# Cache configuration for recommendations
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'unique-snowflake',
+        'TIMEOUT': 300,
+        'OPTIONS': {
+            'MAX_ENTRIES': 1000,
+        }
+    }
+}
 
 # Conifiguration JWT
 from datetime import timedelta

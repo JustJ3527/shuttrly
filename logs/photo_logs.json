@@ -21881,4 +21881,51 @@
     }
   }
 }
+,
+{
+  "log_id": "5960f081-fa0c-49b6-bb66-b9ee5e3a0ef4",
+  "user": "admin",
+  "user_id": 1,
+  "action": "photo_upload",
+  "timestamp": "2025-09-07T22:23:13.602796+00:00",
+  "ip_address": "127.0.0.1",
+  "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36",
+  "location": {
+    "city": null,
+    "region": null,
+    "country": null
+  },
+  "photo_info": {
+    "photo_id": 504,
+    "filename": "fc84fd8b-54cd-4141-b4d5-08e5a85e9903.png",
+    "file_size_mb": 0.02,
+    "file_extension": "png",
+    "is_raw": false,
+    "dimensions": "600x600",
+    "camera": null
+  },
+  "extra_info": {
+    "upload_method": "batch_upload",
+    "validation_errors": [
+      "No basic EXIF metadata extracted"
+    ],
+    "upload_details": {
+      "batch_number": 1,
+      "photo_number_in_batch": 1,
+      "total_photos": 1,
+      "file_original_name": "lauchscreen@3x.png",
+      "processing_errors": [
+        "No basic EXIF metadata extracted"
+      ]
+    },
+    "processing_status": {
+      "has_dimensions": true,
+      "has_thumbnail": true,
+      "has_camera_info": false,
+      "has_exposure_info": false,
+      "has_location": false,
+      "has_date": false
+    }
+  }
+}
 ]

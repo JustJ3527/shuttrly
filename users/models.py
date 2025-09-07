@@ -657,8 +657,22 @@ class FollowRequest(models.Model):
                 to_user=self.to_user,
                 relationship_type='follow'
             )
+            
+            # Trigger recommendation recalculation for both users
+            self._trigger_recommendation_update()
+            
             return True
         return False
+    
+    def _trigger_recommendation_update(self):
+        """Trigger recommendation update for both users"""
+        try:
+            from users.utilsFolder.recommendations import build_user_recommendations
+            # Recalculate for both users
+            build_user_recommendations()
+        except Exception as e:
+            # Don't fail the follow request if recommendation update fails
+            print(f"Warning: Failed to update recommendations: {e}")
     
     def reject(self):
         """Reject the follow request"""
@@ -667,3 +681,22 @@ class FollowRequest(models.Model):
             self.save()
             return True
         return False
+    
+# ==================================
+# AI account recommendation
+# ==================================
+
+class UserRecommendation(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="user_recommendations")
+    recommended_user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="recommended_users")
+    score = models.FloatField(default=0.0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        unique_together = ('user', 'recommended_user')
+        indexes = [
+            models.Index(fields=["user"]),
+            models.Index(fields=["recommended_user"]),
+        ]
+        

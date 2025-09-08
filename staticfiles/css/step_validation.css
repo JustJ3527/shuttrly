@@ -1,0 +1,87 @@
+/**
+ * Step Validation Styles
+ * Styles pour les boutons Next désactivés et les champs en erreur
+ */
+
+/* Step Validation Styles */
+
+/* Styles pour les champs avec erreur */
+.field-error {
+  border-color: #dc3545 !important;
+  animation: shake 0.5s ease-in-out;
+}
+
+/* Styles pour les champs valides */
+.field-valid {
+  border-color: #74957c !important;
+}
+
+/* Message d'erreur de validation */
+.validation-error-message {
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+  color: #721c24;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  border-radius: 0.375rem;
+  animation: slideInDown 0.5s ease-out;
+}
+
+.validation-error-message ul {
+  margin: 0.5rem 0 0 0;
+  padding-left: 1.5rem;
+}
+
+.validation-error-message li {
+  margin-bottom: 0.25rem;
+}
+
+/* Icône d'erreur sur les champs */
+.field-error-icon {
+  animation: pulse 2s infinite;
+}
+
+/* Animation de secousse pour les champs en erreur */
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-5px);
+  }
+  75% {
+    transform: translateX(5px);
+  }
+}
+
+/* Animation d'apparition du message d'erreur */
+@keyframes slideInDown {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Animation de pulsation pour l'icône d'erreur */
+@keyframes pulse {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+/* Position relative pour les conteneurs de champs */
+.mb-3,
+.mb-4 {
+  position: relative;
+}

@@ -5,11 +5,11 @@
     {% for rec in recommendations %}
     <a href="{% url 'public_user_profile' username=rec.username %}" class="recommendation-item" data-user-id="{{ rec.id }}">
         <div class="recommendation-content">
-            <div class="recommendation-avatar">
+            <div class="recommendation-account-picture">
                 {% if rec.profile_picture_url %}
-                    <img src="{{ rec.profile_picture_url }}" alt="{{ rec.display_name }}" class="avatar-img">
+                    <img src="{{ rec.profile_picture_url }}" alt="{{ rec.display_name }}" class="list-profile-picture-img">
                 {% else %}
-                    <div class="default-avatar">
+                    <div class="default-profile-picture-list">
                         <i class="fas fa-user"></i>
                     </div>
                 {% endif %}
@@ -26,7 +26,7 @@
                     data-user-id="{{ rec.id }}" 
                     data-username="{{ rec.username }}"
                     onclick="event.preventDefault(); window.recommendationsManager.followUser({{ rec.id }}, '{{ rec.username }}')">
-                <i class="fas fa-user-plus"></i> Follow
+                    Follow
             </button>
         </div>
     </a>

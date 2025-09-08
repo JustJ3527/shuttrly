@@ -3,9 +3,12 @@ from celery import shared_task
 from django.core.cache import cache
 from django.db import transaction
 from django.contrib.auth import get_user_model
-from users.utilsFolder.recommendations import build_user_recommendations, get_user_recommendations_cached
+from django.utils import timezone
+from users.utilsFolder.recommendations import build_user_recommendations_for_user, get_user_recommendations_cached, build_user_recommendations
 from .models import UserRecommendation
 import logging
+import random
+from datetime import timedelta
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -270,3 +273,313 @@ def build_enhanced_recommendations_for_user_task(user_id):
             'user_id': user_id,
             'recommendations_count': 0
         }
+
+
+@shared_task(bind=True)
+def periodic_recommendations_update(self):
+    """
+    Periodic task to update recommendations for all users every 30 minutes.
+    This runs in background to keep recommendations fresh.
+    """
+    try:
+        logger.info("Starting periodic recommendations update")
+        
+        # Get all active users
+        users = User.objects.filter(is_active=True, is_anonymized=False)
+        
+        # Update recommendations for each user (top 30)
+        for user in users:
+            try:
+                result = build_user_recommendations_for_user(user.id, top_k=30)
+                if result.get('success'):
+                    logger.info(f"Updated top 30 recommendations for user {user.username}")
+                else:
+                    logger.warning(f"Failed to update recommendations for user {user.username}")
+            except Exception as e:
+                logger.error(f"Error updating recommendations for user {user.username}: {e}")
+                continue
+        
+        logger.info("Periodic recommendations update completed")
+        return "Periodic recommendations update completed"
+        
+    except Exception as exc:
+        logger.error(f"Error in periodic recommendations update: {exc}")
+        return f"Error in periodic recommendations update: {exc}"
+
+
+def get_user_recommendations_for_display(user_id, limit=4, rotation_key=None):
+    """
+    Get recommendations for display with intelligent rotation.
+    
+    Args:
+        user_id: ID of the user
+        limit: Number of recommendations to return (default: 4)
+        rotation_key: Key for rotation (timestamp, random, etc.)
+    
+    Returns:
+        dict: Recommendations formatted for display
+    """
+    try:
+        from django.contrib.auth import get_user_model
+        from users.models import FollowRequest
+        
+        User = get_user_model()
+        
+        # Get current user's following list and follow requests to filter out
+        try:
+            user = User.objects.get(id=user_id)
+            user_following = set(user.get_following().values_list('id', flat=True))
+            
+            # Get users to whom the current user has sent follow requests
+            user_follow_requests = set(FollowRequest.objects.filter(
+                from_user=user,
+                status='pending'
+            ).values_list('to_user_id', flat=True))
+            
+            print(f"🔍 DEBUG: User {user.username} follows {len(user_following)} users: {list(user_following)}")
+            print(f"🔍 DEBUG: User {user.username} has pending follow requests to {len(user_follow_requests)} users: {list(user_follow_requests)}")
+        except User.DoesNotExist:
+            print(f"❌ User with ID {user_id} not found")
+            return {
+                'status': 'error',
+                'message': 'User not found',
+                'recommendations': []
+            }
+        
+        # Get top 30 recommendations from database
+        recommendations = UserRecommendation.objects.filter(
+            user_id=user_id
+        ).select_related('recommended_user').order_by('position')[:30]
+        
+        if not recommendations.exists():
+            # No recommendations in database, trigger calculation
+            calculate_user_recommendations_task.delay(user_id)
+            return {
+                'status': 'pending',
+                'message': 'No recommendations available, calculation started',
+                'recommendations': []
+            }
+        
+        # Convert to list format and filter out users already followed and with pending requests
+        recommendations_list = []
+        for rec in recommendations:
+            recommended_user = rec.recommended_user
+            
+            # Skip if already following
+            if recommended_user.id in user_following:
+                print(f"🔍 DEBUG: Skipping {recommended_user.username} (already following)")
+                continue
+                
+            # Skip if follow request already sent
+            if recommended_user.id in user_follow_requests:
+                print(f"🔍 DEBUG: Skipping {recommended_user.username} (follow request already sent)")
+                continue
+            
+            # Check if recommended user is still active
+            if not recommended_user.is_active or recommended_user.is_anonymized:
+                continue
+            
+            recommendations_list.append({
+                'id': recommended_user.id,
+                'username': recommended_user.username,
+                'first_name': recommended_user.first_name,
+                'last_name': recommended_user.last_name,
+                'profile_picture_url': recommended_user.profile_picture.url if recommended_user.profile_picture else None,
+                'is_private': recommended_user.is_private,
+                'photos_count': recommended_user.get_photos_count(),
+                'score': rec.score,
+                'position': rec.position,
+                'last_shown': rec.last_shown,
+                'show_count': rec.show_count
+            })
+        
+        # Apply intelligent rotation
+        selected_recommendations = apply_intelligent_rotation(
+            recommendations_list, 
+            limit, 
+            rotation_key
+        )
+        
+        # Update show tracking for selected recommendations
+        update_recommendation_show_tracking(selected_recommendations, user_id)
+        
+        print(f"🔍 DEBUG: Returning {len(selected_recommendations)} recommendations for display")
+        return {
+            'status': 'success',
+            'recommendations': selected_recommendations,
+            'count': len(selected_recommendations)
+        }
+        
+    except Exception as exc:
+        logger.error(f"Error getting recommendations for display: {exc}")
+        return {
+            'status': 'error',
+            'message': str(exc),
+            'recommendations': []
+        }
+
+
+def apply_intelligent_rotation(recommendations, limit=4, rotation_key=None):
+    """
+    Apply intelligent rotation to select recommendations.
+    This function is deterministic - same rotation_key will always return same results.
+    
+    Args:
+        recommendations: List of available recommendations
+        limit: Number of recommendations to return
+        rotation_key: Key for rotation (timestamp, random, etc.)
+    
+    Returns:
+        list: Selected recommendations for display
+    """
+    if not recommendations:
+        return []
+    
+    # If we have fewer recommendations than the limit, return all
+    if len(recommendations) <= limit:
+        return format_recommendations_for_display(recommendations)
+    
+    # Sort by priority (score + recency + show frequency)
+    def priority_score(rec):
+        base_score = rec.get('score', 0)
+        
+        # Reduce priority for recently shown recommendations
+        last_shown = rec.get('last_shown')
+        if last_shown:
+            hours_since_shown = (timezone.now() - last_shown).total_seconds() / 3600
+            recency_penalty = min(0.5, hours_since_shown / 24)  # Max 0.5 penalty
+        else:
+            recency_penalty = 0
+        
+        # Reduce priority for frequently shown recommendations
+        show_count = rec.get('show_count', 0)
+        frequency_penalty = min(0.3, show_count * 0.1)  # Max 0.3 penalty
+        
+        return base_score - recency_penalty - frequency_penalty
+    
+    # Sort by priority
+    sorted_recs = sorted(recommendations, key=priority_score, reverse=True)
+    
+    # Use deterministic selection based on rotation_key
+    if rotation_key:
+        random.seed(rotation_key)
+    
+    # Select from top candidates with deterministic rotation
+    top_candidates = sorted_recs[:min(len(sorted_recs), limit * 3)]  # Top 3x limit
+    
+    # Use deterministic selection instead of random.sample
+    selected = []
+    for i in range(min(limit, len(top_candidates))):
+        # Use rotation_key + index to create deterministic selection
+        if rotation_key:
+            selection_index = (rotation_key + i) % len(top_candidates)
+        else:
+            selection_index = i
+        selected.append(top_candidates[selection_index])
+    
+    return format_recommendations_for_display(selected)
+
+
+def format_recommendations_for_display(recommendations):
+    """
+    Format recommendations for display in UI.
+    
+    Args:
+        recommendations: List of recommendation dictionaries
+    
+    Returns:
+        list: Formatted recommendations for display
+    """
+    formatted = []
+    for rec in recommendations:
+        formatted.append({
+            'id': rec['id'],
+            'username': rec['username'],
+            'display_name': f"{rec['first_name']} {rec['last_name']}".strip() or rec['username'],
+            'profile_picture_url': rec['profile_picture_url'],
+            'photos_count': rec['photos_count'],
+            'score': rec['score'],
+            'is_private': rec.get('is_private', False)
+        })
+    
+    return formatted
+
+
+def update_recommendation_show_tracking(recommendations, user_id):
+    """
+    Update tracking information for shown recommendations.
+    
+    Args:
+        recommendations: List of recommendations that were shown
+        user_id: ID of the user
+    """
+    try:
+        recommendation_ids = [rec['id'] for rec in recommendations]
+        
+        # Update tracking for shown recommendations
+        from django.db import models
+        UserRecommendation.objects.filter(
+            user_id=user_id,
+            recommended_user_id__in=recommendation_ids
+        ).update(
+            last_shown=timezone.now(),
+            show_count=models.F('show_count') + 1
+        )
+        
+    except Exception as e:
+        logger.error(f"Error updating recommendation show tracking: {e}")
+
+
+@shared_task(bind=True)
+def trigger_recommendation_update_after_relationship_change(self, user_id, action_description):
+    """
+    Trigger recommendation update after a relationship change (follow/unfollow/request).
+    
+    Args:
+        user_id: ID of the user whose recommendations need updating
+        action_description: Description of the action that triggered the update
+    """
+    try:
+        logger.info(f"Triggering recommendation update for user {user_id} after {action_description}")
+        
+        # Update recommendations for the user
+        result = build_user_recommendations_for_user(user_id, top_k=30)
+        
+        if result.get('success'):
+            logger.info(f"Successfully updated recommendations for user {user_id} after {action_description}")
+            return f"Recommendations updated for user {user_id} after {action_description}"
+        else:
+            logger.warning(f"Failed to update recommendations for user {user_id}: {result.get('error')}")
+            return f"Failed to update recommendations for user {user_id}"
+            
+    except Exception as exc:
+        logger.error(f"Error updating recommendations after relationship change: {exc}")
+        return f"Error updating recommendations: {exc}"
+
+
+@shared_task(bind=True)
+def cleanup_old_recommendations(self):
+    """
+    Clean up old recommendations that are no longer relevant.
+    This runs periodically to maintain database performance.
+    """
+    try:
+        from datetime import timedelta
+        
+        # Delete recommendations older than 7 days that haven't been shown recently
+        cutoff_date = timezone.now() - timedelta(days=7)
+        
+        old_recommendations = UserRecommendation.objects.filter(
+            created_at__lt=cutoff_date,
+            last_shown__isnull=True  # Never shown
+        )
+        
+        count = old_recommendations.count()
+        old_recommendations.delete()
+        
+        logger.info(f"Cleaned up {count} old recommendations")
+        return f"Cleaned up {count} old recommendations"
+        
+    except Exception as exc:
+        logger.error(f"Error cleaning up old recommendations: {exc}")
+        return f"Error cleaning up old recommendations: {exc}"

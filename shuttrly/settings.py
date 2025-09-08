@@ -64,7 +64,6 @@ INSTALLED_APPS = [
     "logs",
     "posts",
     "photos.apps.PhotosConfig",
-    "photos.test.apps.PhotosTestConfig",  # Test module
     # API
     "rest_framework", # REST framework for building APIs
     "rest_framework_simplejwt", # JSON Web Token Authentication
@@ -173,6 +172,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = "/static/"
+STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, "static"),
@@ -302,24 +302,7 @@ if DEBUG:
     logging.getLogger('django.db.backends').setLevel(logging.WARNING)
     logging.getLogger('django.utils.autoreload').setLevel(logging.WARNING)
     
-    # Optimiser le rechargement automatique
-    import os
-    os.environ['DJANGO_AUTORELOAD_ENABLED'] = '1'
-    
-    # Réduire la fréquence de vérification des fichiers
-    import django
-    django.setup()
-    
-    # Optimiser la compilation des templates
-    TEMPLATES[0]['OPTIONS']['debug'] = False
-    
-    # Désactiver la validation des modèles en développement
-    import django.core.checks
-    django.core.checks.register = lambda *args, **kwargs: []
-    
-    # Optimisations PostgreSQL (déjà configurées dans DATABASES)
-    pass
-    
+    # Optimisations pour le développement
     # Réduire la taille des sessions
     SESSION_ENGINE = 'django.contrib.sessions.backends.db'
     SESSION_COOKIE_AGE = 3600  # 1 heure au lieu de 2

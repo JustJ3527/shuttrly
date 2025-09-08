@@ -242,21 +242,35 @@ def get_recommendations_for_display(user_id, limit=5):
     """
     recommendations = get_user_recommendations_cached(user_id, top_k=limit * 2)  # Get more to filter
     
-    # Get current user's following list to filter out
+    # Get current user's following list and follow requests to filter out
     try:
         user = User.objects.get(id=user_id)
         user_following = set(user.get_following().values_list('id', flat=True))
+        
+        # Get users to whom the current user has sent follow requests
+        from users.models import FollowRequest
+        user_follow_requests = set(FollowRequest.objects.filter(
+            from_user=user,
+            status='pending'
+        ).values_list('to_user_id', flat=True))
+        
         print(f"🔍 DEBUG: User {user.username} follows {len(user_following)} users: {list(user_following)}")
+        print(f"🔍 DEBUG: User {user.username} has pending follow requests to {len(user_follow_requests)} users: {list(user_follow_requests)}")
     except User.DoesNotExist:
         print(f"❌ User with ID {user_id} not found")
         return []
     
-    # Filter out private users, deleted users, and users already followed
+    # Filter out private users, deleted users, users already followed, and users with pending follow requests
     display_recommendations = []
     for rec in recommendations:
         # Skip if already following
         if rec['id'] in user_following:
             print(f"🔍 DEBUG: Skipping {rec['username']} (already following)")
+            continue
+            
+        # Skip if follow request already sent
+        if rec['id'] in user_follow_requests:
+            print(f"🔍 DEBUG: Skipping {rec['username']} (follow request already sent)")
             continue
             
         # Verify the recommended user still exists and is active
@@ -360,8 +374,9 @@ def build_user_recommendations_for_user(user_id, top_k=10, friend_boost=1.2, fol
             # Debug info for this candidate
             print(f"\n🔍 DETAILED SCORE DEBUG: {user.username} -> {other_user.username}")
             
-            # Start with base score of 0.5 for better distribution
-            score = 0.5
+            # Start with base score of 0.2 for better distribution
+            # This ensures even new users get some recommendations
+            score = 0.2
             print(f"   📊 Base score: {score:.4f}")
             
             # Get other user's relationships
@@ -455,7 +470,8 @@ def build_user_recommendations_for_user(user_id, top_k=10, friend_boost=1.2, fol
             print(f"   👤 Candidate info: {other_user.username} ({'Private' if other_user.is_private else 'Public'}, {photos_count} photos, {days_since_joined} days old)")
             print("   " + "-" * 60)
             
-            if score > 0:
+            # Accept recommendations with score >= 0.05 (very permissive for new users)
+            if score >= 0.05:
                 print(f"✅ DEBUG: {other_user.username} qualified with score {score:.4f}")
                 recommendations.append({
                     'user_id': other_user.id,
@@ -466,7 +482,7 @@ def build_user_recommendations_for_user(user_id, top_k=10, friend_boost=1.2, fol
                 })
             else:
                 candidates_zero_score += 1
-                print(f"❌ DEBUG: {other_user.username} has zero score")
+                print(f"❌ DEBUG: {other_user.username} has low score {score:.4f} (below 0.05 threshold)")
         
         # Sort by score and take top_k
         recommendations.sort(key=lambda x: x['score'], reverse=True)
@@ -487,12 +503,13 @@ def build_user_recommendations_for_user(user_id, top_k=10, friend_boost=1.2, fol
         # Delete existing recommendations for this user
         UserRecommendation.objects.filter(user=user).delete()
         
-        # Create new recommendations
-        for rec in top_recommendations:
+        # Create new recommendations with position
+        for i, rec in enumerate(top_recommendations, 1):
             UserRecommendation.objects.create(
                 user=user,
                 recommended_user_id=rec['user_id'],
-                score=rec['score']
+                score=rec['score'],
+                position=i
             )
         
         print(f"💾 Saved {len(top_recommendations)} recommendations to database for {user.username}")

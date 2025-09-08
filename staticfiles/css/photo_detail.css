@@ -1,0 +1,700 @@
+/* Photo Detail Page Styles - Modern Design */
+
+/* CSS Variables for consistent theming - Using base.scss variables */
+:root {
+    /* Colors - using base.scss variables */
+    --success-default: #34c759;
+    --warning-default: #ff9500;
+    --danger-default: #ff3b30;
+    
+    /* Text colors - using base.scss variables */
+    --text-100: var(--text-100);
+    --text-200: var(--text-200);
+    --text-300: var(--text-300);
+    --text-400: var(--text-400);
+    --text-500: var(--text-500);
+    
+    /* Background colors - using base.scss variables */
+    --background-hover: var(--background-100);
+    --background-overlay: rgba(0, 0, 0, 0.7);
+    
+    /* Spacing */
+    --spacing-xs: 0.25rem;
+    --spacing-sm: 0.5rem;
+    --spacing-md: 1rem;
+    --spacing-lg: 1.5rem;
+    --spacing-xl: 2rem;
+    --spacing-2xl: 3rem;
+    
+    /* Border radius */
+    --radius-sm: 0.25rem;
+    --radius-md: 0.5rem;
+    --radius-lg: 0.75rem;
+    --radius-xl: 1rem;
+    
+    /* Shadows */
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.15);
+    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.2);
+    --shadow-xl: 0 12px 32px rgba(0, 0, 0, 0.25);
+    
+    /* Transitions */
+    --transition-fast: 0.15s ease;
+    --transition-normal: 0.3s ease;
+    --transition-slow: 0.5s ease;
+}
+
+/* Main container - Modern layout */
+.photo-detail-page {
+    min-height: 100vh;
+    background: var(--background-default);
+    padding: var(--spacing-xl) 0;
+}
+
+.photo-detail-content {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 var(--spacing-lg);
+}
+
+/* Photo display container - Modern card design */
+.photo-display-container {
+    background: var(--background-default);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+    margin-bottom: var(--spacing-2xl);
+    border: 1px solid var(--text-200);
+}
+
+.photo-display {
+    text-align: center;
+    padding: var(--spacing-2xl);
+    background: var(--background-default);
+}
+
+.main-photo {
+    max-width: 100%;
+    max-height: 80vh;
+    aspect-ratio: initial;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    transition: all var(--transition-normal);
+}
+
+.main-photo:hover {
+    transform: scale(1.02);
+    box-shadow: var(--shadow-xl);
+}
+
+.raw-file-notice {
+    background: rgba(255, 149, 0, 0.1);
+    border: 1px solid rgba(255, 149, 0, 0.3);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-lg);
+    margin-top: var(--spacing-lg);
+    color: var(--text-default);
+}
+
+/* Photo actions bar - Modern header */
+.photo-actions-bar {
+    padding: var(--spacing-2xl);
+    background: var(--background-default);
+    border-bottom: 1px solid var(--text-200);
+}
+
+.photo-title {
+    margin: 0;
+    color: var(--text-default);
+    font-size: 2.5rem;
+    font-weight: 700;
+    width: fit-content;
+    line-height: 1.2;
+}
+
+.photo-description {
+    margin: var(--spacing-md) 0 0 0;
+    color: var(--text-500);
+    font-size: 1.1rem;
+    line-height: 1.6;
+}
+
+/* Photo metadata - Modern card design */
+.photo-metadata {
+    padding: var(--spacing-2xl);
+    background: var(--background-default);
+}
+
+.metadata-item {
+    margin-bottom: var(--spacing-lg);
+    display: flex;
+    align-items: flex-start;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--text-200);
+    transition: all var(--transition-fast);
+}
+
+.metadata-item:hover {
+    background: var(--background-default);
+    box-shadow: var(--shadow-sm);
+}
+
+.metadata-item strong {
+    color: var(--text-default);
+    font-weight: 600;
+    min-width: 120px;
+    font-size: 0.9rem;
+}
+
+/* Tags Styling - Modern design */
+.tags-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-sm);
+    margin-top: var(--spacing-sm);
+}
+
+.tag {
+    display: inline-block;
+    background: var(--primary-100);
+    color: var(--primary-default);
+    padding: var(--spacing-xs) var(--spacing-md);
+    border-radius: var(--radius-lg);
+    font-size: 0.875rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all var(--transition-fast);
+    border: 1px solid var(--primary-200);
+}
+
+.tag:hover {
+    background: var(--primary-default);
+    color: white;
+    text-decoration: none;
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+}
+
+.tag:active {
+    transform: translateY(0);
+}
+
+/* EXIF Sidebar - Modern card design */
+.exif-sidebar {
+    padding: var(--spacing-2xl);
+    height: fit-content;
+    position: sticky;
+    top: var(--spacing-xl);
+    background: var(--background-default);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-lg);
+    border: 1px solid var(--text-200);
+    transition: all var(--transition-normal);
+}
+
+.exif-sidebar:hover {
+    box-shadow: var(--shadow-xl);
+}
+
+.exif-section {
+    margin-bottom: var(--spacing-2xl);
+    padding-bottom: var(--spacing-lg);
+    border-bottom: 1px solid var(--text-200);
+}
+
+.exif-section:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.exif-section h4 {
+    color: var(--primary-default);
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-bottom: var(--spacing-lg);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.exif-section h4 i {
+    color: var(--secondary-default);
+    width: 20px;
+}
+
+.exif-grid {
+    display: grid;
+    gap: var(--spacing-md);
+}
+
+.exif-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-md);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--text-200);
+    transition: all var(--transition-fast);
+}
+
+.exif-item:hover {
+    background: var(--background-default);
+    box-shadow: var(--shadow-sm);
+}
+
+.exif-label {
+    color: var(--text-500);
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.exif-value {
+    color: var(--text-default);
+    font-weight: 700;
+    text-align: right;
+    max-width: 60%;
+    word-break: break-word;
+}
+
+/* Map Container */
+.map-container {
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid #e9ecef;
+}
+
+/* Similar Photos */
+.similar-photos {
+    border-radius: 12px;
+    padding: 2rem;
+}
+
+.similar-photos h3 {
+    color: #2c3e50;
+    margin-bottom: 1.5rem;
+    font-weight: 600;
+}
+
+.similar-photo-card {
+    border-radius: 8px;
+    overflow: hidden;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.similar-photo-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+}
+
+.similar-photo-card img {
+    width: 100%;
+    height: 120px;
+    object-fit: cover;
+}
+
+.similar-photo-info {
+    padding: 0.75rem;
+}
+
+.similar-photo-title {
+    font-weight: 600;
+    color: #2c3e50;
+    font-size: 0.9rem;
+    margin-bottom: 0.25rem;
+}
+
+.similar-photo-date {
+    color: #6c757d;
+    font-size: 0.8rem;
+}
+
+/* Badges */
+.badge {
+    font-size: 0.8rem;
+    padding: 0.4rem 0.8rem;
+    border-radius: 6px;
+    font-weight: 500;
+}
+
+/* Modern button styles */
+.btn {
+    padding: var(--spacing-sm) var(--spacing-lg);
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: all var(--transition-fast);
+    border: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    text-decoration: none;
+}
+
+.btn-outline-primary {
+    background: transparent;
+    color: var(--primary-default);
+    border: 2px solid var(--primary-default);
+}
+
+.btn-outline-primary:hover {
+    background: var(--primary-default);
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+}
+
+.btn-outline-success {
+    background: transparent;
+    color: var(--success-default);
+    border: 2px solid var(--success-default);
+}
+
+.btn-outline-success:hover {
+    background: var(--success-default);
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+}
+
+.btn-outline-danger {
+    background: transparent;
+    color: var(--danger-default);
+    border: 2px solid var(--danger-default);
+}
+
+.btn-outline-danger:hover {
+    background: var(--danger-default);
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+}
+
+/* Responsive Design */
+@media (max-width: 991.98px) {
+    .exif-sidebar {
+        position: static;
+        margin-top: var(--spacing-2xl);
+    }
+    
+    .photo-display {
+        padding: var(--spacing-lg);
+    }
+    
+    .photo-actions-bar {
+        padding: var(--spacing-lg);
+    }
+    
+    .photo-metadata {
+        padding: var(--spacing-lg);
+    }
+    
+    .exif-sidebar {
+        padding: var(--spacing-lg);
+    }
+    
+    .photo-detail-content {
+        padding: 0 var(--spacing-md);
+    }
+}
+
+@media (max-width: 767.98px) {
+    .photo-title {
+        font-size: 2rem;
+    }
+    
+    .btn-group {
+        flex-direction: column;
+        gap: var(--spacing-sm);
+    }
+    
+    .btn-group .btn {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .exif-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--spacing-xs);
+    }
+    
+    .exif-value {
+        text-align: left;
+        max-width: 100%;
+    }
+    
+    .photo-detail-content {
+        padding: 0 var(--spacing-sm);
+    }
+    
+    .photo-detail-page {
+        padding: var(--spacing-lg) 0;
+    }
+}
+
+/* ===============================
+   SIMILAR PHOTOS STYLES
+   =============================== */
+
+/* Similar photos title */
+.similar-photos-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--text-default);
+    margin: 0 0 var(--spacing-md) 0;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.similar-photos-title i {
+    color: var(--primary-default);
+}
+
+/* Similar photos grid */
+.similar-photos-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: var(--spacing-lg);
+    margin-top: var(--spacing-lg);
+}
+
+/* Similar photo item */
+.similar-photo-item {
+    position: relative;
+    background: var(--background-default);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+    transition: all var(--transition-normal);
+    cursor: pointer;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.similar-photo-item:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+}
+
+/* Similar photo image container */
+.similar-photo-image-container {
+    position: relative;
+    width: 100%;
+    height: 0;
+    padding-bottom: 75%; /* 4:3 aspect ratio */
+    overflow: hidden;
+}
+
+.similar-photo-thumbnail {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: all var(--transition-normal);
+}
+
+/* Smooth transitions for all hover effects */
+.similar-photo-item:hover .similar-photo-thumbnail {
+    transform: scale(1.05);
+    filter: blur(1px);
+    transition: all var(--transition-normal);
+}
+
+.similar-photo-item:hover .similar-photo-overlay {
+    opacity: 1;
+    transition: opacity var(--transition-normal);
+}
+
+/* Similar photo overlay */
+.similar-photo-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(to bottom, transparent 0%, transparent 50%, var(--background-overlay) 100%);
+    opacity: 0;
+    transition: all var(--transition-normal);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: var(--spacing-md);
+    z-index: 2;
+}
+
+/* Similar photo info */
+.similar-photo-info {
+    margin-top: auto;
+    color: white;
+}
+
+.similar-photo-title {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0 0 var(--spacing-xs) 0;
+    line-height: 1.3;
+}
+
+.similar-photo-description {
+    font-size: 0.8rem;
+    margin: 0 0 var(--spacing-sm) 0;
+    opacity: 0.9;
+    line-height: 1.4;
+}
+
+/* Similar photo user info */
+.similar-photo-user {
+    margin-bottom: var(--spacing-sm);
+}
+
+.similar-user-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    font-size: 0.75rem;
+    background: var(--primary-default);
+    color: white;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--radius-sm);
+    font-weight: 500;
+    width: fit-content;
+}
+
+.similar-user-item i {
+    font-size: 0.7rem;
+}
+
+.similar-photo-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-sm);
+}
+
+.similar-meta-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    font-size: 0.7rem;
+    background: rgb(138 138 138 / 72%);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--radius-sm);
+}
+
+.similar-meta-item i {
+    font-size: 0.7rem;
+}
+
+.similar-raw-indicator {
+    background: rgba(255, 149, 0, 0.8);
+    color: white;
+}
+
+.similar-photo-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-xs);
+}
+
+.similar-tag {
+    font-size: 0.7rem;
+    background: rgb(138 138 138 / 72%);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--radius-sm);
+    color: white;
+}
+
+/* Similar photo actions */
+.similar-photo-actions {
+    display: flex;
+    gap: var(--spacing-sm);
+    justify-content: flex-end;
+}
+
+.similar-action-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgb(138 138 138 / 72%);
+    color: white;
+    text-decoration: none;
+    transition: all var(--transition-fast);
+    font-size: 0.8rem;
+}
+
+.similar-action-btn:hover {
+    background: rgb(138 138 138 / 72%);
+    transform: scale(1.1);
+    color: white;
+    text-decoration: none;
+}
+
+.similar-user-btn {
+    background: var(--primary-default);
+}
+
+.similar-user-btn:hover {
+    background: var(--primary-default);
+}
+
+/* Responsive design for similar photos */
+@media (max-width: 1200px) {
+    .similar-photos-grid {
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: var(--spacing-md);
+    }
+}
+
+@media (max-width: 768px) {
+    .similar-photos-grid {
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: var(--spacing-sm);
+    }
+    
+    .similar-photos-title {
+        font-size: 1.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .similar-photos-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .similar-photo-meta {
+        flex-direction: column;
+        gap: var(--spacing-xs);
+    }
+    
+    .similar-photo-actions {
+        justify-content: center;
+    }
+}
+
+/* Dark mode support for similar photos */
+
+/* Accessibility improvements */
+@media (prefers-reduced-motion: reduce) {
+    .similar-photo-item,
+    .similar-photo-thumbnail,
+    .similar-photo-overlay,
+    .similar-action-btn {
+        transition: none !important;
+    }
+}
+
+/* Focus styles for keyboard navigation */
+.similar-photo-item:focus,
+.similar-action-btn:focus {
+    outline: 2px solid var(--primary-default);
+    outline-offset: 2px;
+}

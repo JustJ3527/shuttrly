@@ -1,0 +1,249 @@
+/* Photo Upload Styles */
+
+.upload-header {
+    text-align: center;
+    margin-bottom: 2rem;
+    padding: 2rem 0;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 15px;
+    margin-bottom: 2rem;
+}
+
+.upload-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+}
+
+.upload-subtitle {
+    font-size: 1.1rem;
+    opacity: 0.9;
+    margin-bottom: 0;
+}
+
+.upload-container {
+    margin-bottom: 2rem;
+}
+
+/* Progress Bar Section */
+#progress-section {
+    margin-bottom: 2rem;
+}
+
+#progress-section .card-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+}
+
+#progress-section .card-header h5 {
+    margin: 0;
+    font-weight: 600;
+}
+
+.progress {
+    border-radius: 10px;
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef;
+}
+
+.progress-bar {
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: width 0.3s ease;
+}
+
+.upload-status {
+    margin-top: 1rem;
+}
+
+.upload-status .col-md-3 {
+    text-align: center;
+    padding: 0.5rem;
+}
+
+.upload-status small {
+    font-size: 0.8rem;
+    color: #6c757d;
+    display: block;
+    margin-bottom: 0.25rem;
+}
+
+.upload-status div {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #495057;
+}
+
+#upload-errors {
+    margin-top: 1rem;
+}
+
+#error-list {
+    font-size: 0.9rem;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+/* Form Styling */
+.form-label {
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 0.5rem;
+}
+
+.form-control, .form-select {
+    border-radius: 8px;
+    border: 2px solid #e9ecef;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+}
+
+.form-text {
+    color: #6c757d;
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+}
+
+/* File Input Styling */
+#id_photos {
+    padding: 1rem;
+    border: 2px dashed #dee2e6;
+    background-color: #f8f9fa;
+    transition: border-color 0.3s ease, background-color 0.3s ease;
+}
+
+#id_photos:hover {
+    border-color: #667eea;
+    background-color: #f0f2ff;
+}
+
+#id_photos:focus {
+    border-color: #667eea;
+    background-color: white;
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+}
+
+/* Submit Button */
+#upload-submit-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    border-radius: 10px;
+    padding: 1rem 2rem;
+    font-weight: 600;
+    font-size: 1.1rem;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+#upload-submit-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+}
+
+#upload-submit-btn:disabled {
+    opacity: 0.6;
+    transform: none;
+    box-shadow: none;
+}
+
+/* Upload Tips */
+.upload-tips .card {
+    border: none;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border-radius: 15px;
+}
+
+.upload-tips .card-header {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+    border: none;
+    border-radius: 15px 15px 0 0;
+}
+
+.upload-tips .card-header h5 {
+    margin: 0;
+    font-weight: 600;
+}
+
+.upload-tips ul li {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #f8f9fa;
+}
+
+.upload-tips ul li:last-child {
+    border-bottom: none;
+}
+
+.upload-tips ul li i {
+    margin-right: 0.5rem;
+    width: 16px;
+}
+
+/* Alert Messages */
+.alert {
+    border-radius: 10px;
+    border: none;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.alert-warning {
+    background: linear-gradient(135deg, #ffc107 0%, #ffb84d 100%);
+    color: #856404;
+}
+
+.alert-info {
+    background: linear-gradient(135deg, #17a2b8 0%, #5bc0de 100%);
+    color: #0c5460;
+}
+
+.alert-danger {
+    background: linear-gradient(135deg, #dc3545 0%, #e4606d 100%);
+    color: #721c24;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .upload-title {
+        font-size: 2rem;
+    }
+    
+    .upload-subtitle {
+        font-size: 1rem;
+    }
+    
+    .upload-status .col-md-3 {
+        margin-bottom: 1rem;
+    }
+    
+    #upload-submit-btn {
+        padding: 0.75rem 1.5rem;
+        font-size: 1rem;
+    }
+}
+
+/* Animation for progress updates */
+@keyframes progressPulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.7; }
+    100% { opacity: 1; }
+}
+
+.progress-bar-animated {
+    animation: progressPulse 2s infinite;
+}
+
+/* Loading spinner for upload button */
+.fa-spinner {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}

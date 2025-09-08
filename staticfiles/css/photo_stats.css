@@ -1,0 +1,552 @@
+/* Photo Statistics Styles */
+.stats-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 2rem 0;
+    margin-bottom: 2rem;
+    border-radius: 0 0 20px 20px;
+}
+
+.stats-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.stats-subtitle {
+    font-size: 1.1rem;
+    opacity: 0.9;
+    margin-bottom: 0;
+}
+
+/* Stat Cards */
+.stat-card {
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+    padding: 2rem;
+    text-align: center;
+    transition: all 0.3s ease;
+    height: 100%;
+    border: 1px solid #f0f0f0;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+}
+
+.stat-icon {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.5rem;
+    font-size: 2rem;
+    transition: all 0.3s ease;
+}
+
+.stat-card:hover .stat-icon {
+    transform: scale(1.1);
+}
+
+.stat-icon.raw {
+    background: linear-gradient(135deg, #ffc107 0%, #ff8c00 100%);
+}
+
+.stat-icon.public {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+}
+
+.stat-icon.featured {
+    background: linear-gradient(135deg, #007bff 0%, #6610f2 100%);
+}
+
+.stat-number {
+    font-size: 3rem;
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 0.5rem;
+    line-height: 1;
+}
+
+.stat-label {
+    color: #666;
+    font-size: 1.1rem;
+    font-weight: 500;
+    margin: 0;
+}
+
+/* Storage and Size Stats */
+.storage-stats {
+    display: grid;
+    gap: 1rem;
+}
+
+.storage-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 10px;
+    border-left: 4px solid #667eea;
+}
+
+.storage-label {
+    font-weight: 600;
+    color: #555;
+}
+
+.storage-value {
+    font-weight: 700;
+    color: #333;
+    font-size: 1.1rem;
+}
+
+/* Trend Stats */
+.trend-stats {
+    min-height: 200px;
+}
+
+.trend-chart {
+    width: 100%;
+    height: 200px;
+}
+
+.no-data {
+    text-align: center;
+    padding: 2rem;
+    color: #999;
+}
+
+.no-data i {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
+.no-data p {
+    margin: 0;
+    font-size: 1rem;
+}
+
+/* Camera and Lens Statistics */
+.camera-stats,
+.lens-stats {
+    display: grid;
+    gap: 1rem;
+}
+
+.camera-item,
+.lens-item {
+    background: #f8f9fa;
+    border-radius: 10px;
+    padding: 1rem;
+    border-left: 4px solid #667eea;
+}
+
+.camera-info,
+.lens-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.camera-name,
+.lens-name {
+    font-weight: 600;
+    color: #333;
+    font-size: 0.9rem;
+}
+
+.camera-count,
+.lens-count {
+    color: #666;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.camera-bar,
+.lens-bar {
+    width: 100%;
+    height: 8px;
+    background: #e0e0e0;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.camera-bar-fill,
+.lens-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+/* ISO and Aperture Statistics */
+.iso-stats,
+.aperture-stats {
+    display: grid;
+    gap: 1rem;
+}
+
+.iso-item,
+.aperture-item {
+    background: #f8f9fa;
+    border-radius: 10px;
+    padding: 1rem;
+    border-left: 4px solid #ffc107;
+}
+
+.iso-info,
+.aperture-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.iso-value,
+.aperture-value {
+    font-weight: 600;
+    color: #333;
+    font-size: 0.9rem;
+}
+
+.iso-count,
+.aperture-count {
+    color: #666;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.iso-bar,
+.aperture-bar {
+    width: 100%;
+    height: 8px;
+    background: #e0e0e0;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.iso-bar-fill,
+.aperture-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #ffc107 0%, #ff8c00 100%);
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+/* Format Chart */
+.format-chart {
+    width: 100%;
+    height: 300px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Card Styles */
+.card {
+    border: none;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+    border-radius: 15px;
+    overflow: hidden;
+}
+
+.card-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 1.5rem;
+}
+
+.card-header h5 {
+    margin: 0;
+    font-weight: 600;
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.card-header h5 i {
+    font-size: 1.1rem;
+}
+
+.card-body {
+    padding: 1.5rem;
+}
+
+/* Responsive Design */
+@media (max-width: 992px) {
+    .stats-title {
+        font-size: 2rem;
+    }
+    
+    .stat-number {
+        font-size: 2.5rem;
+    }
+    
+    .stat-icon {
+        width: 60px;
+        height: 60px;
+        font-size: 1.5rem;
+    }
+    
+    .trend-chart,
+    .format-chart {
+        height: 250px;
+    }
+}
+
+@media (max-width: 768px) {
+    .stats-header {
+        padding: 1.5rem 0;
+    }
+    
+    .stats-title {
+        font-size: 1.8rem;
+    }
+    
+    .stats-subtitle {
+        font-size: 1rem;
+    }
+    
+    .stat-card {
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+    }
+    
+    .stat-number {
+        font-size: 2rem;
+    }
+    
+    .stat-label {
+        font-size: 1rem;
+    }
+    
+    .card-header {
+        padding: 1rem 1.5rem;
+    }
+    
+    .card-body {
+        padding: 1rem;
+    }
+    
+    .trend-chart,
+    .format-chart {
+        height: 200px;
+    }
+    
+    .storage-item,
+    .camera-item,
+    .lens-item,
+    .iso-item,
+    .aperture-item {
+        padding: 0.75rem;
+    }
+    
+    .camera-info,
+    .lens-info,
+    .iso-info,
+    .aperture-info {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+    
+    .camera-count,
+    .lens-count,
+    .iso-count,
+    .aperture-count {
+        align-self: flex-end;
+    }
+}
+
+@media (max-width: 576px) {
+    .stats-header {
+        padding: 1rem 0;
+        border-radius: 0 0 15px 15px;
+    }
+    
+    .stats-title {
+        font-size: 1.5rem;
+    }
+    
+    .stats-subtitle {
+        font-size: 0.9rem;
+    }
+    
+    .stat-card {
+        padding: 1rem;
+        border-radius: 10px;
+    }
+    
+    .stat-icon {
+        width: 50px;
+        height: 50px;
+        font-size: 1.2rem;
+        margin-bottom: 1rem;
+    }
+    
+    .stat-number {
+        font-size: 1.8rem;
+    }
+    
+    .stat-label {
+        font-size: 0.9rem;
+    }
+    
+    .card {
+        border-radius: 10px;
+    }
+    
+    .card-header {
+        padding: 1rem;
+        border-radius: 10px 10px 0 0;
+    }
+    
+    .card-header h5 {
+        font-size: 1.1rem;
+    }
+    
+    .card-body {
+        padding: 1rem;
+    }
+    
+    .trend-chart,
+    .format-chart {
+        height: 180px;
+    }
+}
+
+/* Loading States */
+.stat-card.loading {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+.stat-card.loading .stat-icon {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+/* Chart Container Styles */
+canvas {
+    max-width: 100%;
+    height: auto !important;
+}
+
+/* Animation Classes */
+.fade-in {
+    animation: fadeIn 0.5s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.slide-in {
+    animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+    from { transform: translateX(-20px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+/* Hover Effects */
+.stat-card:hover .stat-icon {
+    transform: scale(1.1) rotate(5deg);
+}
+
+.storage-item:hover,
+.camera-item:hover,
+.lens-item:hover,
+.iso-item:hover,
+.aperture-item:hover {
+    background: #f0f4ff;
+    transform: translateX(5px);
+    transition: all 0.3s ease;
+}
+
+/* Progress Bar Animations */
+.camera-bar-fill,
+.lens-bar-fill,
+.iso-bar-fill,
+.aperture-bar-fill {
+    animation: slideInLeft 0.8s ease;
+}
+
+@keyframes slideInLeft {
+    from { width: 0; }
+    to { width: var(--final-width); }
+}
+
+/* Chart.js Customization */
+.chartjs-tooltip {
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    border-radius: 8px;
+    padding: 0.5rem;
+    font-size: 0.85rem;
+}
+
+.chartjs-legend {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-top: 1rem;
+    flex-wrap: wrap;
+}
+
+.chartjs-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: #666;
+}
+
+.chartjs-legend-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+}
+
+/* Print Styles */
+@media print {
+    .stats-header {
+        background: white !important;
+        color: black !important;
+        border: 2px solid #333;
+    }
+    
+    .stat-card {
+        box-shadow: none;
+        border: 1px solid #ccc;
+    }
+    
+    .card {
+        box-shadow: none;
+        border: 1px solid #ccc;
+    }
+    
+    .card-header {
+        background: #f8f9fa !important;
+        color: black !important;
+    }
+}

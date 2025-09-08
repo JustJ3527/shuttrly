@@ -26,7 +26,6 @@ from django.conf import settings
 
 from .models import Photo, Collection, CollectionPhoto
 from .forms import PhotoUploadForm, PhotoEditForm, PhotoSearchForm, CollectionCreateForm, CollectionPhotoForm
-from .test.test_utils import find_similar_photos_cached
 from logs.utils import (
     log_photo_upload_json,
     log_photo_delete_json,

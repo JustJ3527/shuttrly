@@ -2694,6 +2694,19 @@ def public_user_profile_view(request, username):
             
 
 
+        # Get user posts if they can see full profile
+        user_posts = []
+        if can_see_full_profile:
+            try:
+                from posts.models import Post
+                from photos.models import Photo, Collection
+                user_posts = Post.objects.filter(
+                    author=user,
+                    visibility='public'
+                ).select_related('author', 'content_type').prefetch_related('photos')[:12]  # Limit to 12 posts for performance
+            except ImportError:
+                user_posts = []
+
         # Prepare context data
         context = {
             "profile_user": user,
@@ -2702,6 +2715,7 @@ def public_user_profile_view(request, username):
             "can_edit": can_edit,
             "can_see_full_profile": can_see_full_profile,
             "show_limited_info": is_private_profile and not can_see_full_profile,
+            "user_posts": user_posts,
         }
 
         return render(request, "users/public_profile.html", context)
@@ -3273,19 +3287,18 @@ def update_recommendations_after_relationship_change(user_id, action_description
         action_description: Description of the action that triggered the update
     """
     try:
-        from django.core.cache import cache
-        from users.utilsFolder.recommendations import build_user_recommendations_for_user
+        from users.tasks import trigger_recommendation_update_after_relationship_change
         
-        # Clear cache to force fresh recommendations
-        cache_key = f"user_recommendations_{user_id}"
-        cache.delete(cache_key)
-        print(f"🗑️ Cleared cache for user {user_id}")
+        # Trigger background calculation for the user (top 30)
+        task = trigger_recommendation_update_after_relationship_change.delay(user_id, action_description)
         
-        # Rebuild recommendations
-        build_user_recommendations_for_user(user_id)
-        print(f"🔄 Updated recommendations for user {user_id} after {action_description}")
+        print(f"🔄 Triggered recommendation update for user {user_id} after {action_description}")
+        print(f"📋 Task ID: {task.id}")
+        
+        return True
     except Exception as e:
-        print(f"⚠️ Failed to update recommendations for user {user_id} after {action_description}: {e}")
+        print(f"❌ Error triggering recommendation update: {e}")
+        return False
 
 def update_recommendations_for_multiple_users(user_ids, action_description):
     """
@@ -3636,15 +3649,23 @@ def refresh_user_recommendations_view(request):
         }, status=401)
     
     try:
-        from users.utilsFolder.recommendations import build_user_recommendations_for_user, get_recommendations_for_display
+        from users.tasks import get_user_recommendations_for_display
+        import time
         
-        # Calculate and save recommendations for this specific user
-        print(f"🔄 Starting recommendation refresh for user {request.user.username} (ID: {request.user.id})")
-        result = build_user_recommendations_for_user(request.user.id)
+        # Generate new rotation key and store in session for future page loads
+        session_key = f'recommendations_rotation_{request.user.id}'
+        new_rotation_key = int(time.time())
+        request.session[session_key] = new_rotation_key
+        request.session.save()
         
-        if result.get('success'):
-            # Get the updated recommendations for display
-            recommendations = get_recommendations_for_display(request.user.id, limit=5)
+        result = get_user_recommendations_for_display(
+            request.user.id, 
+            limit=4, 
+            rotation_key=new_rotation_key
+        )
+        
+        if result.get('status') == 'success':
+            recommendations = result.get('recommendations', [])
             
             # Render the recommendations HTML using the template
             from django.template.loader import render_to_string
@@ -3654,20 +3675,20 @@ def refresh_user_recommendations_view(request):
             
             return JsonResponse({
                 'success': True,
-                'message': f'Recommendations updated successfully for {result.get("username", request.user.username)}',
-                'recommendations_count': result.get('recommendations_count', 0),
+                'message': f'Recommendations refreshed successfully',
+                'recommendations_count': len(recommendations),
                 'recommendations_html': recommendations_html
             })
         else:
             return JsonResponse({
                 'success': False,
-                'message': f'Failed to update recommendations: {result.get("error", "Unknown error")}'
+                'message': f'Failed to get recommendations: {result.get("message", "Unknown error")}'
             }, status=500)
             
     except Exception as e:
         return JsonResponse({
             'success': False,
-            'message': f'Failed to update recommendations: {str(e)}'
+            'message': f'Failed to refresh recommendations: {str(e)}'
         }, status=500)
 
 
@@ -3681,22 +3702,41 @@ def get_user_recommendations_ajax(request):
         }, status=401)
     
     try:
-        from users.utilsFolder.recommendations import get_recommendations_for_display
+        from users.tasks import get_user_recommendations_for_display
         
-        # Get current recommendations
-        recommendations = get_recommendations_for_display(request.user.id, limit=5)
+        # Use session-based rotation key to keep recommendations stable
+        session_key = f'recommendations_rotation_{request.user.id}'
+        if session_key not in request.session:
+            import time
+            request.session[session_key] = int(time.time())
         
-        # Render the recommendations HTML using the template
-        from django.template.loader import render_to_string
-        recommendations_html = render_to_string('partials/recommendations_list.html', {
-            'recommendations': recommendations
-        })
+        rotation_key = request.session[session_key]
         
-        return JsonResponse({
-            'success': True,
-            'recommendations_html': recommendations_html,
-            'count': len(recommendations)
-        })
+        result = get_user_recommendations_for_display(
+            request.user.id, 
+            limit=4, 
+            rotation_key=rotation_key
+        )
+        
+        if result.get('status') == 'success':
+            recommendations = result.get('recommendations', [])
+            
+            # Render the recommendations HTML using the template
+            from django.template.loader import render_to_string
+            recommendations_html = render_to_string('partials/recommendations_list.html', {
+                'recommendations': recommendations
+            })
+            
+            return JsonResponse({
+                'success': True,
+                'recommendations_html': recommendations_html,
+                'count': len(recommendations)
+            })
+        else:
+            return JsonResponse({
+                'success': False,
+                'message': f'Failed to get recommendations: {result.get("message", "Unknown error")}'
+            }, status=500)
         
     except Exception as e:
         return JsonResponse({

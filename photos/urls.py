@@ -53,6 +53,6 @@ urlpatterns = [
     # path("test-embedding/<int:photo_id>/", views.test_embedding_system, name="test_embedding_photo"),
     # path("test-hybrid/", views.test_hybrid_system, name="test_hybrid"),
     # path("test-hybrid/<int:photo_id>/", views.test_hybrid_system, name="test_hybrid_photo"),
-    # Test system (separate module)
-    path("test/", include("photos.test.urls")),
+    # Test system (separate module) - disabled
+    # path("test/", include("photos.test.urls")),
 ]

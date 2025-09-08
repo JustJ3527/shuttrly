@@ -690,6 +690,9 @@ class UserRecommendation(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="user_recommendations")
     recommended_user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="recommended_users")
     score = models.FloatField(default=0.0)
+    position = models.PositiveIntegerField(default=0)  # Position in top 30 (1-30)
+    last_shown = models.DateTimeField(null=True, blank=True)  # When last shown to user
+    show_count = models.PositiveIntegerField(default=0)  # How many times shown
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -698,5 +701,8 @@ class UserRecommendation(models.Model):
         indexes = [
             models.Index(fields=["user"]),
             models.Index(fields=["recommended_user"]),
+            models.Index(fields=["user", "score"]),
+            models.Index(fields=["user", "position"]),
+            models.Index(fields=["last_shown"]),
         ]
         

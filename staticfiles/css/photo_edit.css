@@ -1,0 +1,467 @@
+/* Photo Edit Styles */
+.edit-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 2rem 0;
+    margin-bottom: 2rem;
+    border-radius: 0 0 20px 20px;
+    text-align: center;
+}
+
+.edit-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.edit-subtitle {
+    font-size: 1.1rem;
+    opacity: 0.9;
+    margin-bottom: 0;
+}
+
+/* Photo Preview */
+.photo-preview-container {
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+    height: fit-content;
+    position: sticky;
+    top: 2rem;
+}
+
+.photo-preview {
+    padding: 1.5rem;
+    text-align: center;
+    background: #f8f9fa;
+}
+
+.preview-image {
+    max-width: 100%;
+    max-height: 300px;
+    border-radius: 10px;
+    box-shadow: 0 3px 15px rgba(0, 0, 0, 0.1);
+}
+
+.photo-info-preview {
+    padding: 1.5rem;
+    background: white;
+}
+
+.photo-info-preview h5 {
+    color: #333;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    text-align: center;
+}
+
+.info-item {
+    margin-bottom: 0.75rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #f0f0f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.info-item:last-child {
+    border-bottom: none;
+}
+
+.info-item strong {
+    color: #555;
+    font-weight: 600;
+}
+
+.info-item .badge {
+    font-size: 0.7rem;
+    padding: 0.25rem 0.6rem;
+    border-radius: 10px;
+}
+
+/* Edit Form */
+.edit-form-container {
+    margin-bottom: 2rem;
+}
+
+.edit-form-container .card {
+    border: none;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+    border-radius: 15px;
+}
+
+.edit-form-container .card-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 15px 15px 0 0 !important;
+    border: none;
+    padding: 1.5rem;
+}
+
+.edit-form-container .card-header h5 {
+    margin: 0;
+    font-weight: 600;
+    font-size: 1.2rem;
+}
+
+.edit-form-container .card-body {
+    padding: 2rem;
+}
+
+/* Form Controls */
+.form-control {
+    border: 2px solid #e0e0e0;
+    border-radius: 10px;
+    padding: 0.75rem;
+    transition: all 0.3s ease;
+    font-size: 1rem;
+}
+
+.form-control:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+}
+
+.form-control:not(:placeholder-shown) {
+    border-color: #28a745;
+    background: #f8fff8;
+}
+
+.form-control:focus:not(:placeholder-shown) {
+    border-color: #28a745;
+    box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
+}
+
+.form-label {
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+}
+
+.form-text {
+    color: #666;
+    font-size: 0.85rem;
+    margin-top: 0.25rem;
+}
+
+.form-check-input {
+    width: 1.2rem;
+    height: 1.2rem;
+    margin-top: 0.1rem;
+}
+
+.form-check-input:checked {
+    background-color: #667eea;
+    border-color: #667eea;
+}
+
+.form-check-input:focus {
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+}
+
+.form-check-label {
+    color: #333;
+    font-weight: 500;
+    margin-left: 0.5rem;
+}
+
+/* Form Actions */
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #f0f0f0;
+}
+
+.form-actions .btn {
+    padding: 0.75rem 1.5rem;
+    font-weight: 600;
+    border-radius: 10px;
+    transition: all 0.3s ease;
+    min-width: 120px;
+}
+
+.form-actions .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+}
+
+.btn-outline-secondary {
+    border-color: #6c757d;
+    color: #6c757d;
+}
+
+.btn-outline-secondary:hover {
+    background-color: #6c757d;
+    border-color: #6c757d;
+}
+
+/* EXIF Information Card */
+.edit-form-container .card + .card {
+    margin-top: 1.5rem;
+}
+
+.edit-form-container .card + .card .card-header {
+    background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+    padding: 1rem 1.5rem;
+}
+
+.edit-form-container .card + .card .card-header h6 {
+    margin: 0;
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.edit-form-container .card + .card .card-body {
+    padding: 1.5rem;
+}
+
+.exif-item {
+    margin-bottom: 0.75rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #f0f0f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.exif-item:last-child {
+    border-bottom: none;
+}
+
+.exif-item strong {
+    color: #555;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.exif-item span {
+    color: #333;
+    font-weight: 500;
+    text-align: right;
+    max-width: 60%;
+    word-break: break-word;
+}
+
+.text-muted {
+    color: #6c757d !important;
+    font-size: 0.85rem;
+    line-height: 1.4;
+}
+
+.text-muted i {
+    color: #17a2b8;
+    margin-right: 0.5rem;
+}
+
+/* Responsive Design */
+@media (max-width: 992px) {
+    .photo-preview-container {
+        position: static;
+        margin-bottom: 2rem;
+    }
+    
+    .edit-title {
+        font-size: 2rem;
+    }
+    
+    .edit-form-container .card-body {
+        padding: 1.5rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .edit-header {
+        padding: 1.5rem 0;
+    }
+    
+    .edit-title {
+        font-size: 1.8rem;
+    }
+    
+    .edit-subtitle {
+        font-size: 1rem;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    
+    .form-actions .btn {
+        width: 100%;
+        min-width: auto;
+    }
+    
+    .photo-preview {
+        padding: 1rem;
+    }
+    
+    .preview-image {
+        max-height: 250px;
+    }
+    
+    .photo-info-preview {
+        padding: 1rem;
+    }
+    
+    .edit-form-container .card-header {
+        padding: 1rem 1.5rem;
+    }
+    
+    .edit-form-container .card-body {
+        padding: 1rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .edit-header {
+        padding: 1rem 0;
+        border-radius: 0 0 15px 15px;
+    }
+    
+    .edit-title {
+        font-size: 1.5rem;
+    }
+    
+    .edit-subtitle {
+        font-size: 0.9rem;
+    }
+    
+    .photo-preview-container {
+        border-radius: 10px;
+    }
+    
+    .edit-form-container .card {
+        border-radius: 10px;
+    }
+    
+    .edit-form-container .card-header {
+        border-radius: 10px 10px 0 0 !important;
+    }
+    
+    .form-control {
+        padding: 0.6rem;
+        font-size: 0.9rem;
+    }
+    
+    .form-label {
+        font-size: 0.9rem;
+    }
+}
+
+/* Loading States */
+.edit-form-container.loading {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+.edit-form-container.loading .form-actions .btn {
+    position: relative;
+}
+
+.edit-form-container.loading .form-actions .btn::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 16px;
+    height: 16px;
+    margin: -8px 0 0 -8px;
+    border: 2px solid transparent;
+    border-top: 2px solid currentColor;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Validation States */
+.form-control.is-invalid {
+    border-color: #dc3545;
+    background-color: #fff5f5;
+}
+
+.form-control.is-valid {
+    border-color: #28a745;
+    background-color: #f8fff8;
+}
+
+.invalid-feedback {
+    display: block;
+    color: #dc3545;
+    font-size: 0.85rem;
+    margin-top: 0.25rem;
+}
+
+.valid-feedback {
+    display: block;
+    color: #28a745;
+    font-size: 0.85rem;
+    margin-top: 0.25rem;
+}
+
+/* Animation Classes */
+.fade-in {
+    animation: fadeIn 0.5s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.slide-in {
+    animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+    from { transform: translateX(-20px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+/* Focus States */
+.form-control:focus {
+    outline: none;
+}
+
+.form-check-input:focus {
+    outline: none;
+}
+
+/* Hover Effects */
+.form-control:hover {
+    border-color: #b3b3b3;
+}
+
+.form-check-input:hover {
+    border-color: #667eea;
+}
+
+/* Disabled States */
+.form-control:disabled {
+    background-color: #e9ecef;
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none !important;
+}

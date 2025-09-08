@@ -1,0 +1,347 @@
+/**
+ * PhotoSearch Component Styles
+ * Styles for the enhanced photo search component with inline filters
+ */
+
+.photo-search-container {
+    position: relative;
+    margin-bottom: 1.5rem;
+}
+
+.photo-search-container.has-inline-filters {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.photo-search-input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    padding-right: 2.5rem;
+    border: 2px solid var(--text-200);
+    border-radius: 0.5rem;
+    font-size: 1rem;
+    background: var(--background-default);
+    color: var(--text-default);
+    transition: all 0.3s ease;
+}
+
+.has-inline-filters .photo-search-input {
+    flex: 1;
+    min-width: 250px;
+}
+
+.photo-search-input:focus {
+    outline: none;
+    border-color: var(--primary-default);
+    box-shadow: 0 0 0 3px var(--primary-100);
+}
+
+.photo-search-input::placeholder {
+    color: var(--text-300);
+    font-style: italic;
+}
+
+.photo-search-container.loading::after {
+    content: '';
+    position: absolute;
+    right: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--text-300);
+    border-radius: 50%;
+    border-top-color: var(--primary-default);
+    animation: spin 1s linear infinite;
+    pointer-events: none;
+    z-index: 10;
+}
+
+.photo-search-results {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--background-default);
+    border: 2px solid var(--text-200);
+    border-top: none;
+    border-radius: 0 0 0.5rem 0.5rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    max-height: 300px;
+    overflow-y: auto;
+    display: none;
+}
+
+.photo-search-results.active {
+    display: block;
+}
+
+.search-result-item {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--text-200);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.search-result-item:hover {
+    background: var(--text-100);
+}
+
+.search-result-item:last-child {
+    border-bottom: none;
+}
+
+.search-result-item.selected {
+    background: var(--primary-100);
+    color: var(--primary-default);
+}
+
+.search-result-thumbnail {
+    width: 40px;
+    height: 40px;
+    border-radius: 0.25rem;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.search-result-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.search-result-title {
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+    color: var(--text-default);
+}
+
+.search-result-meta {
+    font-size: 0.875rem;
+    color: var(--text-500);
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.search-result-tags {
+    display: flex;
+    gap: 0.25rem;
+    flex-wrap: wrap;
+}
+
+.search-result-tag {
+    background: var(--primary-100);
+    color: var(--primary-default);
+    padding: 0.125rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.search-highlight {
+    background: var(--primary-200);
+    color: var(--primary-default);
+    padding: 0.125rem 0.25rem;
+    border-radius: 0.25rem;
+    font-weight: 600;
+}
+
+.no-search-results {
+    padding: 1rem;
+    text-align: center;
+    color: var(--text-500);
+    font-style: italic;
+}
+
+.search-loading {
+    padding: 1rem;
+    text-align: center;
+    color: var(--text-500);
+}
+
+.search-loading::after {
+    content: '';
+    display: inline-block;
+    width: 1rem;
+    height: 1rem;
+    border: 2px solid var(--text-300);
+    border-radius: 50%;
+    border-top-color: var(--primary-default);
+    animation: spin 1s linear infinite;
+    margin-left: 0.5rem;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.photo-search-stats {
+    margin-top: 0.5rem;
+    font-size: 0.875rem;
+    color: var(--text-500);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.search-clear-btn {
+    background: none;
+    border: none;
+    color: var(--text-400);
+    cursor: pointer;
+    padding: 0.25rem;
+    border-radius: 0.25rem;
+    transition: all 0.2s ease;
+}
+
+.search-clear-btn:hover {
+    color: var(--text-default);
+    background: var(--text-100);
+}
+
+/* Inline Filters Styles */
+.photo-search-filters-inline {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+.inline-filter {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.filter-checkbox-inline {
+    margin: 0;
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+.filter-label-inline {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-default);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin: 0;
+    white-space: nowrap;
+    transition: color 0.2s ease;
+}
+
+.filter-label-inline:hover {
+    color: var(--primary-default);
+}
+
+.filter-checkbox-inline:checked + .filter-label-inline {
+    color: var(--primary-default);
+    font-weight: 600;
+}
+
+.filter-select-inline {
+    padding: 0.375rem 0.5rem;
+    border: 1px solid var(--text-200);
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    background: var(--background-default);
+    color: var(--text-default);
+    cursor: pointer;
+    min-width: 120px;
+    transition: all 0.2s ease;
+}
+
+.filter-select-inline:hover {
+    border-color: var(--primary-default);
+}
+
+.filter-select-inline:focus {
+    outline: none;
+    border-color: var(--primary-default);
+    box-shadow: 0 0 0 2px var(--primary-100);
+}
+
+.btn-clear-filters-inline {
+    background: none;
+    border: 1px solid var(--text-200);
+    color: var(--text-400);
+    cursor: pointer;
+    padding: 0.375rem;
+    border-radius: 0.375rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    transition: all 0.2s ease;
+}
+
+.btn-clear-filters-inline:hover {
+    background: var(--text-100);
+    border-color: var(--text-300);
+    color: var(--text-default);
+}
+
+.btn-clear-filters-inline:active {
+    transform: scale(0.95);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .photo-search-container.has-inline-filters {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.5rem;
+    }
+    
+    .has-inline-filters .photo-search-input {
+        min-width: auto;
+    }
+    
+    .photo-search-filters-inline {
+        justify-content: space-between;
+        gap: 0.5rem;
+    }
+    
+    .filter-select-inline {
+        min-width: 100px;
+        flex: 1;
+    }
+    
+    .photo-search-results {
+        max-height: 250px;
+    }
+    
+    .search-result-item {
+        padding: 0.5rem 0.75rem;
+    }
+    
+    .search-result-thumbnail {
+        width: 35px;
+        height: 35px;
+    }
+}
+
+@media (max-width: 480px) {
+    .photo-search-filters-inline {
+        flex-wrap: wrap;
+    }
+    
+    .inline-filter {
+        flex: 1;
+        min-width: 0;
+    }
+    
+    .filter-select-inline {
+        min-width: 80px;
+    }
+}

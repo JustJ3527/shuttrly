@@ -1,0 +1,672 @@
+@charset "UTF-8";
+/* ======================= */
+/* =   CSS GLOBAL   =  */
+/* ======================= */
+/* ===== Fonts ===== */
+@import url('https://fonts.googleapis.com/css?family=Inter:700|Inter:400');
+@font-face {
+  font-family: 'Tan_Nimbus';
+  src: url('../fonts/tan-nimbus/TAN-NIMBUS.ttf') format('truetype');
+  src: url('../fonts/tan-nimbus/TAN-NIMBUS.woff') format('woff');
+  src: url('../fonts/tan-nimbus/TAN-NIMBUS.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: "Garet";
+  font-weight: normal;
+  src: url('../fonts/garet/Garet-Book.otf') format('opentype');
+  src: url('../fonts/garet/Garet-Book.ttf') format('truetype');
+  src: url('../fonts/garet/Garet-Book.woff') format('woff');
+  src: url('../fonts/garet/Garet-Book.woff2') format('woff2');
+}
+@font-face {
+  font-family: "Garet";
+  font-weight: bold;
+  src: url('../fonts/garet/Garet-Heavy.otf') format('opentype');
+  src: url('../fonts/garet/Garet-Heavy.ttf') format('truetype');
+  src: url('../fonts/garet/Garet-Heavy.woff') format('woff');
+  src: url('../fonts/garet/Garet-Heavy.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: "The_Seasons";
+  font-weight: normal;
+  src: url('../fonts/the-seasons/TheSeasons-Regular.otf') format('opentype');
+}
+@font-face {
+  font-family: "The_Seasons";
+  font-weight: bold;
+  src: url('../fonts/the-seasons/TheSeasons-Bold.otf') format('opentype');
+}
+@font-face {
+  font-family: "The_Seasons";
+  font-weight: lighter;
+  src: url('../fonts/the-seasons/TheSeasons-Lighter.otf') format('opentype');
+}
+
+/* Variables par défaut (fallback) */
+:root {
+  --text-default: hsl(86, 17%, 8%);
+  --background-default: hsl(80, 5%, 88%);
+  --primary-default: hsl(81, 31%, 52%);
+  --secondary-default: hsl(112, 24%, 31%);
+  --accent-default: hsl(188, 31%, 50%);
+  /* New responsive variables */
+  --blur-amount: 20px;
+  --sidebar-width: 250px;
+  --navbar-height: 4.4rem;
+  --tablet-navbar-height: 3.5rem;
+  --mobile-sidebar-width: 5rem;
+  --mobile-navbar-height: 5rem;
+  --sidebar-transition-duration: 0.3s;
+  --opacity-background-before: 0.5;
+}
+
+/* Thème clair détaillé */
+:root[data-theme=light] {
+  --text-default: hsl(86, 17%, 8%);
+  --text-50: hsl(75, 15%, 95%);
+  --text-100: hsl(87, 18%, 90%);
+  --text-200: hsl(87, 18%, 80%);
+  --text-300: hsl(87, 18%, 70%);
+  --text-400: hsl(86, 17%, 60%);
+  --text-500: hsl(87, 17%, 50%);
+  --text-600: hsl(86, 17%, 40%);
+  --text-700: hsl(87, 18%, 30%);
+  --text-800: hsl(87, 18%, 20%);
+  --text-900: hsl(87, 18%, 10%);
+  --text-950: hsl(90, 15%, 5%);
+  --background-default: hsl(80, 5%, 88%);
+  --background-50: hsl(120, 4%, 95%);
+  --background-100: hsl(80, 6%, 90%);
+  --background-200: hsl(80, 6%, 80%);
+  --background-300: hsl(77, 5%, 70%);
+  --background-400: hsl(78, 5%, 60%);
+  --background-500: hsl(78, 5%, 50%);
+  --background-600: hsl(78, 5%, 40%);
+  --background-700: hsl(77, 5%, 30%);
+  --background-800: hsl(80, 6%, 20%);
+  --background-900: hsl(80, 6%, 10%);
+  --background-950: hsl(60, 4%, 5%);
+  --primary-default: hsl(81, 31%, 52%);
+  --primary-50: hsl(83, 31%, 95%);
+  --primary-100: hsl(80, 29%, 90%);
+  --primary-200: hsl(81, 31%, 80%);
+  --primary-300: hsl(80, 31%, 70%);
+  --primary-400: hsl(82, 31%, 60%);
+  --primary-500: hsl(81, 31%, 50%);
+  --primary-600: hsl(82, 31%, 40%);
+  --primary-700: hsl(80, 31%, 30%);
+  --primary-800: hsl(81, 31%, 20%);
+  --primary-900: hsl(80, 29%, 10%);
+  --primary-950: hsl(83, 31%, 5%);
+  --secondary-default: hsl(112, 24%, 69%);
+  --secondary-50: hsl(110, 23%, 95%);
+  --secondary-100: hsl(111, 25%, 90%);
+  --secondary-200: hsl(113, 24%, 80%);
+  --secondary-300: hsl(112, 24%, 70%);
+  --secondary-400: hsl(112, 24%, 60%);
+  --secondary-500: hsl(112, 24%, 50%);
+  --secondary-600: hsl(113, 24%, 40%);
+  --secondary-700: hsl(112, 24%, 30%);
+  --secondary-800: hsl(113, 24%, 20%);
+  --secondary-900: hsl(111, 25%, 10%);
+  --secondary-950: hsl(110, 23%, 5%);
+  --accent-default: hsl(188, 31%, 50%);
+  --accent-50: hsl(187, 31%, 95%);
+  --accent-100: hsl(188, 29%, 90%);
+  --accent-200: hsl(188, 31%, 80%);
+  --accent-300: hsl(188, 31%, 70%);
+  --accent-400: hsl(188, 31%, 60%);
+  --accent-500: hsl(188, 31%, 50%);
+  --accent-600: hsl(188, 31%, 40%);
+  --accent-700: hsl(188, 31%, 30%);
+  --accent-800: hsl(188, 31%, 20%);
+  --accent-900: hsl(188, 29%, 10%);
+  --accent-950: hsl(188, 31%, 5%);
+  --opacity-background-before: 0.3;
+  --background-navbar: hsl(80deg 5% 88% / 54%);
+  /* Variables principales */
+  --text: var(--text-default);
+  --background: var(--background-default);
+  --primary: var(--primary-default);
+  --secondary: var(--secondary-default);
+  --accent: var(--accent-default);
+}
+
+/* Thème sombre détaillé */
+:root[data-theme=dark] {
+  --text-default: hsl(86, 17%, 92%);
+  --text-50: hsl(90, 15%, 5%);
+  --text-100: hsl(87, 18%, 10%);
+  --text-200: hsl(87, 18%, 20%);
+  --text-300: hsl(87, 18%, 30%);
+  --text-400: hsl(86, 17%, 40%);
+  --text-500: hsl(87, 17%, 50%);
+  --text-600: hsl(86, 17%, 60%);
+  --text-700: hsl(87, 18%, 70%);
+  --text-800: hsl(87, 18%, 80%);
+  --text-900: hsl(87, 18%, 90%);
+  --text-950: hsl(75, 15%, 95%);
+  --background-default: hsl(80, 5%, 12%);
+  --background-50: hsl(60, 4%, 5%);
+  --background-100: hsl(80, 6%, 10%);
+  --background-200: hsl(80, 6%, 20%);
+  --background-300: hsl(77, 5%, 30%);
+  --background-400: hsl(78, 5%, 40%);
+  --background-500: hsl(78, 5%, 50%);
+  --background-600: hsl(78, 5%, 60%);
+  --background-700: hsl(77, 5%, 70%);
+  --background-800: hsl(80, 6%, 80%);
+  --background-900: hsl(80, 6%, 90%);
+  --background-950: hsl(120, 4%, 95%);
+  --primary-default: hsl(81, 31%, 48%);
+  --primary-50: hsl(83, 31%, 5%);
+  --primary-100: hsl(80, 29%, 10%);
+  --primary-200: hsl(81, 31%, 20%);
+  --primary-300: hsl(80, 31%, 30%);
+  --primary-400: hsl(82, 31%, 40%);
+  --primary-500: hsl(81, 31%, 50%);
+  --primary-600: hsl(82, 31%, 60%);
+  --primary-700: hsl(80, 31%, 70%);
+  --primary-800: hsl(81, 31%, 80%);
+  --primary-900: hsl(80, 29%, 90%);
+  --primary-950: hsl(83, 31%, 95%);
+  --secondary-default: hsl(112, 24%, 31%);
+  --secondary-50: hsl(110, 23%, 5%);
+  --secondary-100: hsl(111, 25%, 10%);
+  --secondary-200: hsl(113, 24%, 20%);
+  --secondary-300: hsl(112, 24%, 30%);
+  --secondary-400: hsl(113, 24%, 40%);
+  --secondary-500: hsl(112, 24%, 50%);
+  --secondary-600: hsl(112, 24%, 60%);
+  --secondary-700: hsl(112, 24%, 70%);
+  --secondary-800: hsl(113, 24%, 80%);
+  --secondary-900: hsl(111, 25%, 90%);
+  --secondary-950: hsl(110, 23%, 95%);
+  --accent-default: hsl(188, 31%, 50%);
+  --accent-50: hsl(188, 31%, 5%);
+  --accent-100: hsl(188, 29%, 10%);
+  --accent-200: hsl(188, 31%, 20%);
+  --accent-300: hsl(188, 31%, 30%);
+  --accent-400: hsl(188, 31%, 40%);
+  --accent-500: hsl(188, 31%, 50%);
+  --accent-600: hsl(188, 31%, 60%);
+  --accent-700: hsl(188, 31%, 70%);
+  --accent-800: hsl(188, 31%, 80%);
+  --accent-900: hsl(188, 29%, 90%);
+  --accent-950: hsl(187, 31%, 95%);
+  --opacity-background-before: 0.3;
+  --background-navbar: hsl(0deg 0% 25.88% / 74%);
+}
+
+:root {
+  --gradient-primary: linear-gradient(120deg, var(--primary-default), var(--accent-default));
+}
+
+body {
+  background: var(--background-default);
+  color: var(--text-default);
+  margin: 0;
+  padding: 0;
+  font-family: "Garet";
+  font-weight: 400;
+  transition: all 0.3s ease;
+  width: 100%;
+  min-height: 100vh;
+  overflow-y: auto; /* Move scroll to body level */
+  overflow-x: hidden;
+}
+
+/* ======================= */
+/* =   NAVBAR LEFT   =  */
+/* ======================= */
+.body-container {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  min-height: 100vh;
+  width: 100%;
+  color: var(--text-default);
+  transition: all 0.3s ease;
+}
+
+.main-content::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(circle at 20% 80%, var(--primary-200) 0%, transparent 50%), radial-gradient(circle at 80% 20%, var(--accent-200) 0%, transparent 50%), radial-gradient(circle at 40% 40%, var(--secondary-200) 0%, transparent 50%);
+  z-index: -2;
+  pointer-events: none;
+  opacity: var(--opacity-background-before);
+}
+
+/* Left column - Navbar */
+.navbar {
+  width: 20rem;
+  height: 98vh;
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 1000;
+  padding: 2rem 1rem;
+  border-right: 1px solid var(--background-200);
+}
+
+.navbar-separator {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.navbar-logo {
+  padding: 0 2rem 1rem 2rem;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
+}
+
+.navbar-logo img {
+  max-width: 100%;
+  height: auto;
+}
+
+.navbar-profile-picture {
+  overflow: hidden;
+  padding: 1rem 2rem 0.5rem 2rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
+}
+.navbar-profile-picture a {
+  text-align: center;
+}
+.navbar-profile-picture a:hover img {
+  transform: scale(1.05);
+}
+.navbar-profile-picture a:active img {
+  transform: scale(0.95);
+}
+.navbar-profile-picture a img {
+  width: 70%;
+  -o-object-fit: cover;
+     object-fit: cover;
+  border-radius: 50%;
+  transition: transform 0.2s ease;
+}
+
+.navbar-profile-infos {
+  padding: 2rem;
+}
+.navbar-profile-infos a {
+  text-decoration: none;
+}
+.navbar-profile-infos h2 {
+  text-align: center;
+  margin: 0.5rem 0 0 0;
+  font-size: 1.2rem;
+  color: var(--primary-default);
+  font-family: "Tan_Nimbus";
+  letter-spacing: 0.1rem;
+}
+.navbar-profile-infos p {
+  text-align: center;
+  margin: 0;
+  font-size: 1rem;
+  color: var(--text-600);
+  font-family: "Garet";
+}
+
+.navbar-menu {
+  flex: 1; /* Allows this area to grow and fill available space */
+  overflow-y: auto; /* Adds scrollbar if menu items overflow */
+  padding: 1rem;
+}
+
+.navbar-menu-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.navbar-menu-item {
+  margin: 1rem 0.5rem;
+}
+.navbar-menu-item.active a {
+  background: var(--accent-default);
+  color: #ffffff;
+}
+.navbar-menu-item.active a:hover {
+  background: var(--accent-default);
+}
+.navbar-menu-item a {
+  display: flex;
+  align-items: center;
+  padding: 0.6rem 1.5rem;
+  border-radius: 1rem;
+  transition: all 0.3s ease;
+  color: var(--text-default);
+  text-decoration: none;
+  font-family: "Garet";
+  font-size: 1.2rem;
+}
+.navbar-menu-item a:hover {
+  background: var(--background-200);
+}
+.navbar-menu-item a i.menu-icon {
+  margin-right: 0.8rem;
+}
+.navbar-menu-item a span {
+  font-family: "Garet";
+  font-weight: 400;
+  font-size: 1.3rem;
+  letter-spacing: 0.1rem;
+}
+
+/* Actions at the bottom of the navbar (Settings, Logout) */
+.navbar-fixed-bottom {
+  flex-shrink: 0; /* Ensures this part is not compressed */
+  padding: 1rem 0;
+  border-top: 1px solid var(--background-200);
+}
+.navbar-fixed-bottom .navbar-actions-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 1rem;
+  display: flex;
+  justify-content: space-evenly;
+  align-items: center;
+}
+.navbar-fixed-bottom .navbar-actions-list .navbar-action-item a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  color: var(--text-600);
+  text-decoration: none;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+  font-size: 1.1rem;
+}
+.navbar-fixed-bottom .navbar-actions-list .navbar-action-item a.danger:hover {
+  color: #9c0017;
+}
+.navbar-fixed-bottom .navbar-actions-list .navbar-action-item a:hover {
+  background: var(--background-200);
+  color: var(--primary-default);
+}
+
+/* Center column - Main content */
+.main-content {
+  flex: 1;
+  margin-left: 20rem; /* Account for fixed navbar */
+  margin-right: 20rem; /* Account for fixed sidebar */
+  padding: 3rem 4rem; /* More generous padding for better spacing */
+  min-height: 100vh; /* Minimum height to fill viewport */
+  box-sizing: border-box;
+  max-width: 1200px; /* Prevent content from being too stretched on wide screens */
+}
+
+.theme-selector {
+  background: var(--background-100);
+  padding: 1.5rem;
+  border-radius: 8px;
+  border: 1px solid var(--background-300);
+}
+
+.theme-selector label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  color: var(--text-700);
+}
+
+.theme-selector select {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--background-300);
+  border-radius: 4px;
+  background: var(--background-50);
+  color: var(--text-700);
+  font-family: "Garet";
+  font-size: 1rem;
+  transition: all 0.3s ease;
+}
+
+.theme-selector select:focus {
+  outline: none;
+  border-color: var(--primary-default);
+}
+
+/* Page content styling */
+.page-content {
+  margin-top: 2rem;
+}
+
+.page-content h1 {
+  color: var(--text-800);
+  font-family: "Tan_Nimbus", serif;
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+  font-weight: bold;
+}
+
+.page-content h2 {
+  color: var(--text-700);
+  font-family: "Tan_Nimbus", serif;
+  font-size: 1.8rem;
+  margin: 2rem 0 1rem 0;
+  font-weight: bold;
+}
+
+.page-content p {
+  color: var(--text-600);
+  font-family: "Garet", sans-serif;
+  font-size: 1.1rem;
+  line-height: 1.7;
+  margin-bottom: 1.5rem;
+}
+
+.content-section {
+  background: var(--background-50);
+  padding: 2rem;
+  border-radius: 12px;
+  border: 1px solid var(--background-200);
+  margin-bottom: 2rem;
+  transition: all 0.3s ease;
+}
+
+.content-section:hover {
+  transform: translateY(-2px);
+}
+
+/* Right column - Sidebar */
+.sidebar {
+  width: 20rem;
+  height: 100vh;
+  background: var(--accent-default);
+  position: fixed;
+  right: 0;
+  top: 0;
+  z-index: 1000;
+  padding: 2rem 1rem;
+  color: var(--text-50);
+}
+
+.sidebar p {
+  margin: 0;
+  font-size: 1.1rem;
+  line-height: 1.6;
+}
+
+/* Hamburger menu, top bar, and overlay for mobile */
+.mobile-top-navbar,
+.mobile-menu-toggle {
+  display: none; /* Hidden on desktop */
+}
+
+.navbar-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 1000;
+  opacity: 0;
+  display: none;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+  cursor: pointer;
+}
+
+/* State when mobile menu is open */
+body.navbar-open {
+  overflow: hidden; /* Prevent scrolling of main content */
+  /* Animate hamburger to 'X' */
+}
+body.navbar-open .navbar-overlay {
+  opacity: 1;
+  visibility: visible;
+}
+body.navbar-open .navbar {
+  transform: translateX(0);
+  box-shadow: 5px 0 25px rgba(0, 0, 0, 0.1);
+}
+body.navbar-open .mobile-menu-toggle .hamburger-line:nth-child(1) {
+  transform: translateY(6px) rotate(45deg);
+}
+body.navbar-open .mobile-menu-toggle .hamburger-line:nth-child(2) {
+  opacity: 0;
+}
+body.navbar-open .mobile-menu-toggle .hamburger-line:nth-child(3) {
+  transform: translateY(-6px) rotate(-45deg);
+}
+
+/* Responsive design */
+/* Ultra-wide screens (21:9 and wider) */
+@media (min-width: 2560px) {
+  .main-content {
+    max-width: 1400px; /* Slightly larger max-width for ultra-wide screens */
+  }
+}
+/* Large screens (21:9) */
+@media (min-width: 1920px) and (max-width: 2559px) {
+  .main-content {
+    max-width: 1200px; /* Current max-width is good for 21:9 */
+  }
+}
+/* Standard desktop screens */
+@media (max-width: 1500px) {
+  .navbar {
+    width: 15rem;
+  }
+  .sidebar {
+    width: 15rem;
+  }
+  .main-content {
+    margin-left: 15rem;
+    margin-right: 15rem;
+    padding: 2.5rem 3rem; /* Adjusted padding for smaller screens */
+    max-width: none; /* Remove max-width constraint on smaller screens */
+  }
+}
+/* Tablet and Mobile screens */
+@media (max-width: 1024px) {
+  /* Show mobile header and hide sidebar */
+  .sidebar {
+    display: none;
+  }
+  .navbar-overlay {
+    display: block;
+  }
+  .mobile-top-navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: var(--mobile-navbar-height, 5rem);
+    padding: 0 1.5rem;
+    background: var(--background-navbar, hsla(0, 0%, 100%, 0.7));
+    -webkit-backdrop-filter: blur(15px);
+    backdrop-filter: blur(15px);
+    border-bottom: 1px solid var(--background-200);
+    z-index: 999;
+    box-sizing: border-box;
+  }
+  .mobile-top-navbar .mobile-logo img {
+    height: 2.5rem;
+    width: auto;
+  }
+  .navbar-profile-infos {
+    padding: 0.5rem 1rem;
+    width: 60%;
+  }
+  .navbar-profile-infos p, .navbar-profile-infos h2 {
+    text-align: start;
+  }
+  .navbar-profile-picture {
+    padding: 0.5rem 1rem 0 0;
+    display: block;
+    text-align: end;
+    width: 40%;
+  }
+  .navbar-profile-picture a img {
+    width: 60%;
+  }
+  .navbar-profile {
+    display: flex;
+    align-items: center;
+  }
+  .mobile-menu-toggle {
+    display: block;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 10px;
+    width: 44px;
+    height: 44px;
+    z-index: 1002; /* Above overlay */
+  }
+  .mobile-menu-toggle .hamburger-line {
+    display: block;
+    width: 24px;
+    height: 2px;
+    background-color: var(--text-default);
+    margin: 4px 0;
+    transition: all 0.3s ease-in-out;
+    border-radius: 1px;
+  }
+  .navbar-logo {
+    padding: 0 1rem;
+  }
+  /* Repurpose the main navbar as a slide-out menu */
+  .navbar {
+    transform: translateX(-100%);
+    transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    z-index: 1001;
+    background: var(--background-default);
+    border-right: none;
+    width: 300px; /* Width of the slide-out menu */
+    height: 97vh;
+  }
+  /* Adjust main content for mobile view */
+  .main-content {
+    margin-left: 0;
+    margin-right: 0;
+    padding: calc(var(--mobile-navbar-height, 5rem) + 2rem) 1.5rem 2rem 1.5rem;
+    max-width: none;
+  }
+}/*# sourceMappingURL=style-navbar_2.css.map */

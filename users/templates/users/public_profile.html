@@ -9,6 +9,11 @@
     {% endif %}
 {% endblock %}
 
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'css/users-v2.css' %}">
+
+{% endblock %}
+
 {% block content %}
 <div class="profile-page-container">
         {% if user_not_found %}
@@ -17,7 +22,7 @@
             <div class="not-found-content">
                 <div class="not-found-icon">
                     <i class="fas fa-user-slash"></i>
-                        </div>
+                </div>
                 <h1 class="not-found-title">User Not Found</h1>
                 <p class="not-found-message">The user "@{{ username }}" could not be found or may have been deleted.</p>
                 <div class="not-found-actions">
@@ -27,51 +32,44 @@
                         </div>
                     </div>
                 </div>
-    {% elif profile_user %}
-        <!-- Profile exists - determine display mode -->
-        {% if can_edit %}
-            <!-- Own profile - full access -->
-            {% include "users/profile_sections/own_profile.html" %}
-        {% elif can_see_full_profile %}
-            <!-- Public profile or private profile with access -->
-            {% include "users/profile_sections/public_profile.html" %}
-                        {% else %}
-            <!-- Private profile without access -->
-            {% include "users/profile_sections/private_profile.html" %}
-        {% endif %}
-                        {% endif %}
-                    </div>
+                {% elif profile_user %}
+                    <!-- Profile exists - determine display mode -->
+                    {% if can_edit %}
+                        <!-- Own profile - full access -->
+                        {% include "users/profile_sections/own_profile.html" %}
+                    {% else %}
+                        <!-- Public profile - for all other users (private or public) -->
+                        {% include "users/profile_sections/public_profile.html" %}
+                    {% endif %}
+                {% endif %}
+            </div>
                     
 
 
-<!-- Follow Requests Modal -->
-{% if can_edit and profile_user.is_private %}
-<div class="modal fade" id="followRequestsModal" tabindex="-1" aria-labelledby="followRequestsModalLabel">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="followRequestsModalLabel">
-                    <i class="fas fa-user-clock"></i> Follow Requests
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-            <div class="modal-body">
-                <div id="follow-requests-container">
-                    <div class="text-center text-muted">
-                        <i class="fas fa-spinner fa-spin"></i> Loading requests...
-                    </div>
-                </div>
-                        </div>
-                    </div>
-                </div>
+            <!-- Follow Requests Modal -->
+            {% if can_edit and profile_user.is_private %}
+            <div class="modal fade" id="followRequestsModal" tabindex="-1" aria-labelledby="followRequestsModalLabel">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="followRequestsModalLabel">
+                                <i class="fas fa-user-clock"></i> Follow Requests
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                        <div class="modal-body">
+                            <div id="follow-requests-container">
+                                <div class="request-loading">
+                                    <i class="fas fa-spinner fa-spin"></i>
+                                    <span>Loading requests...</span>
+                                </div>
                             </div>
-                        {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
 {% endblock %}
-
-{% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/profile-public.css' %}">
-{% endblock %}
-
 {% block extra_js %}
 <script>
     // Global variables
@@ -156,9 +154,10 @@
         
         if (requests.length === 0) {
             container.innerHTML = `
-                <div class="text-center text-muted py-4">
-                    <i class="fas fa-inbox fa-2x mb-3"></i>
-                    <p>No pending follow requests</p>
+                <div class="request-empty">
+                    <i class="fas fa-inbox"></i>
+                    <h4>No pending requests</h4>
+                    <p>You don't have any pending follow requests at the moment.</p>
                 </div>
             `;
             return;
@@ -166,26 +165,30 @@
         
         let html = '';
         requests.forEach(request => {
+            const fullName = request.from_user.first_name && request.from_user.last_name 
+                ? `${request.from_user.first_name} ${request.from_user.last_name}`
+                : request.from_user.username;
+                
             html += `
                 <div class="follow-request-item" data-username="${request.from_user.username}">
                     <div class="request-user-info">
-                        <div class="user-avatar">
+                        <div class="request-user-avatar">
                             ${request.from_user.profile_picture_url ? 
-                                `<img src="${request.from_user.profile_picture_url}" alt="${request.from_user.username}" class="avatar-img">` :
-                                `<div class="avatar-placeholder"><i class="fas fa-user"></i></div>`
+                                `<img src="${request.from_user.profile_picture_url}" alt="${request.from_user.username}" class="request-avatar-img">` :
+                                `<div class="request-avatar-placeholder"><i class="fas fa-user"></i></div>`
                             }
                         </div>
-                        <div class="user-details">
-                            <h6 class="user-name">${request.from_user.first_name} ${request.from_user.last_name}</h6>
-                            <p class="user-username">@${request.from_user.username}</p>
+                        <div class="request-user-details">
+                            <h6 class="request-user-name">${fullName}</h6>
+                            <p class="request-user-username">@${request.from_user.username}</p>
                             ${request.message ? `<p class="request-message">"${request.message}"</p>` : ''}
                         </div>
                     </div>
                     <div class="request-actions">
-                        <button class="btn btn-success btn-sm accept-request" onclick="handleFollowRequest('${request.from_user.username}', 'accept')">
+                        <button class="request-action-btn request-accept-btn" onclick="handleFollowRequest('${request.from_user.username}', 'accept')">
                             <i class="fas fa-check"></i> Accept
                         </button>
-                        <button class="btn btn-danger btn-sm reject-request" onclick="handleFollowRequest('${request.from_user.username}', 'reject')">
+                        <button class="request-action-btn request-reject-btn" onclick="handleFollowRequest('${request.from_user.username}', 'reject')">
                             <i class="fas fa-times"></i> Reject
                         </button>
                     </div>

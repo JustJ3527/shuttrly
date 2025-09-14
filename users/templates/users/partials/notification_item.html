@@ -1,0 +1,77 @@
+<!-- Individual Notification Item -->
+<div class="notification-item" data-notification-id="{{ notification.id }}" data-type="{{ notification.type }}" {% if not notification.is_read %}class="unread"{% endif %}>
+    <!-- Notification Avatar -->
+    <div class="notification-avatar">
+        {% if notification.from_user.profile_picture %}
+            <img src="{{ notification.from_user.profile_picture.url }}" alt="{{ notification.from_user.username }}" class="notification-avatar-img">
+        {% else %}
+            <div class="notification-avatar-placeholder">
+                <i class="fas fa-user"></i>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Notification Content -->
+    <div class="notification-content">
+        <div class="notification-header">
+            <h6 class="notification-title">{{ notification.title }}</h6>
+            <div class="notification-actions">
+                {% if not notification.is_read %}
+                    <button class="notification-action-btn mark-read-btn" data-notification-id="{{ notification.id }}" title="Mark as read">
+                        <i class="fas fa-check"></i>
+                    </button>
+                {% endif %}
+                <button class="notification-action-btn delete-btn" data-notification-id="{{ notification.id }}" title="Delete">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>
+
+        <p class="notification-message">{{ notification.message }}</p>
+
+        <div class="notification-meta">
+            <span class="notification-time">{{ notification.created_at|timesince }} ago</span>
+            <span class="notification-type-badge">{{ notification.type|title }}</span>
+        </div>
+
+        <!-- Action Buttons for specific notification types -->
+        {% if notification.type == 'follow_request' %}
+            <div class="notification-action-buttons">
+                <button class="notification-action-button btn-accept" data-notification-id="{{ notification.id }}" data-action="accept">
+                    <i class="fas fa-check"></i>
+                    Accept
+                </button>
+                <button class="notification-action-button btn-reject" data-notification-id="{{ notification.id }}" data-action="reject">
+                    <i class="fas fa-times"></i>
+                    Reject
+                </button>
+            </div>
+        {% elif notification.type == 'photo_liked' or notification.type == 'photo_commented' %}
+            {% if notification.related_photo %}
+                <div class="notification-related-content">
+                    <img src="{{ notification.related_photo.thumbnail_url }}" alt="Related photo" class="notification-related-image">
+                </div>
+            {% endif %}
+        {% elif notification.type == 'collection_created' %}
+            {% if notification.related_collection %}
+                <div class="notification-related-content">
+                    <div class="notification-related-collection">
+                        {% if notification.related_collection.cover_photo %}
+                            <img src="{{ notification.related_collection.cover_photo.thumbnail_url }}" alt="{{ notification.related_collection.name }}" class="notification-related-image">
+                        {% else %}
+                            <div class="notification-collection-placeholder">
+                                <i class="fas fa-folder"></i>
+                            </div>
+                        {% endif %}
+                        <span class="notification-collection-name">{{ notification.related_collection.name }}</span>
+                    </div>
+                </div>
+            {% endif %}
+        {% endif %}
+    </div>
+
+    <!-- Unread Indicator -->
+    {% if not notification.is_read %}
+        <div class="notification-unread-indicator"></div>
+    {% endif %}
+</div>

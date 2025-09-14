@@ -401,10 +401,10 @@
 /* Info cards - Modern grid layout */
 .info-cards {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-    gap: 2rem;
-    padding: 3rem 2rem;
-    max-width: 1400px;
+    grid-template-columns: repeat(auto-fit, minmax(min(25rem, 100%), 1fr));
+    gap: clamp(1.5rem, 4vw, 2rem);
+    padding: clamp(2rem, 5vw, 3rem) clamp(1rem, 3vw, 2rem);
+    max-width: 90rem;
     margin: 0 auto;
     width: 100%;
 }
@@ -1115,30 +1115,30 @@
 }
 
 /* Responsive design */
-@media (max-width: 1200px) {
+@media (max-width: 75rem) {
     .info-cards {
-        grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-        padding: 2rem 1.5rem;
+        grid-template-columns: repeat(auto-fit, minmax(min(22rem, 100%), 1fr));
+        padding: clamp(1.5rem, 4vw, 2rem) clamp(1rem, 2.5vw, 1.5rem);
     }
     
     .social-stats {
         grid-template-columns: repeat(2, 1fr);
-        gap: 1rem;
-        padding: 1.5rem;
+        gap: clamp(0.75rem, 2vw, 1rem);
+        padding: clamp(1rem, 3vw, 1.5rem);
     }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 48rem) {
     .profile-header {
         min-height: auto;
     }
     
     .profile-banner {
-        height: 200px;
+        height: clamp(12.5rem, 25vw, 15rem);
     }
     
     .profile-content {
-        padding: 0 1rem 1.5rem 1rem;
+        padding: 0 clamp(1rem, 3vw, 1.5rem) clamp(1rem, 3vw, 1.5rem);
         min-height: auto;
     }
     
@@ -1146,14 +1146,14 @@
         position: relative;
         bottom: auto;
         left: auto;
-        margin: 0 auto 1.5rem auto;
-        transform: translateY(-50px);
+        margin: 0 auto clamp(1rem, 3vw, 1.5rem) auto;
+        transform: translateY(clamp(-2rem, -8vw, -3rem));
     }
     
     .avatar-img,
     .avatar-placeholder {
-        width: 140px;
-        height: 140px;
+        width: clamp(8.75rem, 20vw, 10rem);
+        height: clamp(8.75rem, 20vw, 10rem);
     }
     
     .profile-info {
@@ -1161,21 +1161,21 @@
     }
     
     .profile-name {
-        font-size: 2.5rem;
+        font-size: clamp(2rem, 6vw, 2.5rem);
     }
     
     .social-stats {
         grid-template-columns: repeat(2, 1fr);
-        gap: 1rem;
-        padding: 1.5rem;
-        max-width: 500px;
-        margin: 1.5rem auto;
+        gap: clamp(0.75rem, 2vw, 1rem);
+        padding: clamp(1rem, 3vw, 1.5rem);
+        max-width: clamp(25rem, 80vw, 31.25rem);
+        margin: clamp(1rem, 3vw, 1.5rem) auto;
     }
     
     .info-cards {
         grid-template-columns: 1fr;
-        padding: 2rem 1rem;
-        gap: 1.5rem;
+        padding: clamp(1.5rem, 4vw, 2rem) clamp(1rem, 3vw, 1.5rem);
+        gap: clamp(1rem, 3vw, 1.5rem);
     }
     
     .social-actions {
@@ -1183,60 +1183,60 @@
     }
     
     .btn-social {
-        min-width: 160px;
-        padding: 0.875rem 1.75rem;
+        min-width: clamp(10rem, 25vw, 12rem);
+        padding: clamp(0.75rem, 2vw, 0.875rem) clamp(1.25rem, 3vw, 1.75rem);
     }
     
     .not-found-title {
-        font-size: 2.5rem;
+        font-size: clamp(2rem, 6vw, 2.5rem);
     }
     
     .profile-not-found {
-        padding: 3rem 1.5rem;
-        margin: 2rem 1rem;
+        padding: clamp(2rem, 5vw, 3rem) clamp(1rem, 3vw, 1.5rem);
+        margin: clamp(1rem, 3vw, 2rem) clamp(0.5rem, 2vw, 1rem);
     }
     
     .posts-section {
-        padding: 2rem 1rem;
+        padding: clamp(1.5rem, 4vw, 2rem) clamp(1rem, 3vw, 1.5rem);
     }
     
     .posts-grid {
         grid-template-columns: repeat(2, 1fr);
-        gap: 0.75rem;
+        gap: clamp(0.5rem, 1.5vw, 0.75rem);
     }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 30rem) {
     .profile-header {
         min-height: auto;
     }
     
     .profile-banner {
-        height: 150px;
+        height: clamp(9rem, 20vw, 12rem);
     }
     
     .profile-content {
-        padding: 0 1rem 1rem 1rem;
+        padding: 0 clamp(0.75rem, 2vw, 1rem) clamp(0.75rem, 2vw, 1rem);
     }
     
     .profile-avatar {
-        transform: translateY(-30px);
+        transform: translateY(clamp(-1.5rem, -6vw, -2rem));
     }
     
     .profile-name {
-        font-size: 2rem;
+        font-size: clamp(1.75rem, 5vw, 2rem);
     }
     
     .avatar-img,
     .avatar-placeholder {
-        width: 100px;
-        height: 100px;
+        width: clamp(6.25rem, 15vw, 7.5rem);
+        height: clamp(6.25rem, 15vw, 7.5rem);
     }
     
     .social-stats {
         grid-template-columns: 1fr;
-        max-width: 400px;
-        padding: 1rem;
+        max-width: clamp(20rem, 90vw, 25rem);
+        padding: clamp(0.75rem, 2vw, 1rem);
     }
     
     .social-actions {
@@ -1246,23 +1246,23 @@
     
     .btn-social {
         width: 100%;
-        max-width: 250px;
+        max-width: clamp(15rem, 80vw, 18.75rem);
     }
     
     .info-cards {
-        padding: 1.5rem 1rem;
+        padding: clamp(1rem, 3vw, 1.5rem) clamp(0.75rem, 2vw, 1rem);
     }
     
     .card-header {
-        padding: 1.5rem;
+        padding: clamp(1rem, 3vw, 1.5rem);
     }
     
     .card-content {
-        padding: 1.5rem;
+        padding: clamp(1rem, 3vw, 1.5rem);
     }
     
     .posts-grid {
         grid-template-columns: 1fr;
-        gap: 0.5rem;
+        gap: clamp(0.375rem, 1vw, 0.5rem);
     }
 }

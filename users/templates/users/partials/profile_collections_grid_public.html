@@ -1,0 +1,80 @@
+<!-- Profile Collections Grid - Instagram Style for Public Profiles -->
+<div class="profile-collections-grid">
+    {% if user_collections %}
+        <!-- Debug: {{ user_collections|length }} collections found -->
+        {% for collection in user_collections %}
+            <!-- Debug: Collection {{ collection.name }} - Cover: {{ collection.cover_photo|yesno:"Yes,No" }} - Photos: {{ collection.photos.count }} -->
+            <div class="collection-grid-item" data-collection-id="{{ collection.id }}">
+                <a href="{% url 'photos:collection_detail' collection.id %}" class="collection-grid-link">
+                    <div class="collection-grid-image-container">
+                        {% if collection.cover_photo %}
+                            <img src="{{ collection.cover_photo.image.url }}" 
+                                 alt="{{ collection.name }}" 
+                                 class="collection-grid-image">
+                        {% else %}
+                            {% if collection.photos.count > 0 %}
+                                <div class="collection-photos-grid">
+                                    {% for photo in collection.photos.all|dictsortreversed:"created_at"|slice:":5" %}
+                                        <div class="collection-photo-item">
+                                            <img src="{{ photo.original_file.url }}" 
+                                                 alt="{{ collection.name }}" 
+                                                 class="collection-photo-image">
+                                        </div>
+                                    {% endfor %}
+                                    {% if collection.photos.count > 5 %}
+                                        <div class="collection-more-photos">
+                                            <span class="more-count">+{{ collection.photos.count|add:"-5" }}</span>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            {% else %}
+                                <div class="collection-placeholder" style="background: red; color: white; border: 2px solid black;">
+                                    <i class="fas fa-folder"></i>
+                                    <div style="font-size: 0.5rem; margin-top: 0.5rem;">No photos</div>
+                                </div>
+                            {% endif %}
+                        {% endif %}
+                        
+                        <!-- Collection info overlay -->
+                        <div class="collection-grid-overlay">
+                            <div class="collection-info">
+                                <h4 class="collection-name">{{ collection.name }}</h4>
+                                <div class="collection-stats">
+                                    <div class="collection-stat">
+                                        <i class="fas fa-images"></i>
+                                        <span>{{ collection.photos.count }} photo{{ collection.photos.count|pluralize }}</span>
+                                    </div>
+                                    {% if collection.created_at %}
+                                    <div class="collection-stat">
+                                        <i class="fas fa-calendar"></i>
+                                        <span>{{ collection.created_at|date:"M Y" }}</span>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        {% endfor %}
+    {% else %}
+        <div class="collections-empty-state">
+            <div class="empty-state-content">
+                <i class="fas fa-folder"></i>
+                <h4>No collections yet</h4>
+                <p>This user hasn't created any collections yet.</p>
+                <!-- Debug: user_collections is empty or None -->
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Load More Button (if pagination is needed) -->
+{% if user_collections.has_next %}
+<div class="load-more-container">
+    <button class="btn btn-outline-primary load-more-collections" data-page="2">
+        <i class="fas fa-plus"></i> Load More Collections
+    </button>
+</div>
+{% endif %}
+

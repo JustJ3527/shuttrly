@@ -339,6 +339,18 @@ def toggle_post_like(user: User, post: Post) -> dict:
         post.likes_count += 1
         post.save(update_fields=['likes_count'])
         
+        # Create notification for the post author (if not the same user)
+        if user != post.author:
+            from users.models import Notification
+            Notification.create_notification(
+                user=post.author,
+                notification_type='photo_liked',
+                title='Photo Liked',
+                message=f'{user.username} liked your post',
+                from_user=user,
+                related_photo=post.content_object if hasattr(post.content_object, 'get_thumbnail_url') else None
+            )
+        
         return {
             'liked': True,
             'likes_count': post.likes_count,
@@ -403,6 +415,32 @@ def add_post_comment(user: User, post: Post, content: str, parent_comment=None) 
     # Update post comment count
     post.comments_count += 1
     post.save(update_fields=['comments_count'])
+    
+    # Create notification for the post author (if not the same user)
+    if user != post.author:
+        from users.models import Notification
+        Notification.create_notification(
+            user=post.author,
+            notification_type='photo_commented',
+            title='Photo Commented',
+            message=f'{user.username} commented on your post: "{content[:50]}{"..." if len(content) > 50 else ""}"',
+            from_user=user,
+            related_comment=comment,
+            related_photo=post.content_object if hasattr(post.content_object, 'get_thumbnail_url') else None
+        )
+    
+    # If this is a reply to a comment, also notify the parent comment author
+    if parent_comment and user != parent_comment.user:
+        from users.models import Notification
+        Notification.create_notification(
+            user=parent_comment.user,
+            notification_type='photo_commented',
+            title='Comment Reply',
+            message=f'{user.username} replied to your comment: "{content[:50]}{"..." if len(content) > 50 else ""}"',
+            from_user=user,
+            related_comment=comment,
+            related_photo=post.content_object if hasattr(post.content_object, 'get_thumbnail_url') else None
+        )
     
     return comment
 

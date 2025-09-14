@@ -1,0 +1,58 @@
+{% load static %}
+
+<div class="following-list">
+    {% for following_data in following_data %}
+        <a href="{% url 'public_user_profile' username=following_data.user.username %}" id="following-item-{{ following_data.user.username }}" data-username="{{ following_data.user.username }}" style="text-decoration: none; color: inherit;">
+            <div class="following-item" data-username="{{ following_data.user.username }}">
+                <div class="following-avatar">
+                    {% if following_data.user.profile_picture %}
+                        <img src="{{ following_data.user.profile_picture.url }}" alt="{{ following_data.user.username }}" class="following-avatar-img">
+                    {% else %}
+                        <div class="default-profile-picture-list">
+                            <i class="fas fa-user"></i>
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <div class="following-info">
+                    <h4 class="following-name">
+                        {% if following_data.user.first_name and following_data.user.last_name %}
+                            {{ following_data.user.first_name }} {{ following_data.user.last_name }}
+                        {% else %}
+                            {{ following_data.user.username }}
+                        {% endif %}
+                    </h4>
+                    <p class="following-username">@{{ following_data.user.username }}</p>
+                </div>
+                
+                 <div class="following-actions">
+                     {% if current_user.is_authenticated and current_user != following_data.user %}
+                         {% if following_data.is_following %}
+                             <button class="follow-btn following" 
+                                     data-user-id="{{ following_data.user.id }}" 
+                                     data-username="{{ following_data.user.username }}"
+                                     data-action="unfollow"
+                                     onclick="event.preventDefault(); window.recommendationsManager.followUser({{ following_data.user.id }}, '{{ following_data.user.username }}')">
+                                 Unfollow
+                             </button>
+                         {% else %}
+                             <button class="follow-btn" 
+                                     data-user-id="{{ following_data.user.id }}" 
+                                     data-username="{{ following_data.user.username }}"
+                                     data-action="follow"
+                                     onclick="event.preventDefault(); window.recommendationsManager.followUser({{ following_data.user.id }}, '{{ following_data.user.username }}')">
+                                 Follow
+                             </button>
+                         {% endif %}
+                     {% endif %}
+                 </div>
+            </div>
+        </a>
+    {% empty %}
+        <div class="empty-state">
+            <i class="fas fa-user-plus"></i>
+            <h4>Not following anyone</h4>
+            <p>This user is not following anyone yet.</p>
+        </div>
+    {% endfor %}
+</div>

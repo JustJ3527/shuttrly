@@ -1,0 +1,95 @@
+<!-- Profile Collections Grid - Instagram Style -->
+<div class="profile-collections-grid">
+    {% if user_collections %}
+        {% for collection in user_collections %}
+            <div class="collection-grid-item" data-collection-id="{{ collection.id }}">
+                <a href="{% url 'photos:collection_detail' collection.id %}" class="collection-grid-link">
+                    <div class="collection-grid-image-container">
+                        {% if collection.cover_photo %}
+                            <img src="{{ collection.cover_photo.image.url }}" 
+                                 alt="{{ collection.name }}" 
+                                 class="collection-grid-image">
+                        {% else %}
+                            {% if collection.photos.count > 0 %}
+                                <div class="collection-photos-grid">
+                                    {% for photo in collection.photos.all|dictsortreversed:"created_at"|slice:":5" %}
+                                        <div class="collection-photo-item">
+                                            <img src="{{ photo.original_file.url }}" 
+                                                 alt="{{ collection.name }}" 
+                                                 class="collection-photo-image">
+                                        </div>
+                                    {% endfor %}
+                                    {% if collection.photos.count > 5 %}
+                                        <div class="collection-more-photos">
+                                            <span class="more-count">+{{ collection.photos.count|add:"-5" }}</span>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            {% else %}
+                                <div class="collection-placeholder">
+                                    <i class="fas fa-folder"></i>
+                                </div>
+                            {% endif %}
+                        {% endif %}
+                        
+                        <!-- Collection info overlay -->
+                        <div class="collection-grid-overlay">
+                            <div class="collection-info">
+                                <h4 class="collection-name">{{ collection.name }}</h4>
+                                <div class="collection-stats">
+                                    <div class="collection-stat">
+                                        <i class="fas fa-images"></i>
+                                        <span>{{ collection.photos.count }} photo{{ collection.photos.count|pluralize }}</span>
+                                    </div>
+                                    {% if collection.created_at %}
+                                    <div class="collection-stat">
+                                        <i class="fas fa-calendar"></i>
+                                        <span>{{ collection.created_at|date:"M Y" }}</span>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Collection actions (for own profile) -->
+                        {% if can_edit %}
+                        <div class="collection-actions">
+                            <button class="btn btn-sm btn-outline-light collection-edit-btn" 
+                                    data-collection-id="{{ collection.id }}"
+                                    title="Edit Collection">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-light collection-delete-btn" 
+                                    data-collection-id="{{ collection.id }}"
+                                    title="Delete Collection">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                        {% endif %}
+                    </div>
+                </a>
+            </div>
+        {% endfor %}
+    {% else %}
+        <div class="collections-empty-state">
+            <div class="empty-state-content">
+                <i class="fas fa-folder"></i>
+                <h4>No collections yet</h4>
+                <p>Organize your photos into collections!</p>
+                <a href="{% url 'photos:collection_create' %}" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Create Collection
+                </a>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Load More Button (if pagination is needed) -->
+{% if user_collections.has_next %}
+<div class="load-more-container">
+    <button class="btn btn-outline-primary load-more-collections" data-page="2">
+        <i class="fas fa-plus"></i> Load More Collections
+    </button>
+</div>
+{% endif %}
+

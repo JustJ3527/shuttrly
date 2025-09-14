@@ -1,0 +1,95 @@
+<!-- Notifications Modal -->
+<div class="modal-overlay" id="notifications-modal">
+    <div class="modal-content notifications-modal-content">
+        <!-- Modal Header -->
+        <div class="modal-header">
+            <div class="modal-title-container">
+                <h3 class="modal-title">
+                    Notifications
+                </h3>
+                <div class="notifications-actions">
+                    <button class="btn btn-rectangle btn-secondary" id="mark-all-read-btn" style="font-size: clamp(0.7rem, 1vw + 0.5rem, 1rem);">
+                        <i class="fas fa-check-double"></i>
+                        Mark all read
+                    </button>
+                    <button class="btn btn-rectangle btn-secondary" id="clear-all-btn" style="font-size: clamp(0.7rem, 1vw + 0.5rem, 1rem);">
+                        <i class="fas fa-trash"></i>
+                        Clear all
+                    </button>
+                </div>
+            </div>
+            <button class="modal-close" id="close-notifications-modal">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <!-- Notifications Tabs -->
+        <div class="notifications-tabs">
+            <button class="notification-tab active" data-tab="all">
+                <i class="fas fa-list"></i>
+                <span class="tab-text">All</span>
+                <span class="tab-count" id="all-count">0</span>
+            </button>
+            <button class="notification-tab" data-tab="follows">
+                <i class="fas fa-user-plus"></i>
+                <span class="tab-text">Follows</span>
+                <span class="tab-count" id="follows-count">0</span>
+            </button>
+            <button class="notification-tab" data-tab="likes">
+                <i class="fas fa-heart"></i>
+                <span class="tab-text">Likes</span>
+                <span class="tab-count" id="likes-count">0</span>
+            </button>
+            <button class="notification-tab" data-tab="comments">
+                <i class="fas fa-comment"></i>
+                <span class="tab-text">Comments</span>
+                <span class="tab-count" id="comments-count">0</span>
+            </button>
+            <button class="notification-tab" data-tab="system">
+                <i class="fas fa-cog"></i>
+                <span class="tab-text">System</span>
+                <span class="tab-count" id="system-count">0</span>
+            </button>
+        </div>
+
+        <!-- Notifications Container -->
+        <div class="notifications-container" id="notifications-container">
+            <!-- Loading State -->
+            <div class="notifications-loading" id="notifications-loading">
+                <i class="fas fa-spinner fa-spin"></i>
+                <span>Loading notifications...</span>
+            </div>
+
+            <!-- Empty State -->
+            <div class="notifications-empty" id="notifications-empty" style="display: none;">
+                <i class="fas fa-bell-slash"></i>
+                <h4>No notifications yet</h4>
+                <p>When you get notifications, they'll appear here.</p>
+            </div>
+
+            <!-- Error State -->
+            <div class="notifications-error" id="notifications-error" style="display: none;">
+                <i class="fas fa-exclamation-triangle"></i>
+                <h4>Error loading notifications</h4>
+                <p>There was a problem loading your notifications. Please try again.</p>
+                <button class="btn btn-primary" id="retry-notifications">
+                    <i class="fas fa-redo"></i>
+                    Try Again
+                </button>
+            </div>
+
+            <!-- Notifications List -->
+            <div class="notifications-list" id="notifications-list" style="display: none;">
+                <!-- Notifications will be loaded here via AJAX -->
+            </div>
+        </div>
+
+        <!-- Load More Button -->
+        <div class="load-more-container" id="load-more-container" style="display: none;">
+            <button class="btn btn-secondary" id="load-more-notifications">
+                <i class="fas fa-plus"></i>
+                Load More
+            </button>
+        </div>
+    </div>
+</div>

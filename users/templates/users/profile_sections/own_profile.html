@@ -1,29 +1,59 @@
-<!-- Own Profile Section - Full access for profile owner -->
-<div class="profile-section own-profile">
-    <!-- Profile Header with Banner - Facebook Style -->
-    <div class="profile-header">
-        <!-- Banner Background -->
+<div class="profile-section own-profile" data-username="{{ profile_user.username }}">
+    <!-- Profile Header with Banner -->
+     <div class="profile-header">
         <div class="profile-banner">
             {% if profile_user.banner %}
                 <img src="{{ profile_user.banner.url }}" alt="Profile banner" class="banner-img">
             {% else %}
                 <div class="banner-placeholder"></div>
             {% endif %}
-        </div>
-        
-        <div class="profile-content">
-            <div class="profile-avatar">
-                {% if profile_user.profile_picture %}
-                    <img src="{{ profile_user.profile_picture.url }}" 
-                         alt="{{ profile_user.username }}'s profile picture" 
-                         class="avatar-img">
-                {% else %}
-                    <div class="avatar-placeholder">
-                        <i class="fas fa-user"></i>
+            <div class="banner-ellipsis-container">
+                <button class="btn btn-edit-ellipsis btn-round" id="btn-ellipsis-banner">
+                    <i class="fas fa-ellipsis-v"></i>
+                </button>
+                <div class="banner-dropdown-menu" id="banner-dropdown-menu">
+                    <div class="dropdown-item" data-action="block">
+                        <i class="fas fa-user-slash"></i>
+                        <span>Block User</span>
                     </div>
-                {% endif %}
+                    <div class="dropdown-item" data-action="message">
+                        <i class="fas fa-envelope"></i>
+                        <span>Send Message</span>
+                    </div>
+                    <div class="dropdown-item" data-action="report">
+                        <i class="fas fa-flag"></i>
+                        <span>Report</span>
+                    </div>
+                    <div class="dropdown-item" data-action="share">
+                        <i class="fas fa-share"></i>
+                        <span>Share Profile</span>
+                    </div>
+                    <div class="dropdown-item" data-action="settings">
+                        <i class="fas fa-cog"></i>
+                        <span>Banner Settings</span>
+                    </div>
+                </div>
             </div>
-            
+        </div>
+        <div class="profile-content">
+            <div class="profile-picture-container">
+                {% if profile_user.profile_picture %}
+                    <div class="profile-picture-img-container">
+                        <img src="{{ profile_user.profile_picture.url }}" alt="Profile picture" class="profile-picture-img">
+                        <div class="profile-status-indicator" style="background-color: {% if profile_user.is_online %} green {% else %} red {% endif %}"></div>
+                    </div>
+                {% else %}
+                    <div class="profile-picture-placeholder"></div>
+                {% endif %}
+                <div class="profile-edit-container">
+                    <button class="btn btn-edit-profile btn-rectangle btn-secondary" id="btn-edit-profile">
+                        Edit profile
+                    </button>
+                    <button class="btn btn-share-profile btn-rectangle btn-secondary" id="btn-share-profile">
+                        Share profile
+                    </button>
+                </div>
+            </div>
             <div class="profile-info">
                 <div class="profile-name-section">
                     <h1 class="profile-name">
@@ -33,249 +63,31 @@
                             {{ profile_user.username }}
                         {% endif %}
                     </h1>
-                    <p class="profile-username">@{{ profile_user.username }}</p>
-                    
-                    <!-- Online Status -->
-                    <div class="online-status">
-                        {% if profile_user.is_online %}
-                            <span class="status-indicator online">
-                                <i class="fas fa-circle"></i> Online
-                            </span>
-                        {% else %}
-                            <span class="status-indicator offline">
-                                <i class="fas fa-circle"></i> Offline
-                            </span>
-                        {% endif %}
-                    </div>
-                </div>
-                
-                <!-- Bio Section - Only show if exists -->
-                {% if profile_user.bio %}
-                <div class="profile-bio">
-                    <p>{{ profile_user.bio }}</p>
-                </div>
-                {% endif %}
-                
-                <!-- Social Stats - Always visible, even for private accounts -->
-                <div class="social-stats" id="social-stats-{{ profile_user.username }}">
-                    <div class="stat-item">
-                        <span class="stat-number" id="followers-count-{{ profile_user.username }}">
-                            {{ profile_user.get_followers.count }}
-                        </span>
-                        <span class="stat-label">Followers</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-number" id="following-count-{{ profile_user.username }}">
-                            {{ profile_user.get_following.count }}
-                        </span>
-                        <span class="stat-label">Following</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-number">{{ profile_user.get_posts_count }}</span>
-                        <span class="stat-label">Posts</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-number">{{ profile_user.get_photos_count }}</span>
-                        <span class="stat-label">Photos</span>
-                    </div>
-
-                </div>
-                
-                <!-- Profile Actions -->
-                <div class="profile-actions">
-                    <a href="{% url 'public_profile' %}" class="btn btn-primary">
-                        <i class="fas fa-edit"></i> Edit Profile
-                    </a>
-                    <a href="{% url 'profile' %}" class="btn btn-outline-primary">
-                        <i class="fas fa-cog"></i> Settings
-                    </a>
-                    {% if profile_user.is_private %}
-                        <button class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#followRequestsModal">
-                            <i class="fas fa-user-clock"></i> Follow Requests
-                            {% if profile_user.get_pending_follow_requests.count > 0 %}
-                                <span class="badge bg-primary ms-1">{{ profile_user.get_pending_follow_requests.count }}</span>
-                            {% endif %}
-                        </button>
+                    <h2 class="profile-username">@{{ profile_user.username }}</h2>
+                    {% if profile_user.bio %}
+                        <div class="profile-bio">{{ profile_user.bio|linebreaks }}</div>
                     {% endif %}
                 </div>
+                 <div class="profile-social-stats">
+                     <div class="profile-social-stat-item">
+                         <h4 class="profile-social-stat-item-title">Posts</h4>
+                         <p class="profile-social-stat-item-value" id="posts-count-{{ profile_user.username }}">{{ profile_user.get_posts_count }}</p>
+                     </div>
+                     <div class="profile-social-stat-item clickable-stat" data-type="followers" data-username="{{ profile_user.username }}">
+                         <h4 class="profile-social-stat-item-title">Followers</h4>
+                         <p class="profile-social-stat-item-value" id="followers-count-{{ profile_user.username }}">{{ profile_user.get_followers.count }}</p>
+                     </div>
+                     <div class="profile-social-stat-item clickable-stat" data-type="following" data-username="{{ profile_user.username }}">
+                         <h4 class="profile-social-stat-item-title">Following</h4>
+                         <p class="profile-social-stat-item-value" id="following-count-{{ profile_user.username }}">{{ profile_user.get_following.count }}</p>
+                     </div>
+                 </div>
             </div>
         </div>
-    </div>
-    
-    <!-- Additional Info Cards -->
-    <div class="info-cards">
-        <!-- Privacy Settings Card -->
-        <div class="info-card">
-            <div class="card-header">
-                <i class="fas fa-lock"></i>
-                <h3>Privacy Settings</h3>
-            </div>
-            <div class="card-content">
-                <div class="privacy-status">
-                    <span class="status-badge {% if profile_user.is_private %}private{% else %}public{% endif %}">
-                        {% if profile_user.is_private %}
-                            <i class="fas fa-lock"></i> Private Account
-                        {% else %}
-                            <i class="fas fa-globe"></i> Public Account
-                        {% endif %}
-                    </span>
-                    <p class="privacy-description">
-                        {% if profile_user.is_private %}
-                            Only approved followers can see your posts and full profile.
-                        {% else %}
-                            Anyone can see your profile and posts.
-                        {% endif %}
-                    </p>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Photography Stats Card -->
-        {% if profile_user.get_photos_count > 0 %}
-        <div class="info-card">
-            <div class="card-header">
-                <i class="fas fa-camera"></i>
-                <h3>Photography Stats</h3>
-            </div>
-            <div class="card-content">
-                <div class="info-item">
-                    <i class="fas fa-heart"></i>
-                    <span>{{ profile_user.get_likes_received_count }} total likes received</span>
-                </div>
-                {% if profile_user.get_cameras_used %}
-                <div class="info-item">
-                    <i class="fas fa-camera-retro"></i>
-                    <span>{{ profile_user.get_cameras_count }} camera{{ profile_user.get_cameras_count|pluralize }}: {{ profile_user.get_cameras_used|join:", " }}</span>
-                </div>
-                {% endif %}
-            </div>
-        </div>
-        {% endif %}
-        
-        <!-- Account Info Card - Less prominent -->
-        <div class="info-card" style="opacity: 0.7;">
-            <div class="card-header">
-                <i class="fas fa-info-circle"></i>
-                <h3>Account Details</h3>
-            </div>
-            <div class="card-content">
-                <div class="info-item">
-                    <i class="fas fa-calendar-alt"></i>
-                    <span>Member since {{ profile_user.date_joined|date:"F Y" }}</span>
-                </div>
-                {% if profile_user.last_login_date %}
-                    <div class="info-item">
-                        <i class="fas fa-clock"></i>
-                        <span>Last seen {{ profile_user.last_login_date|date:"F j, Y" }}</span>
-                    </div>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-    
-    <!-- Future: Posts Section -->
-    <div class="posts-section">
-        <div class="section-header">
-            <h3 class="section-title">
-                <i class="fas fa-images"></i> Your Posts
-            </h3>
-            <p class="section-subtitle">
-                {% if profile_user.get_posts_count > 0 %}
-                    You have {{ profile_user.get_posts_count }} post{{ profile_user.get_posts_count|pluralize }}
-                {% else %}
-                    Coming soon - Photo sharing functionality
-                {% endif %}
-            </p>
-        </div>
-        <div class="posts-grid">
-            {% if user_posts %}
-                {% for post in user_posts %}
-                    <div class="post-card">
-                        <a href="{% url 'posts:post_detail' post.id %}" class="post-link">
-                            <div class="post-image-container">
-                                {% if post.post_type == 'single_photo' and post.content_object %}
-                                    <img src="{{ post.content_object.original_file.url }}" 
-                                         alt="{{ post.title|default:post.description|truncatechars:50 }}" 
-                                         class="post-image">
-                                {% elif post.post_type == 'multiple_photos' and post.photos.count > 0 %}
-                                    {% if post.photos.count == 2 %}
-                                        <div class="two-photos-grid">
-                                            {% for photo in post.photos.all|slice:":2" %}
-                                                <img src="{{ photo.original_file.url }}" 
-                                                     alt="{{ post.title|default:post.description|truncatechars:50 }}" 
-                                                     class="post-image">
-                                            {% endfor %}
-                                        </div>
-                                    {% elif post.photos.count > 2 %}
-                                        <div class="multiple-photos-grid">
-                                            <img src="{{ post.photos.first.original_file.url }}" 
-                                                 alt="{{ post.title|default:post.description|truncatechars:50 }}" 
-                                                 class="post-image main-image">
-                                            <div class="additional-photos">
-                                                {% for photo in post.photos.all|slice:"1:3" %}
-                                                    <img src="{{ photo.original_file.url }}" 
-                                                         alt="{{ post.title|default:post.description|truncatechars:50 }}" 
-                                                         class="post-image">
-                                                {% endfor %}
-                                                {% if post.photos.count > 3 %}
-                                                    <div class="more-photos-overlay">
-                                                        <span class="more-count">+{{ post.photos.count|add:"-2" }}</span>
-                                                    </div>
-                                                {% endif %}
-                                            </div>
-                                        </div>
-                                    {% endif %}
-                                {% elif post.post_type == 'collection' and post.content_object %}
-                                    <img src="{{ post.content_object.cover_photo.image.url }}" 
-                                         alt="{{ post.title|default:post.content_object.name }}" 
-                                         class="post-image">
-                                    <div class="collection-overlay">
-                                        <div class="collection-name">{{ post.content_object.name }}</div>
-                                        <div class="photo-count">{{ post.content_object.photos.count }} photo{{ post.content_object.photos.count|pluralize }}</div>
-                                    </div>
-                                {% else %}
-                                    <div class="post-placeholder">
-                                        <i class="fas fa-image"></i>
-                                        <span>No image</span>
-                                    </div>
-                                {% endif %}
-                                
-                                <!-- Post info overlay on hover -->
-                                <div class="post-info-overlay">
-                                    <div class="post-stats">
-                                        <div class="stat">
-                                            <i class="fas fa-heart"></i>
-                                            <span>{{ post.likes_count }}</span>
-                                        </div>
-                                        <div class="stat">
-                                            <i class="fas fa-comment"></i>
-                                            <span>{{ post.comments_count }}</span>
-                                        </div>
-                                        <div class="stat">
-                                            <i class="fas fa-eye"></i>
-                                            <span>{{ post.views_count }}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </a>
-                    </div>
-                {% endfor %}
-            {% elif profile_user.get_posts_count > 0 %}
-                <!-- Posts exist but not loaded -->
-                <div class="post-placeholder">
-                    <i class="fas fa-images"></i>
-                    <span>{{ profile_user.get_posts_count }} post{{ profile_user.get_posts_count|pluralize }}</span>
-                </div>
-            {% else %}
-                <div class="post-placeholder">
-                    <i class="fas fa-plus"></i>
-                    <span>Create your first post</span>
-                </div>
-            {% endif %}
-        </div>
-    </div>
-</div>
+     </div>
 
-<!-- CSRF Token for AJAX requests -->
-{% csrf_token %}
+<!-- Profile Tabs Section -->
+{% include 'users/partials/profile_tabs.html' %}
+
+<!-- Social Stats Modal -->
+{% include 'users/partials/social_stats_modal.html' %}

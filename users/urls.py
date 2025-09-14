@@ -167,9 +167,67 @@ urlpatterns = [
         refresh_user_recommendations_view,
         name="refresh_user_recommendations",
     ),
+    # Notifications AJAX endpoints
+    path(
+        "ajax/get-notifications/",
+        get_notifications_ajax,
+        name="get_notifications",
+    ),
+    path(
+        "ajax/get-notification-count/",
+        get_notification_count_ajax,
+        name="get_notification_count",
+    ),
+    path(
+        "ajax/mark-notification-read/",
+        mark_notification_read_ajax,
+        name="mark_notification_read",
+    ),
+    path(
+        "ajax/delete-notification/",
+        delete_notification_ajax,
+        name="delete_notification",
+    ),
+    path(
+        "ajax/mark-all-notifications-read/",
+        mark_all_notifications_read_ajax,
+        name="mark_all_notifications_read",
+    ),
+    path(
+        "ajax/clear-all-notifications/",
+        clear_all_notifications_ajax,
+        name="clear_all_notifications",
+    ),
+    path(
+        "ajax/handle-notification-action/",
+        handle_notification_action_ajax,
+        name="handle_notification_action",
+    ),
     path(
         "ajax/get-recommendations/",
         get_user_recommendations_ajax,
         name="get_user_recommendations_ajax",
+    ),
+    # Social stats modal URLs
+    path(
+        "ajax/get-followers/",
+        get_followers_list_view,
+        name="get_followers_list",
+    ),
+    path(
+        "ajax/get-following/",
+        get_following_list_view,
+        name="get_following_list",
+    ),
+    # Profile tabs AJAX URLs
+    path(
+        "ajax/get-profile-posts/",
+        get_profile_posts_ajax,
+        name="get_profile_posts_ajax",
+    ),
+    path(
+        "ajax/get-profile-collections/",
+        get_profile_collections_ajax,
+        name="get_profile_collections_ajax",
     ),
 ]

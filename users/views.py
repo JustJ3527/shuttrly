@@ -2691,6 +2691,19 @@ def public_user_profile_view(request, username):
         elif request.user.is_authenticated:
             # For private profiles, check if current user is following
             can_see_full_profile = user.can_see_profile(request.user)
+        
+        # Check if follow request has been sent (for private profiles)
+        follow_request_sent = False
+        if not can_see_full_profile and is_private_profile and request.user.is_authenticated:
+            try:
+                from users.models import FollowRequest
+                follow_request = FollowRequest.objects.filter(
+                    from_user=request.user,
+                    to_user=user
+                ).first()
+                follow_request_sent = follow_request and follow_request.status == 'pending'
+            except ImportError:
+                follow_request_sent = False
             
 
 
@@ -2715,6 +2728,7 @@ def public_user_profile_view(request, username):
             "can_edit": can_edit,
             "can_see_full_profile": can_see_full_profile,
             "show_limited_info": is_private_profile and not can_see_full_profile,
+            "follow_request_sent": follow_request_sent,
             "user_posts": user_posts,
         }
 
@@ -3346,22 +3360,67 @@ def toggle_follow_view(request):
         
         # Check if target user is private
         if target_user.is_private and not request.user.is_following(target_user):
-            # Send follow request instead of following directly
-            success, message = send_follow_request(request_user=request.user, target_user=target_user)
-            
-            if success:
-                return JsonResponse({
-                    'success': True,
-                    'is_following': False,
-                    'follow_request_sent': True,
-                    'message': message,
-                    'relationship_data': get_user_relationship_data(request.user, target_user)
-                })
-            else:
+            # Check if there's already a follow request (any status)
+            try:
+                from users.models import FollowRequest
+                follow_request = FollowRequest.objects.filter(
+                    from_user=request.user,
+                    to_user=target_user
+                ).first()
+                
+                if follow_request:
+                    if follow_request.status == 'pending':
+                        # Cancel the follow request
+                        follow_request.status = 'cancelled'
+                        follow_request.save()
+                        
+                        return JsonResponse({
+                            'success': True,
+                            'is_following': False,
+                            'follow_request_sent': False,
+                            'message': 'Follow request cancelled',
+                            'relationship_data': get_user_relationship_data(request.user, target_user)
+                        })
+                    elif follow_request.status == 'cancelled':
+                        # Re-send the follow request
+                        follow_request.status = 'pending'
+                        follow_request.save()
+                        
+                        return JsonResponse({
+                            'success': True,
+                            'is_following': False,
+                            'follow_request_sent': True,
+                            'message': 'Follow request sent',
+                            'relationship_data': get_user_relationship_data(request.user, target_user)
+                        })
+                    else:
+                        # Request was accepted/rejected, can't toggle
+                        return JsonResponse({
+                            'success': False,
+                            'message': 'Follow request already processed'
+                        }, status=400)
+                else:
+                    # Send follow request instead of following directly
+                    success, message = send_follow_request(request_user=request.user, target_user=target_user)
+                    
+                    if success:
+                        return JsonResponse({
+                            'success': True,
+                            'is_following': False,
+                            'follow_request_sent': True,
+                            'message': message,
+                            'relationship_data': get_user_relationship_data(request.user, target_user)
+                        })
+                    else:
+                        return JsonResponse({
+                            'success': False,
+                            'message': message
+                        }, status=400)
+            except ImportError:
                 return JsonResponse({
                     'success': False,
-                    'message': message
-                }, status=400)
+                    'message': 'Follow request system not available'
+                }, status=500)
         
         # Regular follow/unfollow for public accounts or already following
         success, is_following, message = toggle_follow(request.user, target_user)
@@ -3742,5 +3801,510 @@ def get_user_recommendations_ajax(request):
         return JsonResponse({
             'success': False,
             'message': f'Failed to get recommendations: {str(e)}'
+        }, status=500)
+
+
+@require_http_methods(["GET"])
+def get_followers_list_view(request):
+    """Get followers list for a user"""
+    try:
+        username = request.GET.get('username')
+        if not username:
+            return JsonResponse({
+                'success': False,
+                'message': 'Username is required'
+            }, status=400)
+        
+        try:
+            user = CustomUser.objects.get(username=username)
+        except CustomUser.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'message': 'User not found'
+            }, status=404)
+        
+        # Get followers
+        followers = user.get_followers()
+        
+        # Prepare followers data with follow status
+        followers_data = []
+        for follower in followers:
+            is_following = request.user.is_following(follower) if request.user.is_authenticated else False
+            followers_data.append({
+                'user': follower,
+                'is_following': is_following
+            })
+        
+        # Render the followers list template
+        html = render_to_string('users/partials/followers_list.html', {
+            'followers_data': followers_data,
+            'profile_user': user,
+            'current_user': request.user
+        })
+        
+        return JsonResponse({
+            'success': True,
+            'html': html,
+            'count': followers.count()
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Failed to get followers: {str(e)}'
+        }, status=500)
+
+
+@require_http_methods(["GET"])
+def get_following_list_view(request):
+    """Get following list for a user"""
+    try:
+        username = request.GET.get('username')
+        if not username:
+            return JsonResponse({
+                'success': False,
+                'message': 'Username is required'
+            }, status=400)
+        
+        try:
+            user = CustomUser.objects.get(username=username)
+        except CustomUser.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'message': 'User not found'
+            }, status=404)
+        
+        # Get following
+        following = user.get_following()
+        
+        # Prepare following data with follow status
+        following_data = []
+        for following_user in following:
+            is_following = request.user.is_following(following_user) if request.user.is_authenticated else False
+            following_data.append({
+                'user': following_user,
+                'is_following': is_following
+            })
+        
+        # Render the following list template
+        html = render_to_string('users/partials/following_list.html', {
+            'following_data': following_data,
+            'profile_user': user,
+            'current_user': request.user
+        })
+        
+        return JsonResponse({
+            'success': True,
+            'html': html,
+            'count': following.count()
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Failed to get following: {str(e)}'
+        }, status=500)
+
+
+@require_http_methods(["GET"])
+def get_profile_posts_ajax(request):
+    """AJAX view to get user posts for profile tabs"""
+    try:
+        username = request.GET.get('username')
+        page = int(request.GET.get('page', 1))
+        
+        if not username:
+            return JsonResponse({
+                'success': False,
+                'message': 'Username is required'
+            }, status=400)
+        
+        try:
+            user = CustomUser.objects.get(username=username)
+        except CustomUser.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'message': 'User not found'
+            }, status=404)
+        
+        # Import here to avoid circular imports
+        from posts.models import Post
+        from django.core.paginator import Paginator
+        
+        # Get user posts
+        posts = Post.objects.filter(author=user).order_by('-created_at')
+        
+        # Paginate posts
+        paginator = Paginator(posts, 12)  # 12 posts per page
+        try:
+            posts_page = paginator.page(page)
+        except:
+            posts_page = paginator.page(1)
+        
+        # Determine which template to use based on context
+        # Check if this is a public profile (user viewing someone else's profile)
+        is_public_profile = request.user != user if request.user.is_authenticated else True
+        
+        template_name = 'users/partials/profile_posts_grid_public.html' if is_public_profile else 'users/partials/profile_posts_grid.html'
+        
+        # Render the posts grid template
+        html = render_to_string(template_name, {
+            'user_posts': posts_page,
+            'profile_user': user,
+            'can_edit': request.user == user if request.user.is_authenticated else False
+        })
+        
+        return JsonResponse({
+            'success': True,
+            'html': html,
+            'has_next': posts_page.has_next(),
+            'current_page': page,
+            'total_pages': paginator.num_pages
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Failed to get posts: {str(e)}'
+        }, status=500)
+
+
+@require_http_methods(["GET"])
+def get_notifications_ajax(request):
+    """
+    Get notifications for the current user with filtering and pagination.
+    """
+    if not request.user.is_authenticated:
+        return JsonResponse({'success': False, 'message': 'Authentication required'}, status=401)
+    
+    try:
+        # Get filter parameters
+        notification_type = request.GET.get('type', 'all')
+        page = int(request.GET.get('page', 1))
+        per_page = 20
+        
+        # Import here to avoid circular imports
+        from .models import Notification
+        from .utils import sync_follow_request_notifications
+        
+        # Sync notifications before loading
+        sync_follow_request_notifications()
+        
+        # Base queryset
+        notifications = Notification.objects.filter(user=request.user).select_related('from_user').order_by('-created_at')
+        
+        # Filter by type - map category types to actual notification types
+        if notification_type != 'all':
+            if notification_type == 'follows':
+                notifications = notifications.filter(notification_type__in=['follow_request', 'follow_request_accepted', 'follow_request_rejected', 'new_follower'])
+            elif notification_type == 'likes':
+                notifications = notifications.filter(notification_type='photo_liked')
+            elif notification_type == 'comments':
+                notifications = notifications.filter(notification_type='photo_commented')
+            elif notification_type == 'system':
+                notifications = notifications.filter(notification_type='system')
+            else:
+                # For any other specific notification type
+                notifications = notifications.filter(notification_type=notification_type)
+        
+        # Pagination
+        from django.core.paginator import Paginator
+        paginator = Paginator(notifications, per_page)
+        
+        try:
+            page_obj = paginator.page(page)
+        except:
+            page_obj = paginator.page(1)
+        
+        # Prepare notification data
+        notifications_data = []
+        for notification in page_obj:
+            notification_data = {
+                'id': notification.id,
+                'type': notification.notification_type,
+                'title': notification.title,
+                'message': notification.message,
+                'is_read': notification.is_read,
+                'created_at': notification.created_at.isoformat(),
+                'from_user': {
+                    'username': notification.from_user.username,
+                    'first_name': notification.from_user.first_name,
+                    'last_name': notification.from_user.last_name,
+                    'profile_picture': notification.from_user.profile_picture.url if notification.from_user.profile_picture else None,
+                } if notification.from_user else None,
+                'related_photo': {
+                    'thumbnail_url': notification.related_photo.thumbnail.url if notification.related_photo and hasattr(notification.related_photo, 'thumbnail') else None,
+                } if notification.related_photo else None,
+                'related_collection': {
+                    'name': notification.related_collection.name,
+                    'cover_photo': {
+                        'thumbnail_url': notification.related_collection.cover_photo.thumbnail.url if notification.related_collection.cover_photo and hasattr(notification.related_collection.cover_photo, 'thumbnail') else None,
+                    } if notification.related_collection.cover_photo else None,
+                } if notification.related_collection else None,
+            }
+            notifications_data.append(notification_data)
+        
+        # Get counts for each tab (only unread notifications)
+        counts = {
+            'all': Notification.objects.filter(user=request.user, is_read=False).count(),
+            'follows': Notification.objects.filter(user=request.user, notification_type__in=['follow_request', 'follow_request_accepted', 'follow_request_rejected', 'new_follower'], is_read=False).count(),
+            'likes': Notification.objects.filter(user=request.user, notification_type='photo_liked', is_read=False).count(),
+            'comments': Notification.objects.filter(user=request.user, notification_type='photo_commented', is_read=False).count(),
+            'system': Notification.objects.filter(user=request.user, notification_type='system', is_read=False).count(),
+        }
+        
+        return JsonResponse({
+            'success': True,
+            'notifications': notifications_data,
+            'counts': counts,
+            'has_next': page_obj.has_next(),
+            'has_previous': page_obj.has_previous(),
+            'current_page': page_obj.number,
+            'total_pages': paginator.num_pages,
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting notifications: {str(e)}")
+        return JsonResponse({'success': False, 'message': 'Error loading notifications'}, status=500)
+
+
+@require_POST
+def mark_notification_read_ajax(request):
+    """
+    Mark a notification as read.
+    """
+    if not request.user.is_authenticated:
+        return JsonResponse({'success': False, 'message': 'Authentication required'}, status=401)
+    
+    try:
+        notification_id = request.POST.get('notification_id')
+        if not notification_id:
+            return JsonResponse({'success': False, 'message': 'Notification ID required'}, status=400)
+        
+        from .models import Notification
+        notification = Notification.objects.filter(id=notification_id, user=request.user).first()
+        
+        if not notification:
+            return JsonResponse({'success': False, 'message': 'Notification not found'}, status=404)
+        
+        notification.is_read = True
+        notification.save()
+        
+        return JsonResponse({'success': True, 'message': 'Notification marked as read'})
+        
+    except Exception as e:
+        logger.error(f"Error marking notification as read: {str(e)}")
+        return JsonResponse({'success': False, 'message': 'Error updating notification'}, status=500)
+
+
+@require_POST
+def delete_notification_ajax(request):
+    """
+    Delete a notification.
+    """
+    if not request.user.is_authenticated:
+        return JsonResponse({'success': False, 'message': 'Authentication required'}, status=401)
+    
+    try:
+        notification_id = request.POST.get('notification_id')
+        if not notification_id:
+            return JsonResponse({'success': False, 'message': 'Notification ID required'}, status=400)
+        
+        from .models import Notification
+        notification = Notification.objects.filter(id=notification_id, user=request.user).first()
+        
+        if not notification:
+            return JsonResponse({'success': False, 'message': 'Notification not found'}, status=404)
+        
+        notification.delete()
+        
+        return JsonResponse({'success': True, 'message': 'Notification deleted'})
+        
+    except Exception as e:
+        logger.error(f"Error deleting notification: {str(e)}")
+        return JsonResponse({'success': False, 'message': 'Error deleting notification'}, status=500)
+
+
+@require_POST
+def mark_all_notifications_read_ajax(request):
+    """
+    Mark all notifications as read.
+    """
+    if not request.user.is_authenticated:
+        return JsonResponse({'success': False, 'message': 'Authentication required'}, status=401)
+    
+    try:
+        from .models import Notification
+        updated_count = Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
+        
+        return JsonResponse({
+            'success': True, 
+            'message': f'{updated_count} notifications marked as read',
+            'updated_count': updated_count
+        })
+        
+    except Exception as e:
+        logger.error(f"Error marking all notifications as read: {str(e)}")
+        return JsonResponse({'success': False, 'message': 'Error updating notifications'}, status=500)
+
+
+@require_POST
+def clear_all_notifications_ajax(request):
+    """
+    Delete all notifications for the user.
+    """
+    if not request.user.is_authenticated:
+        return JsonResponse({'success': False, 'message': 'Authentication required'}, status=401)
+    
+    try:
+        from .models import Notification
+        deleted_count, _ = Notification.objects.filter(user=request.user).delete()
+        
+        return JsonResponse({
+            'success': True, 
+            'message': f'{deleted_count} notifications deleted',
+            'deleted_count': deleted_count
+        })
+        
+    except Exception as e:
+        logger.error(f"Error clearing all notifications: {str(e)}")
+        return JsonResponse({'success': False, 'message': 'Error deleting notifications'}, status=500)
+
+
+@require_POST
+def handle_notification_action_ajax(request):
+    """
+    Handle notification-specific actions (like follow request responses).
+    """
+    if not request.user.is_authenticated:
+        return JsonResponse({'success': False, 'message': 'Authentication required'}, status=401)
+    
+    try:
+        notification_id = request.POST.get('notification_id')
+        action = request.POST.get('action')
+        
+        if not notification_id or not action:
+            return JsonResponse({'success': False, 'message': 'Notification ID and action required'}, status=400)
+        
+        from .models import Notification
+        notification = Notification.objects.filter(id=notification_id, user=request.user).first()
+        
+        if not notification:
+            return JsonResponse({'success': False, 'message': 'Notification not found'}, status=404)
+        
+        # Handle different notification types
+        if notification.notification_type == 'follow_request' and notification.from_user:
+            if action in ['accept', 'reject']:
+                # Use existing follow request handling
+                from .utils import handle_follow_request_response
+                success, message = handle_follow_request_response(
+                    request.user, 
+                    notification.from_user, 
+                    action
+                )
+                
+                if success:
+                    # Mark notification as read
+                    notification.is_read = True
+                    notification.save()
+                    
+                    return JsonResponse({'success': True, 'message': message})
+                else:
+                    return JsonResponse({'success': False, 'message': message}, status=400)
+        
+        return JsonResponse({'success': False, 'message': 'Action not supported for this notification type'}, status=400)
+        
+    except Exception as e:
+        logger.error(f"Error handling notification action: {str(e)}")
+        return JsonResponse({'success': False, 'message': 'Error processing action'}, status=500)
+
+
+@require_http_methods(["GET"])
+def get_notification_count_ajax(request):
+    """
+    Get unread notification count for the navbar badge.
+    """
+    if not request.user.is_authenticated:
+        return JsonResponse({'success': False, 'count': 0}, status=401)
+    
+    try:
+        from .models import Notification
+        from .utils import sync_follow_request_notifications
+        
+        # Sync notifications before getting count
+        sync_follow_request_notifications()
+        
+        unread_count = Notification.objects.filter(user=request.user, is_read=False).count()
+        
+        return JsonResponse({'success': True, 'count': unread_count})
+        
+    except Exception as e:
+        logger.error(f"Error getting notification count: {str(e)}")
+        return JsonResponse({'success': False, 'count': 0}, status=500)
+
+
+@require_http_methods(["GET"])
+def get_profile_collections_ajax(request):
+    """AJAX view to get user collections for profile tabs"""
+    try:
+        username = request.GET.get('username')
+        page = int(request.GET.get('page', 1))
+        
+        if not username:
+            return JsonResponse({
+                'success': False,
+                'message': 'Username is required'
+            }, status=400)
+        
+        try:
+            user = CustomUser.objects.get(username=username)
+        except CustomUser.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'message': 'User not found'
+            }, status=404)
+        
+        # Import here to avoid circular imports
+        from photos.models import Collection
+        from django.core.paginator import Paginator
+        
+        # Get user collections with prefetched photos
+        collections = Collection.objects.filter(owner=user).prefetch_related('photos').order_by('-created_at')
+        
+        # Debug: Log collections count
+        print(f"DEBUG: Found {collections.count()} collections for user {username}")
+        
+        # Paginate collections
+        paginator = Paginator(collections, 12)  # 12 collections per page
+        try:
+            collections_page = paginator.page(page)
+        except:
+            collections_page = paginator.page(1)
+        
+        # Determine which template to use based on context
+        # Check if this is a public profile (user viewing someone else's profile)
+        is_public_profile = request.user != user if request.user.is_authenticated else True
+        
+        template_name = 'users/partials/profile_collections_grid_public.html' if is_public_profile else 'users/partials/profile_collections_grid.html'
+        
+        # Render the collections grid template
+        html = render_to_string(template_name, {
+            'user_collections': collections_page,
+            'profile_user': user,
+            'can_edit': request.user == user if request.user.is_authenticated else False
+        })
+        
+        return JsonResponse({
+            'success': True,
+            'html': html,
+            'has_next': collections_page.has_next(),
+            'current_page': page,
+            'total_pages': paginator.num_pages
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Failed to get collections: {str(e)}'
         }, status=500)
 

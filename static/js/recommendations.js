@@ -124,7 +124,12 @@ class RecommendationsManager {
      * Follow a user
      */
     async followUser(userId, username) {
-        const button = document.querySelector(`[data-user-id="${userId}"] .follow-btn`);
+        // Try to find button in sidebar first, then in modals
+        let button = document.querySelector(`[data-user-id="${userId}"] .follow-btn`);
+        if (!button) {
+            // Look for button in modals
+            button = document.querySelector(`.follow-btn[data-user-id="${userId}"]`);
+        }
         if (!button) return;
         
         // Add animation classes
@@ -132,8 +137,9 @@ class RecommendationsManager {
         
         // Disable button and show loading
         const originalText = button.innerHTML;
+        const action = button.getAttribute('data-action') || 'follow';
         button.disabled = true;
-        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Following...';
+        button.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${action === 'follow' ? 'Following...' : 'Unfollowing...'}`;
         
         try {
             const response = await fetch('/ajax/toggle-follow/', {
@@ -148,22 +154,40 @@ class RecommendationsManager {
             const data = await response.json();
             
             if (data.success) {
+                // Determine the new state based on the response
+                const isNowFollowing = data.is_following || false;
+                const action = button.getAttribute('data-action') || 'follow';
+                
                 // Add success animation
                 button.classList.add('btn-success');
-                button.innerHTML = '<i class="fas fa-check"></i> Following';
-                button.disabled = true;
+                
+                // Update button text and state based on the new relationship
+                if (isNowFollowing) {
+                    button.innerHTML = '<i class="fas fa-check"></i> Unfollow';
+                    button.setAttribute('data-action', 'unfollow');
+                    button.classList.add('following');
+                } else {
+                    button.innerHTML = 'Follow';
+                    button.setAttribute('data-action', 'follow');
+                    button.classList.remove('following');
+                }
+                
+                button.disabled = false; // Re-enable button for next action
                 
                 // Add pulse animation for success
                 setTimeout(() => {
                     button.classList.add('btn-pulse');
                 }, 100);
                 
-                // Refresh recommendations after follow
+                // Refresh recommendations after follow/unfollow
                 await this.refreshRecommendationsAfterFollow();
                 
                 // Show success message after updating the UI
                 setTimeout(() => {
-                    this.showToast('Success', data.message || 'Successfully followed user!', 'success');
+                    const message = isNowFollowing 
+                        ? (data.message || 'Successfully followed user!')
+                        : (data.message || 'Successfully unfollowed user!');
+                    this.showToast('Success', message, 'success');
                 }, 100);
             } else {
                 throw new Error(data.message || 'Failed to follow user');

@@ -1,0 +1,33 @@
+<!-- Profile Tabs -->
+<div class="profile-tabs-container">
+    <div class="profile-tabs">
+        <button class="profile-tab active" data-tab="posts">
+            <div class="profile-tab-title">
+                <i class="fas fa-th"></i>
+                <span>Posts</span>
+            </div>
+            <div class="profile-tab-count" id="posts-tab-count">{{ profile_user.get_posts_count }}</div>
+        </button>
+        <button class="profile-tab" data-tab="collections">
+            <div class="profile-tab-title">
+                <i class="fas fa-folder"></i>
+                <span>Collections</span>
+            </div>
+            <div class="profile-tab-count" id="collections-tab-count">{{ profile_user.get_collections_count|default:0 }}</div>
+        </button>
+    </div>
+    
+    <!-- Tab Content -->
+    <div class="tab-content">
+        <!-- Posts Tab Content -->
+        <div class="tab-pane active" id="posts-tab">
+            <!-- Content will be loaded via AJAX -->
+        </div>
+        
+        <!-- Collections Tab Content -->
+        <div class="tab-pane" id="collections-tab">
+            <!-- Content will be loaded via AJAX -->
+        </div>
+    </div>
+</div>
+

@@ -1578,6 +1578,7 @@ def get_2fa_settings_context(user, trusted_devices, step):
 def toggle_follow(request_user, target_user):
     """
     Toggle follow relationship between two users.
+    For private accounts, this will send a follow request instead of following directly.
     
     Args:
         request_user: User making the follow request
@@ -1619,13 +1620,33 @@ def toggle_follow(request_user, target_user):
             
             return True, False, f"Unfollowed {target_user.username}"
         else:
-            # Follow
-            UserRelationship.objects.create(
-                from_user=request_user,
-                to_user=target_user,
-                relationship_type="follow"
-            )
-            return True, True, f"Following {target_user.username}"
+            # Check if target user is private
+            if target_user.is_private:
+                # For private accounts, send a follow request instead of following directly
+                success, message = send_follow_request(request_user, target_user)
+                if success:
+                    return True, False, message  # is_following=False because it's a request
+                else:
+                    return False, False, message
+            else:
+                # For public accounts, follow directly
+                UserRelationship.objects.create(
+                    from_user=request_user,
+                    to_user=target_user,
+                    relationship_type="follow"
+                )
+                
+                # Create "New Follower" notification for the user being followed
+                from .models import Notification
+                Notification.create_notification(
+                    user=target_user,
+                    notification_type='new_follower',
+                    title='New Follower',
+                    message=f'{request_user.username} started following you',
+                    from_user=request_user
+                )
+                
+                return True, True, f"Following {target_user.username}"
             
     except Exception as e:
         logger.error(f"Error toggling follow: {str(e)}")
@@ -1702,6 +1723,9 @@ def send_follow_request(request_user, target_user, message=""):
             message=message
         )
         
+        # Create notification for the follow request
+        create_follow_request_notification(request_user, target_user, message)
+        
         return True, f"Follow request sent to {target_user.username}"
         
     except Exception as e:
@@ -1743,6 +1767,8 @@ def handle_follow_request_response(request_user, target_user, action):
         if action == 'accept':
             # Accept the request
             if follow_request.accept():
+                # Update notifications
+                update_follow_request_notification_status(target_user, request_user, 'accepted')
                 return True, f"Follow request from {target_user.username} accepted"
             else:
                 return False, "Error accepting follow request"
@@ -1750,6 +1776,8 @@ def handle_follow_request_response(request_user, target_user, action):
         elif action == 'reject':
             # Reject the request
             if follow_request.reject():
+                # Update notifications
+                update_follow_request_notification_status(target_user, request_user, 'rejected')
                 return True, f"Follow request from {target_user.username} rejected"
             else:
                 return False, "Error rejecting follow request"
@@ -1780,6 +1808,10 @@ def get_follow_request_status(request_user, target_user):
         # Check if already following
         if request_user.is_following(target_user):
             return 'following'
+        
+        # Only check follow request status for private accounts
+        if not target_user.is_private:
+            return 'none'
         
         # Check follow request status
         from .models import FollowRequest
@@ -1924,3 +1956,129 @@ def get_user_social_stats(user):
         "friends": list(friends),
         "close_friends": close_friends,
     }
+
+
+def sync_follow_request_notifications():
+    """
+    Synchronize follow request notifications with actual follow request statuses.
+    This ensures notifications are up-to-date with the current state.
+    """
+    from .models import FollowRequest, Notification
+    
+    # Get all follow requests that have been processed (accepted or rejected)
+    processed_requests = FollowRequest.objects.filter(
+        status__in=['accepted', 'rejected']
+    )
+    
+    for request in processed_requests:
+        # Check if there's already a notification for this request (any type)
+        existing_notification = Notification.objects.filter(
+            user=request.to_user,
+            from_user=request.from_user,
+            notification_type__in=['follow_request', 'follow_request_accepted', 'follow_request_rejected']
+        ).first()
+        
+        if request.status == 'accepted':
+            # Delete any existing follow_request notification for to_user
+            Notification.objects.filter(
+                user=request.to_user,
+                from_user=request.from_user,
+                notification_type='follow_request'
+            ).delete()
+            
+            # Create notification for from_user: "to_user accepted your follow request"
+            Notification.create_notification(
+                user=request.from_user,
+                notification_type='follow_request_accepted',
+                title='Follow Request Accepted',
+                message=f'{request.to_user.username} accepted your follow request',
+                from_user=request.to_user
+            )
+            
+            # Create notification for to_user: "from_user started following you"
+            Notification.create_notification(
+                user=request.to_user,
+                notification_type='new_follower',
+                title='New Follower',
+                message=f'{request.from_user.username} started following you',
+                from_user=request.from_user
+            )
+        
+        elif request.status == 'rejected':
+            # Delete any existing follow_request notification for to_user
+            Notification.objects.filter(
+                user=request.to_user,
+                from_user=request.from_user,
+                notification_type='follow_request'
+            ).delete()
+            
+            # No notifications for rejection
+
+
+def create_follow_request_notification(from_user, to_user, message=""):
+    """
+    Create a notification when a follow request is sent.
+    
+    Args:
+        from_user: User sending the request
+        to_user: User receiving the request
+        message: Optional message with the request
+    """
+    from .models import Notification
+    
+    # Create notification for the user receiving the request
+    Notification.create_notification(
+        user=to_user,
+        notification_type='follow_request',
+        title='Follow Request',
+        message=f'{from_user.username} wants to follow you{f" - {message}" if message else ""}',
+        from_user=from_user
+    )
+
+
+def update_follow_request_notification_status(from_user, to_user, status):
+    """
+    Update notification when follow request status changes.
+    
+    Args:
+        from_user: User who sent the request
+        to_user: User who received the request
+        status: New status ('accepted' or 'rejected')
+    """
+    from .models import Notification
+    
+    if status == 'accepted':
+        # Delete the original follow request notification for user2
+        Notification.objects.filter(
+            user=to_user,
+            from_user=from_user,
+            notification_type='follow_request'
+        ).delete()
+        
+        # Create notification for user1: "User2 accepted your follow request"
+        Notification.create_notification(
+            user=from_user,
+            notification_type='follow_request_accepted',
+            title='Follow Request Accepted',
+            message=f'{to_user.username} accepted your follow request',
+            from_user=to_user
+        )
+        
+        # Create notification for user2: "User1 started following you"
+        Notification.create_notification(
+            user=to_user,
+            notification_type='new_follower',
+            title='New Follower',
+            message=f'{from_user.username} started following you',
+            from_user=from_user
+        )
+    
+    elif status == 'rejected':
+        # Delete the original follow request notification for user2
+        Notification.objects.filter(
+            user=to_user,
+            from_user=from_user,
+            notification_type='follow_request'
+        ).delete()
+        
+        # No notifications for rejection

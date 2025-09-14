@@ -516,6 +516,14 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         """Get the number of unique cameras used by this user"""
         return len(self.get_cameras_used())
 
+    def get_collections_count(self):
+        """Get the total number of collections created by this user"""
+        try:
+            from photos.models import Collection
+            return Collection.objects.filter(owner=self).count()
+        except ImportError:
+            return 0
+
 class PendingFileDeletion(models.Model):
     file_path = models.CharField(max_length=500)
     trash_path = models.CharField(max_length=500, blank=True)
@@ -705,4 +713,112 @@ class UserRecommendation(models.Model):
             models.Index(fields=["user", "position"]),
             models.Index(fields=["last_shown"]),
         ]
+
+
+class Notification(models.Model):
+    """
+    Notification model for user notifications like follows, likes, comments, etc.
+    """
+    NOTIFICATION_TYPES = [
+        ('follow_request', 'Follow Request'),
+        ('follow_request_accepted', 'Follow Request Accepted'),
+        ('follow_request_rejected', 'Follow Request Rejected'),
+        ('new_follower', 'New Follower'),
+        ('new_login', 'New Login'),
+        ('photo_liked', 'Photo Liked'),
+        ('photo_commented', 'Photo Commented'),
+        ('collection_created', 'Collection Created'),
+        ('system', 'System'),
+    ]
+    
+    user = models.ForeignKey(
+        CustomUser, 
+        on_delete=models.CASCADE, 
+        related_name='notifications'
+    )
+    from_user = models.ForeignKey(
+        CustomUser, 
+        on_delete=models.CASCADE, 
+        related_name='sent_notifications',
+        null=True, 
+        blank=True
+    )
+    notification_type = models.CharField(max_length=50, choices=NOTIFICATION_TYPES)
+    title = models.CharField(max_length=200)
+    message = models.TextField()
+    is_read = models.BooleanField(default=False)
+    
+    # Related content (optional)
+    related_photo = models.ForeignKey(
+        'photos.Photo', 
+        on_delete=models.CASCADE, 
+        null=True, 
+        blank=True
+    )
+    related_collection = models.ForeignKey(
+        'photos.Collection', 
+        on_delete=models.CASCADE, 
+        null=True, 
+        blank=True
+    )
+    related_comment = models.ForeignKey(
+        'posts.PostComment', 
+        on_delete=models.CASCADE, 
+        null=True, 
+        blank=True
+    )
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=["user", "is_read"]),
+            models.Index(fields=["user", "notification_type"]),
+            models.Index(fields=["created_at"]),
+        ]
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.title}"
+    
+    def mark_as_read(self):
+        """Mark notification as read"""
+        self.is_read = True
+        self.save(update_fields=['is_read'])
+    
+    @classmethod
+    def create_notification(cls, user, notification_type, title, message, from_user=None, related_photo=None, related_collection=None, related_comment=None):
+        """
+        Create a new notification, avoiding duplicates
+        """
+        # Check for existing similar notification (within last 24 hours)
+        from django.utils import timezone
+        from datetime import timedelta
+        
+        existing = cls.objects.filter(
+            user=user,
+            from_user=from_user,
+            notification_type=notification_type,
+            title=title,
+            created_at__gte=timezone.now() - timedelta(hours=24)
+        ).first()
+        
+        if existing:
+            # Update the existing notification instead of creating a new one
+            existing.message = message
+            existing.created_at = timezone.now()  # Update timestamp
+            existing.save()
+            return existing
+        
+        return cls.objects.create(
+            user=user,
+            from_user=from_user,
+            notification_type=notification_type,
+            title=title,
+            message=message,
+            related_photo=related_photo,
+            related_collection=related_collection,
+            related_comment=related_comment
+        )
         
